@@ -15,9 +15,6 @@
  */
 package com.android.wallpaper.picker;
 
-import static com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_COLLAPSED;
-import static com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED;
-
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
@@ -346,8 +343,8 @@ public class PreviewFragment extends Fragment implements
         });
 
         // Configure loading indicator with a MaterialProgressDrawable.
-        mProgressDrawable = new MaterialProgressDrawable(getActivity().getApplicationContext(),
-                mLoadingIndicator);
+        mProgressDrawable =
+                new MaterialProgressDrawable(getActivity().getApplicationContext(), mLoadingIndicator);
         mProgressDrawable.setAlpha(255);
         mProgressDrawable.setBackgroundColor(getResources().getColor(R.color.material_white_100,
                 getContext().getTheme()));
@@ -372,29 +369,34 @@ public class PreviewFragment extends Fragment implements
 
 
         mBottomSheetInitialState = (savedInstanceState == null)
-                ? STATE_EXPANDED
+                ? BottomSheetBehavior.STATE_EXPANDED
                 : savedInstanceState.getInt(KEY_BOTTOM_SHEET_STATE,
-                        STATE_EXPANDED);
+                        BottomSheetBehavior.STATE_EXPANDED);
         setUpBottomSheetListeners();
 
         return view;
     }
 
     protected int getDeviceDefaultTheme() {
-        return android.R.style.Theme_DeviceDefault;
+        return BuildCompat.isAtLeastQ() ? getDayNightDeviceDefault()
+                : android.R.style.Theme_DeviceDefault;
+    }
+
+    @TargetApi(29)
+    private int getDayNightDeviceDefault() {
+        return R.style.Theme_AppCompat_DayNight;
     }
 
     @Override
     public void onResume() {
         super.onResume();
 
-        WallpaperPreferences preferences =
-                InjectorProvider.getInjector().getPreferences(getActivity());
+        WallpaperPreferences preferences = InjectorProvider.getInjector().getPreferences(getActivity());
         preferences.setLastAppActiveTimestamp(new Date().getTime());
 
-        // Show the staged 'load wallpaper' or 'set wallpaper' error dialog fragments if there is
-        // one that was unable to be shown earlier when this fragment's hosting activity didn't
-        // allow committing fragment transactions.
+        // Show the staged 'load wallpaper' or 'set wallpaper' error dialog fragments if there is one
+        // that was unable to be shown earlier when this fragment's hosting activity didn't allow
+        // committing fragment transactions.
         if (mStagedLoadWallpaperErrorDialogFragment != null) {
             mStagedLoadWallpaperErrorDialogFragment.show(
                     getFragmentManager(), TAG_LOAD_WALLPAPER_ERROR_DIALOG_FRAGMENT);
@@ -411,11 +413,6 @@ public class PreviewFragment extends Fragment implements
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.preview_menu, menu);
-    }
-
-    @Override
-    public void onPrepareOptionsMenu(Menu menu) {
-        super.onPrepareOptionsMenu(menu);
         setupPreviewMenu(menu);
     }
 
@@ -436,7 +433,6 @@ public class PreviewFragment extends Fragment implements
 
     protected void setupPreviewMenu(Menu menu) {
         mPreview = (CheckBox) menu.findItem(R.id.preview).getActionView();
-        mPreview.setChecked(mBottomSheetInitialState == STATE_COLLAPSED);
         mPreview.setOnClickListener(this::setPreviewBehavior);
     }
 
@@ -454,9 +450,9 @@ public class PreviewFragment extends Fragment implements
         BottomSheetBehavior<?> behavior = BottomSheetBehavior.from(mBottomSheet);
 
         if (checkbox.isChecked()) {
-            behavior.setState(STATE_COLLAPSED);
+            behavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
         } else {
-            behavior.setState(STATE_EXPANDED);
+            behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
         }
     }
 
@@ -557,10 +553,10 @@ public class PreviewFragment extends Fragment implements
                     return;
                 }
                 switch (newState) {
-                    case STATE_COLLAPSED:
+                    case BottomSheetBehavior.STATE_COLLAPSED:
                         setPreviewChecked(true /* checked */);
                         break;
-                    case STATE_EXPANDED:
+                    case BottomSheetBehavior.STATE_EXPANDED:
                         setPreviewChecked(false /* checked */);
                         break;
                 }
@@ -643,13 +639,7 @@ public class PreviewFragment extends Fragment implements
         // Initialize the state of the BottomSheet based on the current state because if the initial
         // and current state are the same, the state change listener won't fire and set the correct
         // arrow asset and text alpha.
-        if (bottomSheetBehavior.getState() == STATE_EXPANDED) {
-            setPreviewChecked(false);
-            mAttributionTitle.setAlpha(1f);
-            mAttributionSubtitle1.setAlpha(1f);
-            mAttributionSubtitle2.setAlpha(1f);
-        } else {
-            setPreviewChecked(true);
+        if (bottomSheetBehavior.getState() != BottomSheetBehavior.STATE_EXPANDED) {
             mAttributionTitle.setAlpha(0f);
             mAttributionSubtitle1.setAlpha(0f);
             mAttributionSubtitle2.setAlpha(0f);

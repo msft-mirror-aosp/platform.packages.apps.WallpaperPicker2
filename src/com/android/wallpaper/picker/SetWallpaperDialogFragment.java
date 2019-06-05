@@ -44,10 +44,6 @@ public class SetWallpaperDialogFragment extends DialogFragment {
     private Listener mListener;
     private int mTitleResId;
 
-    public SetWallpaperDialogFragment() {
-        setRetainInstance(true);
-    }
-
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         super.onCreateDialog(savedInstanceState);
