@@ -25,8 +25,6 @@ import android.os.Build.VERSION_CODES;
 import android.view.Display;
 import android.view.View;
 
-import com.android.systemui.shared.system.WallpaperManagerCompat;
-
 /**
  * Static utility methods for wallpaper cropping operations.
  */
@@ -341,7 +339,11 @@ public final class WallpaperCropUtils {
      * Get the system wallpaper's maximum scale value.
      */
     public static float getSystemWallpaperMaximumScale(Context context) {
-        return WallpaperManagerCompat.getWallpaperZoomOutMaxScale(context);
+        return context.getResources()
+                .getFloat(Resources.getSystem().getIdentifier(
+                        /* name= */ "config_wallpaperMaxScale",
+                        /* defType= */ "dimen",
+                        /* defPackage= */ "android"));
     }
 
     /**
@@ -379,6 +381,13 @@ public final class WallpaperCropUtils {
             newWidth = rectRealWidth;
             newHeight = rectRealWidth;
         }
-        return Math.min((float) newWidth / cropWidth, (float) newHeight / cropHeight);
+        float screenScale = Math.min((float) newWidth / cropWidth, (float) newHeight / cropHeight);
+
+        // screenScale < 1 means our real crop size is smaller than crop size it should be.
+        // So we do nothing in this case, otherwise it'll cause wallpaper smaller than we expected.
+        if (screenScale < 1) {
+            return 1;
+        }
+        return screenScale;
     }
 }
