@@ -119,8 +119,8 @@ public class WallpaperSetter {
      */
     public void setCurrentWallpaper(Activity containerActivity, WallpaperInfo wallpaper,
             @Nullable Asset wallpaperAsset, @Destination final int destination,
-            float wallpaperScale, @Nullable Rect cropRect,
-            @Nullable WallpaperColors wallpaperColors, @Nullable SetWallpaperCallback callback) {
+            float wallpaperScale, @Nullable Rect cropRect, WallpaperColors wallpaperColors,
+            @Nullable SetWallpaperCallback callback) {
         if (wallpaper instanceof LiveWallpaperInfo) {
             setCurrentLiveWallpaper(containerActivity, (LiveWallpaperInfo) wallpaper, destination,
                     wallpaperColors, callback);
@@ -187,8 +187,8 @@ public class WallpaperSetter {
                 });
     }
 
-    public void setCurrentLiveWallpaper(Activity activity, LiveWallpaperInfo wallpaper,
-            @Destination final int destination, @Nullable WallpaperColors colors,
+    private void setCurrentLiveWallpaper(Activity activity, LiveWallpaperInfo wallpaper,
+            @Destination final int destination, WallpaperColors colors,
             @Nullable SetWallpaperCallback callback) {
         try {
             // Save current screen rotation so we can temporarily disable rotation while setting the
@@ -209,10 +209,7 @@ public class WallpaperSetter {
             if (destination == WallpaperPersister.DEST_BOTH) {
                 wallpaperManager.clear(FLAG_LOCK);
             }
-            mPreferences.storeLatestHomeWallpaper(wallpaper.getWallpaperId(), wallpaper,
-                    colors != null ? colors :
-                            WallpaperColors.fromBitmap(wallpaper.getThumbAsset(activity)
-                                    .getLowResBitmap(activity)));
+            mPreferences.storeLatestHomeWallpaper(wallpaper.getWallpaperId(), wallpaper, colors);
             onWallpaperApplied(wallpaper, activity);
             if (callback != null) {
                 callback.onSuccess(wallpaper);
@@ -267,7 +264,7 @@ public class WallpaperSetter {
     private void onWallpaperApplied(WallpaperInfo wallpaper, Activity containerActivity) {
         mUserEventLogger.logWallpaperSet(
                 wallpaper.getCollectionId(containerActivity),
-                wallpaper.getWallpaperId());
+                wallpaper.getWallpaperId(), wallpaper.getEffectNames());
         mPreferences.setPendingWallpaperSetStatus(
                 WallpaperPreferences.WALLPAPER_SET_NOT_PENDING);
         mUserEventLogger.logWallpaperSetResult(
