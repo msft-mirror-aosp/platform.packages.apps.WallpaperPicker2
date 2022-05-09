@@ -28,6 +28,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.android.settingslib.activityembedding.ActivityEmbeddingUtils;
 import com.android.wallpaper.R;
 import com.android.wallpaper.model.CustomizationSectionController;
 import com.android.wallpaper.model.CustomizationSectionController.CustomizationSectionNavigationController;
@@ -58,9 +59,15 @@ public class CustomizationPickerFragment extends AppbarFragment implements
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             @Nullable Bundle savedInstanceState) {
-        final View view = inflater.inflate(R.layout.fragment_customization_picker,
+        final View view = inflater.inflate(R.layout.collapsing_toolbar_container_layout,
                 container, /* attachToRoot= */ false);
-        setUpToolbar(view, ActivityUtils.isLaunchedFromSettingsRelated(getActivity().getIntent()));
+        setContentView(view, R.layout.fragment_customization_picker);
+        if (ActivityUtils.isLaunchedFromSettingsRelated(getActivity().getIntent())) {
+            setUpToolbar(view, !ActivityEmbeddingUtils.shouldHideNavigateUpButton(
+                    getActivity(), /* isSecondLayerPage= */ true));
+        } else {
+            setUpToolbar(view, /* upArrow= */ false);
+        }
 
         ViewGroup sectionContainer = view.findViewById(R.id.section_container);
         sectionContainer.setOnApplyWindowInsetsListener((v, windowInsets) -> {
@@ -96,6 +103,14 @@ public class CustomizationPickerFragment extends AppbarFragment implements
                 restoreViewState(savedInstanceStateRef)
         );
         return view;
+    }
+
+    private void setContentView(View view, int layoutResId) {
+        final ViewGroup parent = view.findViewById(R.id.content_frame);
+        if (parent != null) {
+            parent.removeAllViews();
+        }
+        LayoutInflater.from(view.getContext()).inflate(layoutResId, parent);
     }
 
     private void restoreViewState(@Nullable Bundle savedInstanceState) {
