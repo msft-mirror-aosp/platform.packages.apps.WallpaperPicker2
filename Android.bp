@@ -44,6 +44,7 @@ android_library {
         "subsampling-scale-image-view",
         "SystemUISharedLib",
         "volley",
+        "SettingsLibActivityEmbedding",
     ],
 
     resource_dirs: ["res"],
@@ -96,7 +97,12 @@ java_defaults {
     name: "WallpaperPicker2_defaults",
 
     static_libs: [
+        "renderscript_toolkit",
         "wallpaper-common-deps",
+    ],
+
+    jni_libs: [
+        "librenderscript-toolkit",
     ],
 
     srcs: [
