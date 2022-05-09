@@ -15,6 +15,8 @@
  */
 package com.android.wallpaper.model;
 
+import android.content.Context;
+
 import androidx.annotation.Nullable;
 
 /**
@@ -54,4 +56,28 @@ public interface CategoryProvider {
      */
     @Nullable
     Category getCategory(String collectionId);
+
+    /**
+     * Checks if the categories are fetched.
+     */
+    boolean isCategoriesFetched();
+
+    /**
+     * Resets the fetched categories if needed.
+     *
+     * @return {@code true} if the fetched categories are reset; {@code false} otherwise.
+     */
+    boolean resetIfNeeded();
+
+    /**
+     * Checks if featured collection available.
+     */
+    boolean isFeaturedCollectionAvailable();
+
+    /**
+     * Checks if should force reload.
+     */
+    default boolean shouldForceReload(Context context) {
+        return false;
+    }
 }

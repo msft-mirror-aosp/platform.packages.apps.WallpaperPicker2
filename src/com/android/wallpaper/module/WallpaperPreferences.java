@@ -16,10 +16,17 @@
 package com.android.wallpaper.module;
 
 import android.annotation.TargetApi;
+import android.app.WallpaperColors;
+import android.graphics.Bitmap;
 import android.os.Build;
 
 import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
+import com.android.wallpaper.model.LiveWallpaperInfo;
+import com.android.wallpaper.model.WallpaperInfo;
+import com.android.wallpaper.module.WallpaperPersister.Destination;
 
 import java.util.List;
 
@@ -143,6 +150,16 @@ public interface WallpaperPreferences {
     void setHomeWallpaperPackageName(String packageName);
 
     /**
+     * Gets the home wallpaper's service name, which is present for live wallpapers.
+     */
+    String getHomeWallpaperServiceName();
+
+    /**
+     * Sets the home wallpaper's service name, which is present for live wallpapers.
+     */
+    void setHomeWallpaperServiceName(String serviceName);
+
+    /**
      * Gets the home wallpaper's ID, which is provided by WallpaperManager for static wallpapers.
      */
     @TargetApi(Build.VERSION_CODES.N)
@@ -255,6 +272,18 @@ public interface WallpaperPreferences {
      */
     @TargetApi(Build.VERSION_CODES.N)
     void setLockWallpaperId(int lockWallpaperId);
+
+    /**
+     * Gets the lock wallpaper's remote identifier.
+     */
+    String getLockWallpaperRemoteId();
+
+    /**
+     * Sets the lock wallpaper's remote identifier to SharedPreferences. This should be a string
+     * which uniquely identifies the currently set lock wallpaper in the context of a remote
+     * wallpaper collection.
+     */
+    void setLockWallpaperRemoteId(String wallpaperRemoteId);
 
     /**
      * Persists the timestamp of a daily wallpaper rotation that just occurred.
@@ -433,6 +462,49 @@ public interface WallpaperPreferences {
     void resetNumDaysDailyRotationNotAttempted();
 
     /**
+     * Return the count of wallpaper picker launch.
+     */
+    int getAppLaunchCount();
+
+    /**
+     * Return the date for the first time to launch wallpaper picker.
+     */
+    int getFirstLaunchDateSinceSetup();
+
+    /**
+     * Increments the number of wallpaper picker launch.
+     */
+    void incrementAppLaunched();
+
+    /**
+     * Returns the date for the first time to apply a wallpaper.
+     */
+    int getFirstWallpaperApplyDateSinceSetup();
+
+    /**
+     * Sets wallpapers colors of wallpaper's id.
+     * @param storedWallpaperId wallpaper id.
+     * @param wallpaperColors Colors extracted from an image via quantization.
+     */
+    void storeWallpaperColors(String storedWallpaperId, WallpaperColors wallpaperColors);
+
+    /**
+     * Returns the wallpaper colors from wallpaper's id.
+     * @param storedWallpaperId wallpaper id.
+     */
+    WallpaperColors getWallpaperColors(String storedWallpaperId);
+
+    /**
+     * Update currently set daily wallpaper info.
+     *
+     * @param destination  The wallpaper destination, 1: home, 2: lockscreen, 3: both.
+     * @param collectionId wallpaper category.
+     * @param wallpaperId  wallpaper id.
+     */
+    void updateDailyWallpaperSet(@Destination int destination, String collectionId,
+            String wallpaperId);
+
+    /**
      * The possible wallpaper presentation modes, i.e., either "static" or "rotating".
      */
     @IntDef({
@@ -457,5 +529,43 @@ public interface WallpaperPreferences {
             DAILY_WALLPAPER_UPDATE_NOT_PENDING,
             DAILY_WALLPAPER_UPDATE_PENDING})
     @interface PendingDailyWallpaperUpdateStatus {
+    }
+
+    /**
+     * Stores the given live wallpaper in the recent wallpapers list
+     * @param wallpaperId unique identifier for this wallpaper
+     * @param wallpaper {@link LiveWallpaperInfo} for the applied wallpaper
+     * @param colors WallpaperColors to be used as placeholder for quickswitching
+     */
+    default void storeLatestHomeWallpaper(String wallpaperId,
+            @NonNull LiveWallpaperInfo wallpaper, WallpaperColors colors) {
+        // Do nothing in the default case.
+    }
+
+    /**
+     * Stores the given static wallpaper data in the recent wallpapers list.
+     * @param wallpaperId unique identifier for this wallpaper
+     * @param wallpaper {@link WallpaperInfo} for the applied wallpaper
+     * @param croppedWallpaperBitmap wallpaper bitmap exactly as applied to WallaperManager
+     * @param colors WallpaperColors to be used as placeholder for quickswitching
+     */
+    default void storeLatestHomeWallpaper(String wallpaperId, @NonNull WallpaperInfo wallpaper,
+            @NonNull Bitmap croppedWallpaperBitmap, WallpaperColors colors) {
+        // Do nothing in the default case.
+    }
+
+    /**
+     * Stores the given static wallpaper data in the recent wallpapers list.
+     * @param wallpaperId unique identifier for this wallpaper
+     * @param attributions List of attribution items.
+     * @param actionUrl The action or "explore" URL for the wallpaper.
+     * @param collectionId identifier of this wallpaper's collection.
+     * @param croppedWallpaperBitmap wallpaper bitmap exactly as applied to WallaperManager
+     * @param colors {@link WallpaperColors} to be used as placeholder for quickswitching
+     */
+    default void storeLatestHomeWallpaper(String wallpaperId, List<String> attributions,
+            String actionUrl, String collectionId,
+            @NonNull Bitmap croppedWallpaperBitmap, WallpaperColors colors) {
+        // Do nothing in the default case.
     }
 }
