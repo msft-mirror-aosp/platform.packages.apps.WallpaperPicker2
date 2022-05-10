@@ -18,9 +18,11 @@ package com.android.wallpaper.module;
 import android.content.Context;
 
 import com.android.wallpaper.compat.WallpaperManagerCompat;
+import com.android.wallpaper.effects.EffectsController;
 import com.android.wallpaper.network.Requester;
 import com.android.wallpaper.network.WallpaperRequester;
 import com.android.wallpaper.picker.individual.IndividualPickerFragment;
+import com.android.wallpaper.util.DisplayUtils;
 
 /**
  * Base implementation of Injector.
@@ -33,15 +35,17 @@ public abstract class BaseWallpaperInjector implements Injector {
     private WallpaperRefresher mWallpaperRefresher;
     private Requester mRequester;
     private WallpaperManagerCompat mWallpaperManagerCompat;
+    private WallpaperStatusChecker mWallpaperStatusChecker;
     private CurrentWallpaperInfoFactory mCurrentWallpaperFactory;
     private NetworkStatusNotifier mNetworkStatusNotifier;
     private AlarmManagerWrapper mAlarmManagerWrapper;
     private ExploreIntentChecker mExploreIntentChecker;
     private SystemFeatureChecker mSystemFeatureChecker;
-    private FormFactorChecker mFormFactorChecker;
     private PackageStatusNotifier mPackageStatusNotifier;
     private LiveWallpaperInfoFactory mLiveWallpaperInfoFactory;
     private DrawableLayerResolver mDrawableLayerResolver;
+    private CustomizationSections mCustomizationSections;
+    private DisplayUtils mDisplayUtils;
 
     @Override
     public synchronized BitmapCropper getBitmapCropper() {
@@ -100,6 +104,14 @@ public abstract class BaseWallpaperInjector implements Injector {
     }
 
     @Override
+    public WallpaperStatusChecker getWallpaperStatusChecker() {
+        if (mWallpaperStatusChecker == null) {
+            mWallpaperStatusChecker = new DefaultWallpaperStatusChecker();
+        }
+        return mWallpaperStatusChecker;
+    }
+
+    @Override
     public synchronized CurrentWallpaperInfoFactory getCurrentWallpaperFactory(Context context) {
         if (mCurrentWallpaperFactory == null) {
             mCurrentWallpaperFactory =
@@ -150,14 +162,6 @@ public abstract class BaseWallpaperInjector implements Injector {
     }
 
     @Override
-    public synchronized FormFactorChecker getFormFactorChecker(Context context) {
-        if (mFormFactorChecker == null) {
-            mFormFactorChecker = new DefaultFormFactorChecker(context.getApplicationContext());
-        }
-        return mFormFactorChecker;
-    }
-
-    @Override
     public synchronized IndividualPickerFragment getIndividualPickerFragment(String collectionId) {
         return IndividualPickerFragment.newInstance(collectionId);
     }
@@ -176,5 +180,27 @@ public abstract class BaseWallpaperInjector implements Injector {
             mDrawableLayerResolver = new DefaultDrawableLayerResolver();
         }
         return mDrawableLayerResolver;
+    }
+
+    @Override
+    public CustomizationSections getCustomizationSections() {
+        if (mCustomizationSections == null) {
+            mCustomizationSections = new WallpaperPickerSections();
+        }
+        return mCustomizationSections;
+    }
+
+    @Override
+    public DisplayUtils getDisplayUtils(Context context) {
+        if (mDisplayUtils == null) {
+            mDisplayUtils = new DisplayUtils(context.getApplicationContext());
+        }
+        return mDisplayUtils;
+    }
+
+    @Override
+    public EffectsController createEffectsController(Context context,
+            EffectsController.EffectsServiceListener listener) {
+        return null;
     }
 }
