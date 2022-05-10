@@ -17,16 +17,21 @@ package com.android.wallpaper.module;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.WallpaperColors;
 import android.app.WallpaperManager;
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
 import android.graphics.Point;
+import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.ParcelFileDescriptor;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
@@ -39,12 +44,13 @@ import com.android.wallpaper.asset.Asset.DimensionsReceiver;
 import com.android.wallpaper.asset.BitmapUtils;
 import com.android.wallpaper.asset.StreamableAsset;
 import com.android.wallpaper.asset.StreamableAsset.StreamReceiver;
-import com.android.wallpaper.compat.BuildCompat;
 import com.android.wallpaper.compat.WallpaperManagerCompat;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.BitmapCropper.Callback;
 import com.android.wallpaper.util.BitmapTransformer;
+import com.android.wallpaper.util.DisplayUtils;
 import com.android.wallpaper.util.ScreenSizeCalculator;
+import com.android.wallpaper.util.WallpaperCropUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -68,6 +74,7 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
     private final WallpaperManagerCompat mWallpaperManagerCompat;
     private final WallpaperPreferences mWallpaperPreferences;
     private final WallpaperChangedNotifier mWallpaperChangedNotifier;
+    private final DisplayUtils mDisplayUtils;
 
     private WallpaperInfo mWallpaperInfoInPreview;
 
@@ -81,6 +88,7 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
         mWallpaperManagerCompat = injector.getWallpaperManagerCompat(context);
         mWallpaperPreferences = injector.getPreferences(context);
         mWallpaperChangedNotifier = WallpaperChangedNotifier.getInstance();
+        mDisplayUtils = injector.getDisplayUtils(context);
     }
 
     @Override
@@ -123,7 +131,7 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
         }
 
         BitmapCropper bitmapCropper = InjectorProvider.getInjector().getBitmapCropper();
-        bitmapCropper.cropAndScaleBitmap(asset, scale, cropRect, new Callback() {
+        bitmapCropper.cropAndScaleBitmap(asset, scale, cropRect, false, new Callback() {
             @Override
             public void onBitmapCropped(Bitmap croppedBitmap) {
                 setIndividualWallpaper(wallpaper, croppedBitmap, destination, callback);
@@ -208,13 +216,9 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
                     (dimensions.y - screenSize.y) / 2,
                     dimensions.x - ((dimensions.x - screenSize.x) / 2),
                     dimensions.y - ((dimensions.y - screenSize.y) / 2));
-            asset.decodeBitmapRegion(cropRect, screenSize.x, screenSize.y, new BitmapReceiver() {
-                @Override
-                public void onBitmapDecoded(@Nullable Bitmap bitmap) {
-                    setIndividualWallpaper(wallpaper, bitmap, WallpaperPersister.DEST_BOTH,
-                            callback);
-                }
-            });
+            asset.decodeBitmapRegion(cropRect, screenSize.x, screenSize.y, false,
+                    bitmap -> setIndividualWallpaper(wallpaper, bitmap,
+                            WallpaperPersister.DEST_BOTH, callback));
         } else {
             // Decode the full bitmap and pass with the screen size as a fill rect.
             asset.decodeBitmap(dimensions.x, dimensions.y, new BitmapReceiver() {
@@ -341,14 +345,16 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
     }
 
     @Override
-    public int setWallpaperBitmapInNextRotation(Bitmap wallpaperBitmap) {
-        return setWallpaperBitmapInRotationStatic(wallpaperBitmap);
+    public int setWallpaperBitmapInNextRotation(Bitmap wallpaperBitmap, List<String> attributions,
+            String actionUrl, String collectionId) {
+        return cropAndSetWallpaperBitmapInRotationStatic(wallpaperBitmap,
+                attributions, actionUrl, collectionId);
     }
 
     @Override
     public boolean finalizeWallpaperForNextRotation(List<String> attributions, String actionUrl,
             int actionLabelRes, int actionIconRes, String collectionId, int wallpaperId) {
-        return finalizeWallpaperForRotatingComponent(attributions, actionUrl, actionLabelRes,
+        return saveStaticWallpaperMetadata(attributions, actionUrl, actionLabelRes,
                 actionIconRes, collectionId, wallpaperId);
     }
 
@@ -359,24 +365,19 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
      */
     private boolean setWallpaperInRotationStatic(Bitmap wallpaperBitmap, List<String> attributions,
             String actionUrl, int actionLabelRes, int actionIconRes, String collectionId) {
-        final int wallpaperId = setWallpaperBitmapInRotationStatic(wallpaperBitmap);
+        final int wallpaperId = cropAndSetWallpaperBitmapInRotationStatic(wallpaperBitmap,
+                attributions, actionUrl, collectionId);
 
         if (wallpaperId == 0) {
             return false;
         }
 
-        return finalizeWallpaperForRotatingComponent(attributions, actionUrl, actionLabelRes,
+        return saveStaticWallpaperMetadata(attributions, actionUrl, actionLabelRes,
                 actionIconRes, collectionId, wallpaperId);
     }
 
-    /**
-     * Finalizes wallpaper metadata by persisting them to SharedPreferences and finalizes the
-     * wallpaper image for live rotating components by copying the "preview" image to the "final"
-     * image file location.
-     *
-     * @return Whether the operation was successful.
-     */
-    private boolean finalizeWallpaperForRotatingComponent(List<String> attributions,
+    @Override
+    public boolean saveStaticWallpaperMetadata(List<String> attributions,
             String actionUrl,
             int actionLabelRes,
             int actionIconRes,
@@ -423,30 +424,72 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
      *
      * @return wallpaper ID for the wallpaper bitmap.
      */
-    private int setWallpaperBitmapInRotationStatic(Bitmap wallpaperBitmap) {
-        // Set wallpaper to home-only instead of both home and lock if there's a distinct lock-only
-        // static wallpaper set so we don't override the lock wallpaper.
-        boolean isLockWallpaperSet = isSeparateLockScreenWallpaperSet();
+    private int cropAndSetWallpaperBitmapInRotationStatic(Bitmap wallpaperBitmap,
+            List<String> attributions, String actionUrl, String collectionId) {
+        // Calculate crop and scale of the wallpaper to match the default one used in preview
+        Point wallpaperSize = new Point(wallpaperBitmap.getWidth(), wallpaperBitmap.getHeight());
+        Resources resources = mAppContext.getResources();
+        Display croppingDisplay = mDisplayUtils.getWallpaperDisplay();
+        Point defaultCropSurfaceSize = WallpaperCropUtils.getDefaultCropSurfaceSize(
+                resources, croppingDisplay);
+        Point screenSize = ScreenSizeCalculator.getInstance().getScreenSize(croppingDisplay);
 
-        int whichWallpaper = (isLockWallpaperSet)
-                ? WallpaperManagerCompat.FLAG_SYSTEM
-                : WallpaperManagerCompat.FLAG_SYSTEM | WallpaperManagerCompat.FLAG_LOCK;
+        // Determine minimum zoom to fit maximum visible area of wallpaper on crop surface.
+        float minWallpaperZoom =
+                WallpaperCropUtils.calculateMinZoom(wallpaperSize, screenSize);
 
-        return setBitmapToWallpaperManagerCompat(wallpaperBitmap, false /* allowBackup */,
-                whichWallpaper);
+        PointF centerPosition = WallpaperCropUtils.calculateDefaultCenter(mAppContext,
+                wallpaperSize, WallpaperCropUtils.calculateVisibleRect(wallpaperSize, screenSize));
+
+        Point scaledCenter = new Point((int) (minWallpaperZoom * centerPosition.x),
+                (int) (minWallpaperZoom * centerPosition.y));
+
+        int offsetX = Math.max(0, -(screenSize.x / 2 - scaledCenter.x));
+        int offsetY = Math.max(0, -(screenSize.y / 2 - scaledCenter.y));
+
+        Rect cropRect = WallpaperCropUtils.calculateCropRect(mAppContext, minWallpaperZoom,
+                wallpaperSize, defaultCropSurfaceSize, screenSize, offsetX, offsetY);
+
+        Rect scaledCropRect = new Rect(
+                (int) Math.floor((float) cropRect.left / minWallpaperZoom),
+                (int) Math.floor((float) cropRect.top / minWallpaperZoom),
+                (int) Math.floor((float) cropRect.right / minWallpaperZoom),
+                (int) Math.floor((float) cropRect.bottom / minWallpaperZoom));
+
+        // Scale and crop the bitmap
+        wallpaperBitmap = Bitmap.createBitmap(wallpaperBitmap,
+                scaledCropRect.left,
+                scaledCropRect.top,
+                scaledCropRect.width(),
+                scaledCropRect.height());
+        int whichWallpaper = getDefaultWhichWallpaper();
+
+        int wallpaperId = setBitmapToWallpaperManagerCompat(wallpaperBitmap,
+                /* allowBackup */ false, whichWallpaper);
+        if (wallpaperId > 0) {
+            mWallpaperPreferences.storeLatestHomeWallpaper(String.valueOf(wallpaperId),
+                    attributions, actionUrl, collectionId, wallpaperBitmap,
+                    WallpaperColors.fromBitmap(wallpaperBitmap));
+        }
+        return wallpaperId;
     }
 
-    /**
-     * Sets a wallpaper bitmap to the {@link WallpaperManagerCompat}.
-     *
-     * @return an integer wallpaper ID. This is an actual wallpaper ID on N and later versions of
-     * Android, otherwise on pre-N versions of Android will return a positive integer when the
-     * operation was successful and zero if the operation encountered an error.
+    /*
+     * Note: this method will return use home-only (FLAG_SYSTEM) instead of both home and lock
+     * if there's a distinct lock-only static wallpaper set so we don't override the lock wallpaper.
      */
-    private int setBitmapToWallpaperManagerCompat(Bitmap wallpaperBitmap, boolean allowBackup,
+    @Override
+    public int getDefaultWhichWallpaper() {
+        return isSeparateLockScreenWallpaperSet()
+                ? WallpaperManagerCompat.FLAG_SYSTEM
+                : WallpaperManagerCompat.FLAG_SYSTEM | WallpaperManagerCompat.FLAG_LOCK;
+    }
+
+    @Override
+    public int setBitmapToWallpaperManagerCompat(Bitmap wallpaperBitmap, boolean allowBackup,
             int whichWallpaper) {
         ByteArrayOutputStream tmpOut = new ByteArrayOutputStream();
-        if (wallpaperBitmap.compress(CompressFormat.JPEG, DEFAULT_COMPRESS_QUALITY, tmpOut)) {
+        if (wallpaperBitmap.compress(CompressFormat.PNG, DEFAULT_COMPRESS_QUALITY, tmpOut)) {
             try {
                 byte[] outByteArray = tmpOut.toByteArray();
                 return mWallpaperManagerCompat.setStream(
@@ -491,8 +534,8 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
     @Override
     public void onLiveWallpaperSet() {
         android.app.WallpaperInfo currentWallpaperComponent = mWallpaperManager.getWallpaperInfo();
-        android.app.WallpaperInfo previewedWallpaperComponent =
-                mWallpaperInfoInPreview.getWallpaperComponent();
+        android.app.WallpaperInfo previewedWallpaperComponent = mWallpaperInfoInPreview != null
+                ? mWallpaperInfoInPreview.getWallpaperComponent() : null;
 
         // If there is no live wallpaper set on the WallpaperManager or it doesn't match the
         // WallpaperInfo which was last previewed, then do nothing and nullify last previewed
@@ -545,6 +588,8 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
                 .setHomeWallpaperAttributions(mWallpaperInfoInPreview.getAttributions(mAppContext));
         mWallpaperPreferences.setHomeWallpaperPackageName(
                 previewedWallpaperComponent.getPackageName());
+        mWallpaperPreferences.setHomeWallpaperServiceName(
+                previewedWallpaperComponent.getServiceName());
         mWallpaperPreferences.setHomeWallpaperCollectionId(
                 mWallpaperInfoInPreview.getCollectionId(mAppContext));
         mWallpaperPreferences.setWallpaperPresentationMode(
@@ -622,8 +667,9 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
             }
 
 
-            boolean wasLockWallpaperSet = LockWallpaperStatusChecker.isLockWallpaperSet(
-                    mAppContext);
+            boolean wasLockWallpaperSet =
+                    InjectorProvider.getInjector().getWallpaperStatusChecker().isLockWallpaperSet(
+                            mAppContext);
 
             boolean allowBackup = mWallpaper.getBackupPermission() == WallpaperInfo.BACKUP_ALLOWED;
             final int wallpaperId;
@@ -655,7 +701,7 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
                         && mWallpaperPreferences.getWallpaperPresentationMode()
                         == WallpaperPreferences.PRESENTATION_MODE_ROTATING
                         && !wasLockWallpaperSet
-                        && BuildCompat.isAtLeastN()) {
+                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     copyRotatingWallpaperToLock();
                 }
                 setImageWallpaperMetadata(mDestination, wallpaperId);
@@ -745,7 +791,7 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
         }
 
         private void setImageWallpaperHomeMetadata(int homeWallpaperId) {
-            if (BuildCompat.isAtLeastN()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 mWallpaperPreferences.setHomeWallpaperManagerId(homeWallpaperId);
             }
 
@@ -757,6 +803,7 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
             mWallpaperManager.forgetLoadedWallpaper();
             mBitmap = ((BitmapDrawable) mWallpaperManagerCompat.getDrawable()).getBitmap();
             long bitmapHash = BitmapUtils.generateHashCode(mBitmap);
+            WallpaperColors colors = WallpaperColors.fromBitmap(mBitmap);
 
             mWallpaperPreferences.setHomeWallpaperHashCode(bitmapHash);
 
@@ -771,6 +818,10 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
             mWallpaperPreferences.setHomeWallpaperCollectionId(
                     mWallpaper.getCollectionId(mAppContext));
             mWallpaperPreferences.setHomeWallpaperRemoteId(mWallpaper.getWallpaperId());
+            mWallpaperPreferences.storeLatestHomeWallpaper(
+                    TextUtils.isEmpty(mWallpaper.getWallpaperId()) ? String.valueOf(bitmapHash)
+                            : mWallpaper.getWallpaperId(),
+                    mWallpaper, mBitmap, colors);
         }
 
         private void setImageWallpaperLockMetadata(int lockWallpaperId) {
@@ -784,6 +835,7 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
                     mWallpaper.getActionIconRes(mAppContext));
             mWallpaperPreferences.setLockWallpaperCollectionId(
                     mWallpaper.getCollectionId(mAppContext));
+            mWallpaperPreferences.setLockWallpaperRemoteId(mWallpaper.getWallpaperId());
 
             // Save the lock wallpaper image's hash code as well for the sake of backup & restore
             // because WallpaperManager-generated IDs are specific to a physical device and
