@@ -16,16 +16,22 @@
 package com.android.wallpaper.module;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.android.wallpaper.compat.WallpaperManagerCompat;
+import com.android.wallpaper.effects.EffectsController;
+import com.android.wallpaper.effects.EffectsController.EffectsServiceListener;
 import com.android.wallpaper.model.CategoryProvider;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.monitor.PerformanceMonitor;
 import com.android.wallpaper.network.Requester;
 import com.android.wallpaper.picker.PreviewFragment.PreviewMode;
 import com.android.wallpaper.picker.individual.IndividualPickerFragment;
+import com.android.wallpaper.util.DisplayUtils;
 
 /**
  * Interface for a provider of "injected dependencies." (NOTE: The term "injector" is somewhat of a
@@ -41,8 +47,6 @@ public interface Injector {
     CurrentWallpaperInfoFactory getCurrentWallpaperFactory(Context context);
 
     ExploreIntentChecker getExploreIntentChecker(Context context);
-
-    FormFactorChecker getFormFactorChecker(Context context);
 
     LoggingOptInStatusProvider getLoggingOptInStatusProvider(Context context);
 
@@ -60,6 +64,8 @@ public interface Injector {
 
     WallpaperManagerCompat getWallpaperManagerCompat(Context context);
 
+    WallpaperStatusChecker getWallpaperStatusChecker();
+
     WallpaperPersister getWallpaperPersister(Context context);
 
     WallpaperPreferences getPreferences(Context context);
@@ -69,10 +75,12 @@ public interface Injector {
     WallpaperRotationRefresher getWallpaperRotationRefresher();
 
     Fragment getPreviewFragment(
-        Context context,
-        WallpaperInfo wallpaperInfo,
-        @PreviewMode int mode,
-        boolean testingModeEnabled);
+            Context context,
+            WallpaperInfo wallpaperInfo,
+            @PreviewMode int mode,
+            boolean viewAsHome,
+            boolean viewFullScreen,
+            boolean testingModeEnabled);
 
     PackageStatusNotifier getPackageStatusNotifier(Context context);
 
@@ -81,4 +89,21 @@ public interface Injector {
     LiveWallpaperInfoFactory getLiveWallpaperInfoFactory(Context context);
 
     DrawableLayerResolver getDrawableLayerResolver();
+
+    Intent getDeepLinkRedirectIntent(Context context, Uri uri);
+
+    String getDownloadableIntentAction();
+
+    CustomizationSections getCustomizationSections();
+
+    /**
+     * @return the singleton instance of {@link DisplayUtils}
+     */
+    DisplayUtils getDisplayUtils(Context context);
+
+    /**
+     * @return the singleton instance of {@link EffectsController}
+     */
+    @Nullable
+    EffectsController createEffectsController(Context context, EffectsServiceListener listener);
 }

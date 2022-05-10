@@ -33,6 +33,7 @@ import com.android.wallpaper.R;
 import com.android.wallpaper.asset.Asset;
 import com.android.wallpaper.asset.ContentUriAsset;
 import com.android.wallpaper.picker.MyPhotosStarter;
+import com.android.wallpaper.util.ResourceUtils;
 
 /**
  * ViewHolder for a "my photos" tile presented in an individual category grid.
@@ -65,7 +66,8 @@ public class MyPhotosViewHolder extends ViewHolder implements View.OnClickListen
      */
     private static void fetchThumbnail(final Context context, final AssetListener listener) {
         if (!isReadExternalStoragePermissionGranted(context)) {
-            // MediaStore.Images.Media.EXTERNAL_CONTENT_URI requires the READ_EXTERNAL_STORAGE permission.
+            // MediaStore.Images.Media.EXTERNAL_CONTENT_URI requires
+            // the READ_MEDIA_IMAGES permission.
             listener.onAssetRetrieved(null);
         }
 
@@ -104,10 +106,10 @@ public class MyPhotosViewHolder extends ViewHolder implements View.OnClickListen
     }
 
     /**
-     * Returns whether READ_EXTERNAL_STORAGE has been granted for the application.
+     * Returns whether READ_MEDIA_IMAGES has been granted for the application.
      */
     private static boolean isReadExternalStoragePermissionGranted(Context context) {
-        return context.getPackageManager().checkPermission(permission.READ_EXTERNAL_STORAGE,
+        return context.getPackageManager().checkPermission(permission.READ_MEDIA_IMAGES,
                 context.getPackageName()) == PackageManager.PERMISSION_GRANTED;
     }
 
@@ -150,7 +152,7 @@ public class MyPhotosViewHolder extends ViewHolder implements View.OnClickListen
                 }
 
                 thumbnail.loadDrawable(mActivity, mThumbnailView,
-                        mActivity.getResources().getColor(R.color.secondary_color));
+                        ResourceUtils.getColorAttr(mActivity, android.R.attr.colorSecondary));
             }
         });
     }
