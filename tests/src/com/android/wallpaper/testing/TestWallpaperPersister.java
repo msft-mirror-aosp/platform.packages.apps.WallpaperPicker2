@@ -85,6 +85,7 @@ public class TestWallpaperPersister implements WallpaperPersister {
             if (destination == DEST_LOCK_SCREEN || destination == DEST_BOTH) {
                 mPendingLockWallpaper = bitmap;
                 mPrefs.setLockWallpaperAttributions(wallpaperInfo.getAttributions(mAppContext));
+                mPrefs.setLockWallpaperRemoteId(wallpaperInfo.getWallpaperId());
             }
             mDestination = destination;
             mCallback = callback;
@@ -109,6 +110,7 @@ public class TestWallpaperPersister implements WallpaperPersister {
                 mPrefs.setWallpaperPresentationMode(WallpaperPreferences.PRESENTATION_MODE_STATIC);
                 mPendingLockWallpaper = bitmap;
                 mPrefs.setLockWallpaperAttributions(wallpaper.getAttributions(mAppContext));
+                mPrefs.setLockWallpaperRemoteId(wallpaper.getWallpaperId());
 
                 mDestination = WallpaperPersister.DEST_BOTH;
                 mCallback = callback;
@@ -133,9 +135,12 @@ public class TestWallpaperPersister implements WallpaperPersister {
     }
 
     @Override
-    public int setWallpaperBitmapInNextRotation(Bitmap wallpaperBitmap) {
+    public int setWallpaperBitmapInNextRotation(Bitmap wallpaperBitmap, List<String> attributions,
+            String actionUrl, String collectionId) {
         mCurrentHomeWallpaper = wallpaperBitmap;
         mCurrentLockWallpaper = wallpaperBitmap;
+        mHomeAttributions = attributions;
+        mHomeActionUrl = actionUrl;
         return 1;
     }
 
@@ -223,5 +228,19 @@ public class TestWallpaperPersister implements WallpaperPersister {
     @WallpaperPosition
     public int getWallpaperPosition() {
         return mWallpaperPosition;
+    }
+
+    public boolean saveStaticWallpaperMetadata(List<String> attributions, String actionUrl,
+            int actionLabelRes, int actionIconRes, String collectionId, int wallpaperId) {
+        return false;
+    }
+
+    public int getDefaultWhichWallpaper() {
+        return 0;
+    }
+
+    public int setBitmapToWallpaperManagerCompat(Bitmap wallpaperBitmap, boolean allowBackup,
+            int whichWallpaper) {
+        return 0;
     }
 }
