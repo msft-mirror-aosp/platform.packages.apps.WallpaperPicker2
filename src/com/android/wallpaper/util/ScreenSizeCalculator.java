@@ -15,6 +15,7 @@
  */
 package com.android.wallpaper.util;
 
+import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Point;
@@ -22,6 +23,7 @@ import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.util.Log;
 import android.view.Display;
+import android.view.WindowManager;
 
 /**
  * Calculates the size of the device's screen.
@@ -70,12 +72,23 @@ public class ScreenSizeCalculator {
         }
     }
 
+    /**
+     * Calculates the device's aspect ratio (height/width).
+     *
+     * Note: The screen size is getting from {@link #getScreenSize}.
+     */
+    public float getScreenAspectRatio(Context context) {
+        final WindowManager windowManager = context.getSystemService(WindowManager.class);
+        final Point screenSize = getScreenSize(windowManager.getDefaultDisplay());
+        return (float) screenSize.y / screenSize.x;
+    }
+
     private Point getPortraitScreenSize(Display display) {
         if (mPortraitScreenSize == null) {
             mPortraitScreenSize = new Point();
         }
         writeDisplaySizeToPoint(display, mPortraitScreenSize);
-        return mPortraitScreenSize;
+        return new Point(mPortraitScreenSize);
     }
 
     private Point getLandscapeScreenSize(Display display) {
@@ -83,7 +96,7 @@ public class ScreenSizeCalculator {
             mLandscapeScreenSize = new Point();
         }
         writeDisplaySizeToPoint(display, mLandscapeScreenSize);
-        return mLandscapeScreenSize;
+        return new Point(mLandscapeScreenSize);
     }
 
     /**
