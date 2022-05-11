@@ -15,6 +15,8 @@
  */
 package com.android.wallpaper.testing;
 
+import android.content.Intent;
+
 import com.android.wallpaper.module.UserEventLogger;
 import com.android.wallpaper.module.WallpaperPersister.WallpaperPosition;
 
@@ -47,6 +49,9 @@ public class TestUserEventLogger implements UserEventLogger {
     private int mNumRestores;
     @WallpaperPosition
     private int mWallpaperPosition;
+    private String mWallpaperSetEffects;
+    private String mWallpaperApplyEffect;
+    private int mWallpaperApplyEffectStatus;
 
     public TestUserEventLogger() {
         mLastDailyRotationHour = -1;
@@ -66,7 +71,7 @@ public class TestUserEventLogger implements UserEventLogger {
     }
 
     @Override
-    public void logAppLaunched() {
+    public void logAppLaunched(Intent launchSource) {
         // Do nothing.
     }
 
@@ -124,15 +129,21 @@ public class TestUserEventLogger implements UserEventLogger {
         // No-op
     }
 
+    @Override
+    public void logSnapshot() {
+        // No-op
+    }
+
     public int getNumCategorySelectedEvents() {
         return mNumCategorySelectedEvents;
     }
 
     @Override
-    public void logWallpaperSet(String collectionId, String wallpaperId) {
+    public void logWallpaperSet(String collectionId, String wallpaperId, String effects) {
         mNumWallpaperSetEvents++;
         mLastCollectionId = collectionId;
         mLastWallpaperId = wallpaperId;
+        mWallpaperSetEffects = effects;
     }
 
     @Override
@@ -226,6 +237,12 @@ public class TestUserEventLogger implements UserEventLogger {
     @Override
     public void logRestored() {
         mNumRestores++;
+    }
+
+    @Override
+    public void logEffectApply(String effect, int status) {
+        mWallpaperApplyEffect = effect;
+        mWallpaperApplyEffectStatus = status;
     }
 
     public int getNumWallpaperSetEvents() {
