@@ -69,7 +69,7 @@
     <string name="home_and_lock_short_label">Home &#38; Lock</string>
 
     <!-- Label for a dialog which lets the user set an image as wallpaper. [CHAR LIMIT=50] -->
-    <string name="set_wallpaper_dialog_message">Set wallpaper</string>
+    <string name="set_wallpaper_dialog_message">Set wallpaper on</string>
 
     <!-- Label referring to the home screen of the device, i.e. shown behind the launcher.
          [CHAR LIMIT=100] -->
@@ -81,7 +81,7 @@
 
     <!-- Label referring to both the home screen and the lock screen of the
          device. [CHAR LIMIT=100] -->
-    <string name="set_wallpaper_both_destination">Home screen and lock screen</string>
+    <string name="set_wallpaper_both_destination">Home and lock screens</string>
 
     <!-- Label describing a live wallpaper whose responsibility is to display a different wallpaper
          on a periodic basis (i.e., in a daily rotation). [CHAR LIMIT=80] -->
@@ -240,14 +240,6 @@
         Failed to refresh daily wallpaper. Please check your network connection and try again.
     </string>
 
-    <!-- Content description for a button letting the user collapse a visual panel showing info
-         about the wallpaper being previewed. [CHAR LIMIT=none] -->
-    <string name="collapse_attribution_panel">Collapse wallpaper info panel</string>
-
-    <!-- Content description for a button letting the user expand a visual panel showing info about
-         the wallpaper being previewed. [CHAR LIMIT=none] -->
-    <string name="expand_attribution_panel">Expand wallpaper info panel</string>
-
     <!-- Content -->
     <!-- Title of the collection of wallpapers stored on the device itself. [CHAR LIMIT=30] -->
     <string name="on_device_wallpapers_category_title">On-device wallpapers</string>
@@ -307,6 +299,13 @@
          [CHAR_LIMIT=25] -->
     <string name="tab_customize">Customize</string>
 
+    <!-- Label for the 'Effects' tab of view pager in wallpaper preview activity.
+         [CHAR_LIMIT=25] -->
+    <string name="tab_effects">Effects</string>
+
+    <!-- Generic label for the my photos action [CHAR_LIMIT=20] -->
+    <string name="my_photos">My Photos</string>
+
     <!-- List item for configuring the current wallpaper [CHAR LIMIT=30] -->
     <string name="configure_wallpaper">Settings…</string>
 
@@ -316,8 +315,21 @@
     <!-- Confirmation dialog. Shown after user selects to delete one wallpaper. [CHAR LIMIT=NONE] -->
     <string name="delete_wallpaper_confirmation">Delete this wallpaper from your phone?</string>
 
-    <!-- The class name for the ScaleBehavior -->
-    <string name="scalable_container_behavior" translatable="false">com.android.wallpaper.picker.ScaleBehavior</string>
+    <!-- Content description of back button on the bottom action bar. [CHAR LIMIT=30] -->
+    <string name="bottom_action_bar_back">Back</string>
+
+    <!-- Content description of edit button on the bottom action bar. [CHAR LIMIT=30] -->
+    <string name="bottom_action_bar_edit">Edit</string>
+
+    <!-- TODO(b/154299462): Separate downloadable related actions from WallpaperPicker. -->
+    <!-- Content description of download button on the bottom action bar. [CHAR LIMIT=30] -->
+    <string name="bottom_action_bar_download">Download</string>
+
+    <!-- Content description of "slideshow wallpaper" button on the bottom action bar. [CHAR LIMIT=50] -->
+    <string name="bottom_action_bar_slideshow_wallpaper">Slideshow Wallpaper</string>
+
+    <!-- Apply button on the bottom action bar. [CHAR LIMIT=30] -->
+    <string name="bottom_action_bar_apply">Apply</string>
 
     <!-- Accessibility label for paging indicator in theme picker preview [CHAR LIMIT=NONE] -->
     <string name="accessibility_preview_pager" msgid="3548503287402185430">Page <xliff:g name="current_page" example="1">%1$d</xliff:g> of <xliff:g name="num_pages" example="2">%2$d</xliff:g></string>
@@ -330,4 +342,61 @@
     corresponding to a ContentProvider in launcher to provide available grids and
     allow for changing them -->
     <string name="grid_control_metadata_name" translatable="false">com.android.launcher3.grid.control</string>
+
+    <!-- Title of the tool bar in the wallpaper picker. [CHAR LIMIT=19] -->
+    <string name="wallpaper_title">Wallpaper</string>
+
+    <!-- Content description of wallpaper preview card. [CHAR_LIMIT=40]-->
+    <string name="wallpaper_preview_card_content_description">Wallpaper preview</string>
+
+    <!-- Error message of the wallpaper's collection doesn't exist. [CHAR_LIMIT=NONE] -->
+    <string name="collection_not_exist_msg">The collection doesn\'t exist</string>
+
+    <!-- Label for a cancel button of a dialog. [CHAR LIMIT=30] -->
+    <string name="cancel">Cancel</string>
+
+    <!-- Label for a button which lets user hide certain parts of the fullscreen preview UI. [CHAR LIMIT=30] -->
+    <string name="hide_ui_preview_text">Hide UI Preview</string>
+
+    <!-- Content description for Talkback to announce with UI preview is hidden. [CHAR LIMIT=50] -->
+    <string name="hint_hide_ui_preview">UI is hidden in preview. Double tap to unhide</string>
+
+    <!-- Label for a button which lets user show certain parts of the fullscreen preview UI. [CHAR LIMIT=30] -->
+    <string name="show_ui_preview_text">Show UI Preview</string>
+
+    <!-- Content description for Talkback to announce with UI preview is hidden. [CHAR LIMIT=50] -->
+    <string name="hint_show_ui_preview">UI is displayed in preview. Double tap to hide</string>
+
+    <!-- The title of wallpaper picker entry in new picker. [CHAR LIMIT=30]  -->
+    <string name="wallpaper_picker_entry_title" msgid="7039652539125902659">Change wallpaper</string>
+
+    <!-- Content description of wallpaper preview card (lockscreen). [CHAR_LIMIT=40]-->
+    <string name="lockscreen_wallpaper_preview_card_content_description" msgid="8575577284424318765">Lockscreen wallpaper preview</string>
+
+    <!-- Task affinity name for full screen preview's Activity stack -->
+    <string name="full_screen_task_affinity" translatable="false">.fullscreen</string>
+
+    <!-- Label for a button / menu item that allows the user to apply the currently selected customization option. [CHAR LIMIT=20] -->
+    <string name="apply_btn" msgid="7965877231041987336">Apply</string>
+
+    <!-- Content description for customize panel is hidden. [CHAR_LIMIT=50] -->
+    <string name="accessibility_customize_hidden">Customize hidden</string>
+
+    <!-- Content description for customize panel is shown. [CHAR_LIMIT=50] -->
+    <string name="accessibility_customize_shown">Customize shown</string>
+
+    <!-- Content description for info panel is hidden. [CHAR_LIMIT=50] -->
+    <string name="accessibility_info_hidden">Info hidden</string>
+
+    <!-- Content description for info panel is shown. [CHAR_LIMIT=50] -->
+    <string name="accessibility_info_shown">Info shown</string>
+
+    <!-- Description of navigation to settings. [CHAR LIMIT=NONE] -->
+    <string name="settings_snackbar_description">Please enable files and media in settings.</string>
+
+    <!-- Label for a button which lets user try to navigation to settings. [CHAR LIMIT=25] -->
+    <string name="settings_snackbar_enable">Enable</string>
+
+    <!-- Label for a button which lets user try to open their photos. [CHAR LIMIT=40] -->
+    <string name="open_my_photos">Open My Photos</string>
 </resources>

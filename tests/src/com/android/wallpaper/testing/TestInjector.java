@@ -16,19 +16,23 @@
 package com.android.wallpaper.testing;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.android.wallpaper.compat.WallpaperManagerCompat;
+import com.android.wallpaper.effects.EffectsController;
 import com.android.wallpaper.model.CategoryProvider;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.AlarmManagerWrapper;
 import com.android.wallpaper.module.BitmapCropper;
 import com.android.wallpaper.module.CurrentWallpaperInfoFactory;
+import com.android.wallpaper.module.CustomizationSections;
 import com.android.wallpaper.module.DefaultLiveWallpaperInfoFactory;
 import com.android.wallpaper.module.DrawableLayerResolver;
 import com.android.wallpaper.module.ExploreIntentChecker;
-import com.android.wallpaper.module.FormFactorChecker;
 import com.android.wallpaper.module.Injector;
 import com.android.wallpaper.module.LiveWallpaperInfoFactory;
 import com.android.wallpaper.module.LoggingOptInStatusProvider;
@@ -41,10 +45,12 @@ import com.android.wallpaper.module.WallpaperPersister;
 import com.android.wallpaper.module.WallpaperPreferences;
 import com.android.wallpaper.module.WallpaperRefresher;
 import com.android.wallpaper.module.WallpaperRotationRefresher;
+import com.android.wallpaper.module.WallpaperStatusChecker;
 import com.android.wallpaper.monitor.PerformanceMonitor;
 import com.android.wallpaper.network.Requester;
 import com.android.wallpaper.picker.ImagePreviewFragment;
 import com.android.wallpaper.picker.individual.IndividualPickerFragment;
+import com.android.wallpaper.util.DisplayUtils;
 
 /**
  * Test implementation of the dependency injector.
@@ -65,7 +71,6 @@ public class TestInjector implements Injector {
     private UserEventLogger mUserEventLogger;
     private ExploreIntentChecker mExploreIntentChecker;
     private SystemFeatureChecker mSystemFeatureChecker;
-    private FormFactorChecker mFormFactorChecker;
     private WallpaperRotationRefresher mWallpaperRotationRefresher;
     private PerformanceMonitor mPerformanceMonitor;
     private LoggingOptInStatusProvider mLoggingOptInStatusProvider;
@@ -133,6 +138,21 @@ public class TestInjector implements Injector {
     }
 
     @Override
+    public WallpaperStatusChecker getWallpaperStatusChecker() {
+        return new WallpaperStatusChecker() {
+            @Override
+            public boolean isHomeStaticWallpaperSet(Context context) {
+                return true;
+            }
+
+            @Override
+            public boolean isLockWallpaperSet(Context context) {
+                return true;
+            }
+        };
+    }
+
+    @Override
     public CurrentWallpaperInfoFactory getCurrentWallpaperFactory(Context context) {
         if (mCurrentWallpaperInfoFactory == null) {
             mCurrentWallpaperInfoFactory =
@@ -190,14 +210,6 @@ public class TestInjector implements Injector {
     }
 
     @Override
-    public FormFactorChecker getFormFactorChecker(Context unused) {
-        if (mFormFactorChecker == null) {
-            mFormFactorChecker = new TestFormFactorChecker();
-        }
-        return mFormFactorChecker;
-    }
-
-    @Override
     public WallpaperRotationRefresher getWallpaperRotationRefresher() {
         if (mWallpaperRotationRefresher == null) {
             mWallpaperRotationRefresher = (context, listener) -> {
@@ -210,8 +222,9 @@ public class TestInjector implements Injector {
 
     @Override
     public Fragment getPreviewFragment(Context context, WallpaperInfo wallpaperInfo, int mode,
-            boolean testingModeEnabled) {
-        return ImagePreviewFragment.newInstance(wallpaperInfo, mode, testingModeEnabled);
+            boolean viewAsHome, boolean viewFullScreen, boolean testingModeEnabled) {
+        return ImagePreviewFragment.newInstance(wallpaperInfo, mode, viewAsHome,
+                viewFullScreen, testingModeEnabled);
     }
 
     @Override
@@ -235,10 +248,37 @@ public class TestInjector implements Injector {
     }
 
     @Override
+    public Intent getDeepLinkRedirectIntent(Context context, Uri uri) {
+        return null;
+    }
+
+    @Override
+    public String getDownloadableIntentAction() {
+        return null;
+    }
+
+    @Override
     public PerformanceMonitor getPerformanceMonitor() {
         if (mPerformanceMonitor == null) {
             mPerformanceMonitor = new TestPerformanceMonitor();
         }
         return mPerformanceMonitor;
+    }
+
+    @Override
+    public CustomizationSections getCustomizationSections() {
+        return null;
+    }
+
+    @Override
+    public DisplayUtils getDisplayUtils(Context context) {
+        return new DisplayUtils(context);
+    }
+
+    @Nullable
+    @Override
+    public EffectsController createEffectsController(Context context,
+            EffectsController.EffectsServiceListener listener) {
+        return null;
     }
 }
