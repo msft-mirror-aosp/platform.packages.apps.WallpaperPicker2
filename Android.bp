@@ -35,6 +35,8 @@ android_library {
         "androidx.viewpager2_viewpager2",
         "com.google.android.material_material",
         "glide-prebuilt",
+        "glide-gifdecoder-prebuilt",
+        "glide-disklrucache-prebuilt",
         "kotlinx-coroutines-android",
         "kotlinx-coroutines-core",
         "libbackup",
@@ -42,6 +44,7 @@ android_library {
         "subsampling-scale-image-view",
         "SystemUISharedLib",
         "volley",
+        "SettingsLibActivityEmbedding",
     ],
 
     resource_dirs: ["res"],
@@ -71,6 +74,16 @@ filegroup {
     ],
 }
 
+// If these targets are included in WallpaperPicker2_defaults directly instead of in a filegroup,
+// the tests can't find them.
+filegroup {
+    name: "WallpaperPicker2_src_overrides",
+    srcs: [
+        "src_override/**/*.java",
+        "src_override/**/*.kt",
+    ],
+}
+
 genrule {
    name: "WallpaperPicker2_res",
    tools: ["soong_zip"],
@@ -94,13 +107,17 @@ java_defaults {
     name: "WallpaperPicker2_defaults",
 
     static_libs: [
+        "renderscript_toolkit",
         "wallpaper-common-deps",
+    ],
+
+    jni_libs: [
+        "librenderscript-toolkit",
     ],
 
     srcs: [
         ":WallpaperPicker2_srcs",
-        "src_override/**/*.java",
-        "src_override/**/*.kt",
+        ":WallpaperPicker2_src_overrides",
     ],
     resource_zips: [":WallpaperPicker2_res"],
 
@@ -115,8 +132,6 @@ java_defaults {
     system_ext_specific: true,
 
     use_embedded_native_libs: true,
-
-    manifest: "AndroidManifest.xml",
 }
 
 //
@@ -126,6 +141,7 @@ android_app {
     name: "WallpaperPicker2",
 
     defaults: ["WallpaperPicker2_defaults"],
+    manifest: ":WallpaperPicker2_Manifest",
 
     platform_apis: true,
 }
