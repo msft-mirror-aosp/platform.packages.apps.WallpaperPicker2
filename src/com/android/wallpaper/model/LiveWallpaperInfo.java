@@ -141,7 +141,7 @@ public class LiveWallpaperInfo extends WallpaperInfo {
 
     protected android.app.WallpaperInfo mInfo;
     protected LiveWallpaperThumbAsset mThumbAsset;
-    private boolean mVisibleTitle;
+    protected boolean mVisibleTitle;
     @Nullable private final String mCollectionId;
 
     /**
@@ -209,7 +209,7 @@ public class LiveWallpaperInfo extends WallpaperInfo {
      */
     public static List<WallpaperInfo> getFromSpecifiedPackage(
             Context context, String packageName, @Nullable List<String> serviceNames,
-            boolean shouldShowTitle) {
+            boolean shouldShowTitle, String collectionId) {
         List<ResolveInfo> resolveInfos;
         if (serviceNames != null) {
             resolveInfos = getAllContainingServiceNames(context, serviceNames);
@@ -242,7 +242,8 @@ public class LiveWallpaperInfo extends WallpaperInfo {
                 continue;
             }
 
-            wallpaperInfos.add(factory.getLiveWallpaperInfo(wallpaperInfo, shouldShowTitle, null));
+            wallpaperInfos.add(
+                    factory.getLiveWallpaperInfo(wallpaperInfo, shouldShowTitle, collectionId));
         }
 
         return wallpaperInfos;
@@ -444,5 +445,15 @@ public class LiveWallpaperInfo extends WallpaperInfo {
     @Override
     public String getWallpaperId() {
         return mInfo.getServiceName();
+    }
+
+    /**
+     * Returns true if this wallpaper is currently applied.
+     */
+    public boolean isApplied(android.app.WallpaperInfo currentWallpaper) {
+        return getWallpaperComponent() != null
+                && currentWallpaper != null
+                && TextUtils.equals(getWallpaperComponent().getServiceName(),
+                currentWallpaper.getServiceName());
     }
 }
