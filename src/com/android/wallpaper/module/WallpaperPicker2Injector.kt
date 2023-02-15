@@ -48,7 +48,7 @@ import com.android.wallpaper.util.DisplayUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 
-open class WallpaperPicker2Injector : Injector {
+open class WallpaperPicker2Injector() : Injector {
     private var alarmManagerWrapper: AlarmManagerWrapper? = null
     private var bitmapCropper: BitmapCropper? = null
     private var categoryProvider: CategoryProvider? = null
@@ -292,7 +292,6 @@ open class WallpaperPicker2Injector : Injector {
                             client = WallpaperClientImpl(context = context),
                             backgroundDispatcher = Dispatchers.IO,
                         ),
-                    snapshotRestorer = { getWallpaperSnapshotRestorer(context) },
                 )
                 .also { wallpaperInteractor = it }
     }
@@ -300,6 +299,7 @@ open class WallpaperPicker2Injector : Injector {
     override fun getWallpaperSnapshotRestorer(context: Context): WallpaperSnapshotRestorer {
         return wallpaperSnapshotRestorer
             ?: WallpaperSnapshotRestorer(
+                    scope = GlobalScope,
                     interactor = getWallpaperInteractor(context),
                 )
                 .also { wallpaperSnapshotRestorer = it }

@@ -21,6 +21,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.view.LayoutInflater
+import android.view.View
 import androidx.cardview.widget.CardView
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -30,6 +31,7 @@ import com.android.wallpaper.model.WallpaperColorsViewModel
 import com.android.wallpaper.model.WallpaperInfo
 import com.android.wallpaper.module.CurrentWallpaperInfoFactory
 import com.android.wallpaper.module.CustomizationSections
+import com.android.wallpaper.picker.CategorySelectorFragment
 import com.android.wallpaper.picker.customization.ui.binder.ScreenPreviewBinder
 import com.android.wallpaper.picker.customization.ui.viewmodel.ScreenPreviewViewModel
 import com.android.wallpaper.util.DisplayUtils
@@ -42,17 +44,22 @@ import kotlinx.coroutines.withContext
 
 /** Controls the screen preview section. */
 @OptIn(ExperimentalCoroutinesApi::class)
-class ScreenPreviewSectionController(
+open class ScreenPreviewSectionController(
     private val activity: Activity,
     private val lifecycleOwner: LifecycleOwner,
     private val initialScreen: CustomizationSections.Screen,
     private val wallpaperInfoFactory: CurrentWallpaperInfoFactory,
     private val colorViewModel: WallpaperColorsViewModel,
     private val displayUtils: DisplayUtils,
+    private val navigator: CustomizationSectionController.CustomizationSectionNavigationController,
 ) : CustomizationSectionController<ScreenPreviewView> {
 
     private lateinit var lockScreenBinding: ScreenPreviewBinder.Binding
     private lateinit var homeScreenBinding: ScreenPreviewBinder.Binding
+
+    override fun shouldRetainInstanceWhenSwitchingTabs(): Boolean {
+        return true
+    }
 
     override fun isAvailable(context: Context): Boolean {
         // Assumption is that, if this section controller is included, we are using the revamped UI
@@ -68,6 +75,9 @@ class ScreenPreviewSectionController(
                     R.layout.screen_preview_section,
                     /* parent= */ null,
                 ) as ScreenPreviewView
+        val onClickListener =
+            View.OnClickListener { navigator.navigateTo(CategorySelectorFragment()) }
+        view.setOnClickListener(onClickListener)
         val lockScreenView: CardView = view.requireViewById(R.id.lock_preview)
         val homeScreenView: CardView = view.requireViewById(R.id.home_preview)
 

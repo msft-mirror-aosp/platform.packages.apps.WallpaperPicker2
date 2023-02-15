@@ -84,7 +84,7 @@
     <string name="my_photos" msgid="8613021349284084982">"התמונות שלי"</string>
     <string name="configure_wallpaper" msgid="849882179182976621">"הגדרות…"</string>
     <string name="delete_live_wallpaper" msgid="589212696102662329">"מחיקה"</string>
-    <string name="delete_wallpaper_confirmation" msgid="33790318361863778">"למחוק את הטפט הזה מהטלפון?"</string>
+    <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"למחוק את הטפט הזה מהמכשיר?"</string>
     <string name="bottom_action_bar_back" msgid="8237013112999946725">"חזרה"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"עריכה"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"הורדה"</string>
@@ -116,5 +116,6 @@
     <string name="reset" msgid="4945445169532850631">"איפוס"</string>
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"לאפס את השינויים?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"השינויים שביצעת לא יישמרו"</string>
-    <string name="more_wallpapers" msgid="8116268433411881705">"עוד טפטים"</string>
+    <!-- no translation found for more_wallpapers (7585665124282737376) -->
+    <skip />
 </resources>
