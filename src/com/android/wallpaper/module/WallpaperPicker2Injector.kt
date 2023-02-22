@@ -24,7 +24,6 @@ import androidx.fragment.app.Fragment
 import com.android.wallpaper.compat.WallpaperManagerCompat
 import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.effects.EffectsController
-import com.android.wallpaper.effects.EffectsController.EffectsServiceListener
 import com.android.wallpaper.model.CategoryProvider
 import com.android.wallpaper.model.LiveWallpaperInfo
 import com.android.wallpaper.model.WallpaperInfo
@@ -132,7 +131,6 @@ open class WallpaperPicker2Injector() : Injector {
 
     override fun getEffectsController(
         context: Context,
-        listener: EffectsServiceListener
     ): EffectsController? {
         return null
     }
@@ -292,7 +290,6 @@ open class WallpaperPicker2Injector() : Injector {
                             client = WallpaperClientImpl(context = context),
                             backgroundDispatcher = Dispatchers.IO,
                         ),
-                    snapshotRestorer = { getWallpaperSnapshotRestorer(context) },
                 )
                 .also { wallpaperInteractor = it }
     }
@@ -300,6 +297,7 @@ open class WallpaperPicker2Injector() : Injector {
     override fun getWallpaperSnapshotRestorer(context: Context): WallpaperSnapshotRestorer {
         return wallpaperSnapshotRestorer
             ?: WallpaperSnapshotRestorer(
+                    scope = GlobalScope,
                     interactor = getWallpaperInteractor(context),
                 )
                 .also { wallpaperSnapshotRestorer = it }

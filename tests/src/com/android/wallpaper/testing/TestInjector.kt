@@ -24,7 +24,6 @@ import androidx.fragment.app.Fragment
 import com.android.wallpaper.compat.WallpaperManagerCompat
 import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.effects.EffectsController
-import com.android.wallpaper.effects.EffectsController.EffectsServiceListener
 import com.android.wallpaper.model.CategoryProvider
 import com.android.wallpaper.model.WallpaperInfo
 import com.android.wallpaper.module.AlarmManagerWrapper
@@ -84,6 +83,7 @@ open class TestInjector : Injector {
     private var wallpaperPreviewFragmentManager: WallpaperPreviewFragmentManager? = null
     private var wallpaperRefresher: WallpaperRefresher? = null
     private var wallpaperRotationRefresher: WallpaperRotationRefresher? = null
+    private var wallpaperStatusChecker: WallpaperStatusChecker? = null
     private var flags: BaseFlags? = null
     private var undoInteractor: UndoInteractor? = null
     private var wallpaperInteractor: WallpaperInteractor? = null
@@ -132,7 +132,6 @@ open class TestInjector : Injector {
 
     override fun getEffectsController(
         context: Context,
-        listener: EffectsServiceListener
     ): EffectsController? {
         return null
     }
@@ -239,15 +238,8 @@ open class TestInjector : Injector {
     }
 
     override fun getWallpaperStatusChecker(): WallpaperStatusChecker {
-        return object : WallpaperStatusChecker {
-            override fun isHomeStaticWallpaperSet(context: Context): Boolean {
-                return true
-            }
-
-            override fun isLockWallpaperSet(context: Context): Boolean {
-                return true
-            }
-        }
+        return wallpaperStatusChecker
+            ?: TestWallpaperStatusChecker().also { wallpaperStatusChecker = it }
     }
 
     override fun getFlags(): BaseFlags {
@@ -272,7 +264,6 @@ open class TestInjector : Injector {
                             client = WallpaperClientImpl(context = context),
                             backgroundDispatcher = Dispatchers.IO,
                         ),
-                    snapshotRestorer = { getWallpaperSnapshotRestorer(context) },
                 )
                 .also { wallpaperInteractor = it }
     }
@@ -280,6 +271,7 @@ open class TestInjector : Injector {
     override fun getWallpaperSnapshotRestorer(context: Context): WallpaperSnapshotRestorer {
         return wallpaperSnapshotRestorer
             ?: WallpaperSnapshotRestorer(
+                    scope = GlobalScope,
                     interactor = getWallpaperInteractor(context),
                 )
                 .also { wallpaperSnapshotRestorer = it }

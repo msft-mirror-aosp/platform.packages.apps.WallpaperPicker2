@@ -48,6 +48,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import kotlinx.coroutines.DisposableHandle;
+
 /** The Fragment UI for customization sections. */
 public class CustomizationPickerFragment extends AppbarFragment implements
         CustomizationSectionNavigationController {
@@ -56,6 +58,7 @@ public class CustomizationPickerFragment extends AppbarFragment implements
     private static final String SCROLL_POSITION_Y = "SCROLL_POSITION_Y";
     protected static final String KEY_IS_USE_REVAMPED_UI = "is_use_revamped_ui";
     private static final String KEY_START_FROM_LOCK_SCREEN = "start_from_lock_screen";
+    private DisposableHandle mBinding;
 
     /** Returns a new instance of {@link CustomizationPickerFragment}. */
     public static CustomizationPickerFragment newInstance(
@@ -72,9 +75,11 @@ public class CustomizationPickerFragment extends AppbarFragment implements
     // Note that the section views will be displayed by the list ordering.
     private final List<CustomizationSectionController<?>> mSectionControllers = new ArrayList<>();
     private NestedScrollView mNestedScrollView;
-    @Nullable private Bundle mBackStackSavedInstanceState;
+    @Nullable
+    private Bundle mBackStackSavedInstanceState;
     private final FragmentFactory mFragmentFactory;
-    @Nullable private CustomizationPickerViewModel mViewModel;
+    @Nullable
+    private CustomizationPickerViewModel mViewModel;
 
     public CustomizationPickerFragment() {
         mFragmentFactory = InjectorProvider.getInjector().getFragmentFactory();
@@ -83,9 +88,11 @@ public class CustomizationPickerFragment extends AppbarFragment implements
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             @Nullable Bundle savedInstanceState) {
-        final View view = inflater.inflate(R.layout.collapsing_toolbar_container_layout,
-                container, /* attachToRoot= */ false);
-
+        final boolean shouldUseRevampedUi = shouldUseRevampedUi();
+        final int layoutId = shouldUseRevampedUi
+                ? R.layout.toolbar_container_layout
+                : R.layout.collapsing_toolbar_container_layout;
+        final View view = inflater.inflate(layoutId, container, false);
         if (ActivityUtils.isLaunchedFromSettingsRelated(getActivity().getIntent())) {
             setUpToolbar(view, !ActivityEmbeddingUtils.shouldHideNavigateUpButton(
                     getActivity(), /* isSecondLayerPage= */ true));
@@ -94,16 +101,7 @@ public class CustomizationPickerFragment extends AppbarFragment implements
         }
 
         final Injector injector = InjectorProvider.getInjector();
-        final Bundle args = getArguments();
-        final boolean isUseRevampedUi;
-        if (args != null && args.containsKey(KEY_IS_USE_REVAMPED_UI)) {
-            isUseRevampedUi = args.getBoolean(KEY_IS_USE_REVAMPED_UI);
-        } else {
-            throw new IllegalStateException(
-                    "Must contain KEY_IS_USE_REVAMPED_UI argument, did you instantiate directly"
-                            + " instead of using the newInstance function?");
-        }
-        if (isUseRevampedUi) {
+        if (shouldUseRevampedUi) {
             setContentView(view, R.layout.fragment_tabbed_customization_picker);
             mViewModel = new ViewModelProvider(
                     this,
@@ -112,20 +110,26 @@ public class CustomizationPickerFragment extends AppbarFragment implements
                             savedInstanceState,
                             injector.getUndoInteractor(requireContext()))
             ).get(CustomizationPickerViewModel.class);
-            mViewModel.setInitialScreen(args.getBoolean(KEY_START_FROM_LOCK_SCREEN));
+            final Bundle arguments = getArguments();
+            mViewModel.setInitialScreen(
+                    arguments != null && arguments.getBoolean(KEY_START_FROM_LOCK_SCREEN));
 
             setUpToolbarMenu(R.menu.undoable_customization_menu);
             final Bundle finalSavedInstanceState = savedInstanceState;
-            CustomizationPickerBinder.bind(
+            if (mBinding != null) {
+                mBinding.dispose();
+            }
+            mBinding = CustomizationPickerBinder.bind(
                     view,
                     getToolbarId(),
                     mViewModel,
                     this,
-                    isOnLockScreen -> getSectionControllers(
-                            isOnLockScreen
-                                    ? CustomizationSections.Screen.LOCK_SCREEN
-                                    : CustomizationSections.Screen.HOME_SCREEN,
-                            finalSavedInstanceState));
+                    isOnLockScreen -> filterAvailableSections(
+                            getSectionControllers(
+                                isOnLockScreen
+                                        ? CustomizationSections.Screen.LOCK_SCREEN
+                                        : CustomizationSections.Screen.HOME_SCREEN,
+                                finalSavedInstanceState)));
         } else {
             setContentView(view, R.layout.fragment_customization_picker);
         }
@@ -137,7 +141,7 @@ public class CustomizationPickerFragment extends AppbarFragment implements
 
         mNestedScrollView = view.findViewById(R.id.scroll_container);
 
-        if (!isUseRevampedUi) {
+        if (!shouldUseRevampedUi) {
             ViewGroup sectionContainer = view.findViewById(R.id.section_container);
             sectionContainer.setOnApplyWindowInsetsListener((v, windowInsets) -> {
                 v.setPadding(
@@ -192,12 +196,12 @@ public class CustomizationPickerFragment extends AppbarFragment implements
 
     @Override
     protected int getToolbarId() {
-        return R.id.action_bar;
+        return shouldUseRevampedUi() ? R.id.toolbar : R.id.action_bar;
     }
 
     @Override
     protected int getToolbarColorId() {
-        return android.R.color.transparent;
+        return shouldUseRevampedUi() ? R.color.toolbar_color : android.R.color.transparent;
     }
 
     @Override
@@ -262,14 +266,10 @@ public class CustomizationPickerFragment extends AppbarFragment implements
         mSectionControllers.clear();
 
         mSectionControllers.addAll(
-                getAvailableSections(getAvailableSectionControllers(savedInstanceState)));
-    }
-
-    private List<CustomizationSectionController<?>> getAvailableSectionControllers(
-            @Nullable Bundle savedInstanceState) {
-        return getSectionControllers(
-                null,
-                savedInstanceState);
+                filterAvailableSections(
+                        getSectionControllers(
+                            null,
+                            savedInstanceState)));
     }
 
     private List<CustomizationSectionController<?>> getSectionControllers(
@@ -314,17 +314,19 @@ public class CustomizationPickerFragment extends AppbarFragment implements
         }
     }
 
-    protected List<CustomizationSectionController<?>> getAvailableSections(
+    /** Returns a filtered list containing only the available section controllers. */
+    protected List<CustomizationSectionController<?>> filterAvailableSections(
             List<CustomizationSectionController<?>> controllers) {
         return controllers.stream()
                 .filter(controller -> {
-                    if(controller.isAvailable(getContext())) {
+                    if (controller.isAvailable(getContext())) {
                         return true;
                     } else {
                         controller.release();
                         Log.d(TAG, "Section is not available: " + controller);
                         return false;
-                    }})
+                    }
+                })
                 .collect(Collectors.toList());
     }
 
@@ -334,5 +336,16 @@ public class CustomizationPickerFragment extends AppbarFragment implements
 
     private WallpaperPreviewNavigator getWallpaperPreviewNavigator() {
         return (WallpaperPreviewNavigator) getActivity();
+    }
+
+    private boolean shouldUseRevampedUi() {
+        final Bundle args = getArguments();
+        if (args != null && args.containsKey(KEY_IS_USE_REVAMPED_UI)) {
+            return args.getBoolean(KEY_IS_USE_REVAMPED_UI);
+        } else {
+            throw new IllegalStateException(
+                    "Must contain KEY_IS_USE_REVAMPED_UI argument, did you instantiate directly"
+                            + " instead of using the newInstance function?");
+        }
     }
 }
