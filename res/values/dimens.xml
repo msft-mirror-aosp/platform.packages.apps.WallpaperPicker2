@@ -218,6 +218,7 @@
     <dimen name="wallpaper_picker_entry_horizontal_padding">16dp</dimen>
     <dimen name="wallpaper_picker_entry_margin_vertical">16dp</dimen>
     <dimen name="wallpaper_picker_entry_card_corner_radius">12dp</dimen>
+    <dimen name="wallpaper_preview_buttons_elevation">8dp</dimen>
 
     <!-- For the full screen preview activity's hide UI menu item -->
     <dimen name="menu_item_hide_ui_background_width">46dp</dimen>
@@ -287,4 +288,7 @@
 
     <!-- Horizontal padding around the "duo tabs" at the top of the screen. -->
     <dimen name="tab_container_horizontal_padding">24dp</dimen>
+
+    <!-- Size for option items. -->
+    <dimen name="option_item_size">74dp</dimen>
 </resources>

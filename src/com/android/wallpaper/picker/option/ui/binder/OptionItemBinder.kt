@@ -25,6 +25,7 @@ import android.view.animation.LinearInterpolator
 import android.view.animation.PathInterpolator
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.annotation.ColorInt
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -48,7 +49,7 @@ object OptionItemBinder {
      * - [R.id.foreground] is the foreground drawable ([ImageView]).
      * - [R.id.background] is the view in the background ([View]).
      * - [R.id.selection_border] is a view rendering a border. It must have the same exact size as
-     * [R.id.background] ([View]) and must be placed below it on the z-axis (you read that right).
+     *   [R.id.background] ([View]) and must be placed below it on the z-axis (you read that right).
      *
      * The animation logic in this binder takes care of scaling up the border at the right time to
      * help it peek out around the background. In order to allow for this, you may need to disable
@@ -64,6 +65,7 @@ object OptionItemBinder {
      * @param viewModel The view-model.
      * @param lifecycleOwner The [LifecycleOwner].
      * @param animationSpec The specification for the animation.
+     * @param foregroundTintSpec The specification of how to tint the foreground icons.
      * @return A [DisposableHandle] that must be invoked when the view is recycled.
      */
     fun bind(
@@ -71,6 +73,7 @@ object OptionItemBinder {
         viewModel: OptionItemViewModel,
         lifecycleOwner: LifecycleOwner,
         animationSpec: AnimationSpec = AnimationSpec(),
+        foregroundTintSpec: TintSpec? = null,
     ): DisposableHandle {
         val borderView: View = view.requireViewById(R.id.selection_border)
         val backgroundView: View = view.requireViewById(R.id.background)
@@ -132,6 +135,18 @@ object OptionItemBinder {
                                 viewModel.isSelected
                             }
                             .collect { isSelected ->
+                                if (foregroundTintSpec != null) {
+                                    if (isSelected) {
+                                        foregroundView.setColorFilter(
+                                            foregroundTintSpec.selectedColor
+                                        )
+                                    } else {
+                                        foregroundView.setColorFilter(
+                                            foregroundTintSpec.unselectedColor
+                                        )
+                                    }
+                                }
+
                                 animatedSelection(
                                     animationSpec = animationSpec,
                                     borderView = borderView,
@@ -168,14 +183,18 @@ object OptionItemBinder {
      * the latter obscures the former at rest.
      *
      * @param borderView A view for the selection border that should be shown when the view is
+     *
      * ```
      *     selected.
      * @param contentView
      * ```
+     *
      * The view containing the opaque part of the view.
+     *
      * @param isSelected Whether the view is selected or not.
      * @param animationSpec The specification for the animation.
      * @param animate Whether to animate; if `false`, will jump directly to the final state without
+     *
      * ```
      *     animating.
      * ```
@@ -271,6 +290,11 @@ object OptionItemBinder {
         val disabledAlpha: Float = 0.3f,
         /** Duration of the animation, in milliseconds. */
         val durationMs: Long = 333L,
+    )
+
+    data class TintSpec(
+        @ColorInt val selectedColor: Int,
+        @ColorInt val unselectedColor: Int,
     )
 
     private fun View.scale(scale: Float) {

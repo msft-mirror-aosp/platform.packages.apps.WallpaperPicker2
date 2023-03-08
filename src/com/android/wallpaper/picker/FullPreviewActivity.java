@@ -17,6 +17,7 @@ package com.android.wallpaper.picker;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.transition.Slide;
 import android.view.Window;
@@ -25,10 +26,12 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
 import com.android.wallpaper.R;
+import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.InjectorProvider;
 import com.android.wallpaper.picker.AppbarFragment.AppbarFragmentHost;
 import com.android.wallpaper.util.ActivityUtils;
+import com.android.wallpaper.util.DisplayUtils;
 
 /**
  * Activity that displays a full preview of a specific wallpaper and provides the ability to set the
@@ -41,7 +44,7 @@ public class FullPreviewActivity extends BasePreviewActivity implements AppbarFr
      */
     public static Intent newIntent(Context packageContext, WallpaperInfo wallpaperInfo) {
         Intent intent = new Intent(packageContext, FullPreviewActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         intent.putExtra(EXTRA_WALLPAPER_INFO, wallpaperInfo);
         return intent;
     }
@@ -72,7 +75,9 @@ public class FullPreviewActivity extends BasePreviewActivity implements AppbarFr
         if (fragment == null) {
             Intent intent = getIntent();
             WallpaperInfo wallpaper = intent.getParcelableExtra(EXTRA_WALLPAPER_INFO);
-            boolean viewAsHome = intent.getBooleanExtra(EXTRA_VIEW_AS_HOME, true);
+            BaseFlags flags = InjectorProvider.getInjector().getFlags();
+            boolean viewAsHome = intent.getBooleanExtra(EXTRA_VIEW_AS_HOME, !flags
+                    .isFullscreenWallpaperPreviewEnabled(this));
             boolean testingModeEnabled = intent.getBooleanExtra(EXTRA_TESTING_MODE_ENABLED, false);
             fragment = InjectorProvider.getInjector().getPreviewFragment(
                     /* context= */ this,
@@ -100,6 +105,10 @@ public class FullPreviewActivity extends BasePreviewActivity implements AppbarFr
     @Override
     protected void onResume() {
         super.onResume();
+        DisplayUtils displayUtils = InjectorProvider.getInjector().getDisplayUtils(this);
+        int orientation = displayUtils.isOnWallpaperDisplay(this)
+                ? ActivityInfo.SCREEN_ORIENTATION_USER : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+        setRequestedOrientation(orientation);
         if (isInMultiWindowMode()) {
             onBackPressed();
         }
