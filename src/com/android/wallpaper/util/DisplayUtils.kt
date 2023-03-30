@@ -21,8 +21,6 @@ import android.graphics.Point
 import android.hardware.display.DisplayManager
 import android.util.Log
 import android.view.Display
-import android.view.Surface.ROTATION_270
-import android.view.Surface.ROTATION_90
 
 /**
  * Utility class to provide methods to find and obtain information about displays via {@link
@@ -31,7 +29,6 @@ import android.view.Surface.ROTATION_90
 class DisplayUtils(private val context: Context) {
     companion object {
         private const val TAG = "DisplayUtils"
-        private val ROTATION_HORIZONTAL_HINGE = setOf(ROTATION_90, ROTATION_270)
     }
 
     private val displayManager: DisplayManager by lazy {
@@ -42,40 +39,11 @@ class DisplayUtils(private val context: Context) {
         return getInternalDisplays().size > 1
     }
 
-    /**
-     * Returns the internal {@link Display} with tthe largest area to be used to calculate wallpaper
-     * size and cropping.
-     */
+    /** Returns the {@link Display} to be used to calculate wallpaper size and cropping. */
     fun getWallpaperDisplay(): Display {
         val internalDisplays = getInternalDisplays()
-        return internalDisplays.maxWithOrNull { a, b -> getRealArea(a) - getRealArea(b) }
+        return internalDisplays.maxWithOrNull { a, b -> getRealSize(a) - getRealSize(b) }
             ?: internalDisplays[0]
-    }
-
-    /**
-     * Checks if the device only has one display or unfolded screen in horizontal hinge orientation.
-     */
-    fun isSingleDisplayOrUnfoldedHorizontalHinge(activity: Activity): Boolean {
-        return !hasMultiInternalDisplays() || isUnfoldedHorizontalHinge(activity)
-    }
-
-    /**
-     * Checks if the device is a foldable and it's unfolded and in horizontal hinge orientation
-     * (portrait).
-     */
-    fun isUnfoldedHorizontalHinge(activity: Activity): Boolean {
-        return activity.display.rotation in ROTATION_HORIZONTAL_HINGE &&
-            isOnWallpaperDisplay(activity) &&
-            hasMultiInternalDisplays()
-    }
-
-    fun getMaxDisplaysDimension(): Point {
-        val dimen = Point()
-        getInternalDisplays().let { displays ->
-            dimen.x = displays.maxOf { getRealSize(it).x }
-            dimen.y = displays.maxOf { getRealSize(it).y }
-        }
-        return dimen
     }
 
     /**
@@ -88,16 +56,10 @@ class DisplayUtils(private val context: Context) {
         return activity.display.uniqueId == getWallpaperDisplay().uniqueId
     }
 
-    private fun getRealArea(display: Display): Int {
+    private fun getRealSize(display: Display): Int {
         val p = Point()
         display.getRealSize(p)
         return p.x * p.y
-    }
-
-    private fun getRealSize(display: Display): Point {
-        val p = Point()
-        display.getRealSize(p)
-        return p
     }
 
     private fun getInternalDisplays(): List<Display> {

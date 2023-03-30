@@ -197,12 +197,22 @@ class IndividualPickerFragment2 :
         if (mToolbar != null && isRotationEnabled()) {
             setUpToolbarMenu(R.menu.individual_picker_menu)
         }
-        var shouldForceReload = false
+        fetchWallpapers(false)
         if (category.supportsThirdParty()) {
-            shouldForceReload = true
+            appStatusListener =
+                PackageStatusNotifier.Listener { pkgName: String?, status: Int ->
+                    if (
+                        status != PackageStatusNotifier.PackageStatus.REMOVED ||
+                            category.containsThirdParty(pkgName)
+                    ) {
+                        fetchWallpapers(true)
+                    }
+                }
+            packageStatusNotifier?.addListener(
+                appStatusListener,
+                WallpaperService.SERVICE_INTERFACE
+            )
         }
-        fetchWallpapers(shouldForceReload)
-        registerPackageListener(category)
     }
 
     private fun fetchWallpapers(forceReload: Boolean) {
@@ -254,24 +264,6 @@ class IndividualPickerFragment2 :
             },
             forceReload
         )
-    }
-
-    private fun registerPackageListener(category: Category) {
-        if (category.supportsThirdParty()) {
-            appStatusListener =
-                PackageStatusNotifier.Listener { pkgName: String?, status: Int ->
-                    if (
-                        status != PackageStatusNotifier.PackageStatus.REMOVED ||
-                            category.containsThirdParty(pkgName)
-                    ) {
-                        fetchWallpapers(true)
-                    }
-                }
-            packageStatusNotifier?.addListener(
-                appStatusListener,
-                WallpaperService.SERVICE_INTERFACE
-            )
-        }
     }
 
     private fun updateLoading() {
