@@ -18,10 +18,10 @@
 package com.android.wallpaper.picker.customization.domain.interactor
 
 import android.graphics.Bitmap
+import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
-import javax.inject.Provider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -29,8 +29,23 @@ import kotlinx.coroutines.flow.map
 /** Handles business logic for wallpaper-related use-cases. */
 class WallpaperInteractor(
     private val repository: WallpaperRepository,
-    private val snapshotRestorer: Provider<WallpaperSnapshotRestorer>,
+    /** Returns whether wallpaper picker should handle reload */
+    val shouldHandleReload: () -> Boolean = { true },
 ) {
+    /** Returns a flow that is updated whenever the wallpaper has been updated */
+    fun wallpaperUpdateEvents(screen: CustomizationSections.Screen): Flow<WallpaperModel?> {
+        return when (screen) {
+            CustomizationSections.Screen.LOCK_SCREEN ->
+                previews(WallpaperDestination.LOCK, 1).map { recentWallpapers ->
+                    if (recentWallpapers.isEmpty()) null else recentWallpapers[0]
+                }
+            CustomizationSections.Screen.HOME_SCREEN ->
+                previews(WallpaperDestination.HOME, 1).map { recentWallpapers ->
+                    if (recentWallpapers.isEmpty()) null else recentWallpapers[0]
+                }
+        }
+    }
+
     /** Returns the ID of the currently-selected wallpaper. */
     fun selectedWallpaperId(
         destination: WallpaperDestination,
@@ -80,12 +95,6 @@ class WallpaperInteractor(
             destination = destination,
             wallpaperId = wallpaperId,
         )
-        snapshotRestorer
-            .get()
-            .storeSnapshot(
-                destination = destination,
-                selectedWallpaperId = wallpaperId,
-            )
     }
 
     /** Returns a thumbnail for the wallpaper with the given ID. */

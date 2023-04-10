@@ -11,7 +11,7 @@ import com.android.wallpaper.model.CustomizationSectionController.CustomizationS
 import com.android.wallpaper.model.PermissionRequester;
 import com.android.wallpaper.model.WallpaperColorsViewModel;
 import com.android.wallpaper.model.WallpaperPreviewNavigator;
-import com.android.wallpaper.model.WorkspaceViewModel;
+import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor;
 import com.android.wallpaper.picker.customization.ui.viewmodel.WallpaperQuickSwitchViewModel;
 import com.android.wallpaper.util.DisplayUtils;
 
@@ -40,14 +40,14 @@ public interface CustomizationSections {
             FragmentActivity activity,
             LifecycleOwner lifecycleOwner,
             WallpaperColorsViewModel wallpaperColorsViewModel,
-            WorkspaceViewModel workspaceViewModel,
             PermissionRequester permissionRequester,
             WallpaperPreviewNavigator wallpaperPreviewNavigator,
             CustomizationSectionNavigationController sectionNavigationController,
             @Nullable Bundle savedInstanceState,
             CurrentWallpaperInfoFactory wallpaperInfoFactory,
             DisplayUtils displayUtils,
-            WallpaperQuickSwitchViewModel wallpaperQuickSwitchViewModel);
+            WallpaperQuickSwitchViewModel wallpaperQuickSwitchViewModel,
+            WallpaperInteractor wallpaperInteractor);
 
     /**
      * Gets a new instance of the section controller list.
@@ -60,7 +60,6 @@ public interface CustomizationSections {
             FragmentActivity activity,
             LifecycleOwner lifecycleOwner,
             WallpaperColorsViewModel wallpaperColorsViewModel,
-            WorkspaceViewModel workspaceViewModel,
             PermissionRequester permissionRequester,
             WallpaperPreviewNavigator wallpaperPreviewNavigator,
             CustomizationSectionNavigationController sectionNavigationController,

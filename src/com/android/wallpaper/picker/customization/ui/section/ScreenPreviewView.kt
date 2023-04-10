@@ -28,4 +28,4 @@ class ScreenPreviewView(
     SectionView(
         context,
         attrs,
-    )
+    ) {}

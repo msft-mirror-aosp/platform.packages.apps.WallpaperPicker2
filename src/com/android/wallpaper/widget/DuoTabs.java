@@ -16,10 +16,11 @@
 package com.android.wallpaper.widget;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
-import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
@@ -54,22 +55,31 @@ public final class DuoTabs extends FrameLayout {
         void onTabSelected(@Tab int tab);
     }
 
-    OnTabSelectedListener mOnTabSelectedListener;
-    Button mPrimaryTab;
-    Button mSecondaryTab;
-    @Tab int mCurrentOverlayTab;
+    private OnTabSelectedListener mOnTabSelectedListener;
+    private final TextView mPrimaryTab;
+    private final TextView mSecondaryTab;
+    @Tab private int mCurrentOverlayTab;
 
     /**
      * Constructor
      */
     public DuoTabs(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
-        LayoutInflater.from(context).inflate(R.layout.duo_tabs, this, true);
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.DuoTabs, 0, 0);
+        boolean shouldUseShortTabs = a.getBoolean(R.styleable.DuoTabs_should_use_short_tabs, false);
+        a.recycle();
+        LayoutInflater.from(context).inflate(
+                shouldUseShortTabs ? R.layout.duo_tabs_short : R.layout.duo_tabs,
+                this,
+                true);
+
         mPrimaryTab = findViewById(R.id.tab_primary);
         mSecondaryTab = findViewById(R.id.tab_secondary);
         mPrimaryTab.setOnClickListener(v -> selectTab(TAB_PRIMARY));
         mSecondaryTab.setOnClickListener(v -> selectTab(TAB_SECONDARY));
     }
+
+
 
     /**
      * Set tab text

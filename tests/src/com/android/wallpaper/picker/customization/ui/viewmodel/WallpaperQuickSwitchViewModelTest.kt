@@ -21,16 +21,14 @@ import androidx.test.filters.SmallTest
 import com.android.wallpaper.picker.customization.data.content.FakeWallpaperClient
 import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
-import com.android.wallpaper.picker.customization.domain.interactor.WallpaperSnapshotRestorer
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
-import com.android.wallpaper.testing.FakeSnapshotStore
+import com.android.wallpaper.testing.TestWallpaperPreferences
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.resetMain
@@ -52,7 +50,6 @@ class WallpaperQuickSwitchViewModelTest {
 
     private lateinit var client: FakeWallpaperClient
     private lateinit var testScope: TestScope
-    private lateinit var snapshotRestorer: WallpaperSnapshotRestorer
 
     @Before
     fun setUp() {
@@ -67,20 +64,15 @@ class WallpaperQuickSwitchViewModelTest {
                     WallpaperRepository(
                         scope = testScope.backgroundScope,
                         client = client,
+                        wallpaperPreferences = TestWallpaperPreferences(),
                         backgroundDispatcher = testDispatcher,
                     ),
-                snapshotRestorer = { snapshotRestorer },
             )
         underTest =
             WallpaperQuickSwitchViewModel(
                 interactor = interactor,
                 maxOptions = FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS.size,
             )
-        snapshotRestorer =
-            WallpaperSnapshotRestorer(
-                interactor = interactor,
-            )
-        runBlocking { snapshotRestorer.setUpSnapshotRestorer(FakeSnapshotStore()) }
     }
 
     @After
@@ -118,7 +110,7 @@ class WallpaperQuickSwitchViewModelTest {
                         placeholderColor = 1400,
                     ),
                 )
-            client.setRecentWallpapers(WallpaperDestination.HOME, models)
+            client.setRecentWallpapers(buildMap { put(WallpaperDestination.HOME, models) })
 
             assertOptions(
                 observed = options(),

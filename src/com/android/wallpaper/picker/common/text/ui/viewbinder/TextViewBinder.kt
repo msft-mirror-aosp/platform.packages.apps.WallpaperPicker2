@@ -26,7 +26,7 @@ object TextViewBinder {
         viewModel: Text,
     ) {
         when (viewModel) {
-            is Text.Resource -> view.setText(viewModel.resource)
+            is Text.Resource -> view.setText(viewModel.res)
             is Text.Loaded -> view.text = viewModel.text
         }
     }
