@@ -89,11 +89,16 @@ open class ScreenPreviewSectionController(
             View.OnClickListener {
                 lifecycleOwner.lifecycleScope.launch {
                     getWallpaperInfo()?.let { wallpaperInfo ->
-                        wallpaperPreviewNavigator.showViewOnlyPreview(wallpaperInfo, false)
+                        wallpaperPreviewNavigator.showViewOnlyPreview(
+                            wallpaperInfo,
+                            !isOnLockScreen
+                        )
                     }
                 }
             }
-        view.setOnClickListener(onClickListener)
+        view
+            .requireViewById<ScreenPreviewClickView>(R.id.screen_preview_click_view)
+            .setOnClickListener(onClickListener)
         val lockScreenView: CardView = view.requireViewById(R.id.lock_preview)
         val homeScreenView: CardView = view.requireViewById(R.id.home_preview)
 
@@ -143,7 +148,7 @@ open class ScreenPreviewSectionController(
                         wallpaperInteractor = wallpaperInteractor,
                     ),
                 lifecycleOwner = lifecycleOwner,
-                offsetToStart = displayUtils.isOnWallpaperDisplay(activity),
+                offsetToStart = displayUtils.isSingleDisplayOrUnfoldedHorizontalHinge(activity),
                 screen = CustomizationSections.Screen.LOCK_SCREEN,
                 onPreviewDirty = {
                     // only the visible binding should recreate the activity so it's not done twice
@@ -188,7 +193,7 @@ open class ScreenPreviewSectionController(
                         wallpaperInteractor = wallpaperInteractor,
                     ),
                 lifecycleOwner = lifecycleOwner,
-                offsetToStart = displayUtils.isOnWallpaperDisplay(activity),
+                offsetToStart = displayUtils.isSingleDisplayOrUnfoldedHorizontalHinge(activity),
                 screen = CustomizationSections.Screen.HOME_SCREEN,
                 onPreviewDirty = {
                     // only the visible binding should recreate the activity so it's not done twice
@@ -239,7 +244,7 @@ open class ScreenPreviewSectionController(
                 { homeWallpaper, lockWallpaper, _ ->
                     continuation.resume(
                         if (isOnLockScreen) {
-                            lockWallpaper
+                            lockWallpaper ?: homeWallpaper
                         } else {
                             homeWallpaper
                         },
