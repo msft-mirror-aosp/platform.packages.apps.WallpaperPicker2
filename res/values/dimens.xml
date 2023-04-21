@@ -32,6 +32,10 @@
     <dimen name="category_grid_edge_space">18dp</dimen>
     <dimen name="category_grid_padding_top">32dp</dimen>
 
+    <!-- Dimensions for creative categoriy tiles. -->
+    <dimen name="creative_category_grid_padding_horizontal">8dp</dimen>
+    <dimen name="creative_category_grid_padding_vertical">0dp</dimen>
+
     <!-- Dimensions for featured "category" tiles. -->
     <dimen name="grid_item_featured_category_padding_bottom">16dp</dimen>
 
@@ -67,6 +71,7 @@
 
     <!-- Dimensions for wallpaper tiles in individual picker when in desktop mode. -->
     <dimen name="tile_desktop_progress_bar_size">40dp</dimen>
+    <dimen name="effect_generating_progress_bar_size">48dp</dimen>
 
     <!-- Dimensions for "daily refresh" rotation tile in individual picker when in desktop mode. -->
     <dimen name="rotation_tile_desktop_label_padding">16dp</dimen>
@@ -184,6 +189,7 @@
 
     <!-- Dimensions for the separated tabs. -->
     <dimen name="separated_tabs_height">56dp</dimen>
+    <dimen name="separated_tabs_height_short">36dp</dimen>
     <dimen name="separated_tabs_corner_radius">12dp</dimen>
     <dimen name="separated_tabs_inset_horizontal">4dp</dimen>
     <!--  Default page horizontal margin (24dp) - separated tabs inset horizontal (4dp) -->
@@ -206,8 +212,8 @@
     <dimen name="section_container_vertical_margin">24dp</dimen>
     <dimen name="wallpaper_section_horizontal_padding">24dp</dimen>
     <dimen name="section_horizontal_padding">24dp</dimen>
-    <dimen name="section_vertical_padding">24dp</dimen>
-    <dimen name="section_top_padding">24dp</dimen>
+    <dimen name="option_section_vertical_padding">4dp</dimen>
+    <dimen name="section_padding">24dp</dimen>
     <dimen name="section_bottom_padding">16dp</dimen>
 
     <!-- For the wallpaper section -->
@@ -218,6 +224,7 @@
     <dimen name="wallpaper_picker_entry_horizontal_padding">16dp</dimen>
     <dimen name="wallpaper_picker_entry_margin_vertical">16dp</dimen>
     <dimen name="wallpaper_picker_entry_card_corner_radius">12dp</dimen>
+    <dimen name="wallpaper_picker_options_section_margin">12dp</dimen>
     <dimen name="wallpaper_preview_buttons_elevation">8dp</dimen>
 
     <!-- For the full screen preview activity's hide UI menu item -->
@@ -278,7 +285,7 @@
     <dimen name="screen_preview_height">380dp</dimen>
 
     <!-- Height of options in the wallpaper quick switch widget. -->
-    <dimen name="wallpaper_quick_switch_selected_option_height">98dp</dimen>
+    <dimen name="wallpaper_quick_switch_selected_option_height">86dp</dimen>
 
     <!-- Maximumn width non-selected options in the wallpaper quick switch widget. -->
     <dimen name="wallpaper_quick_switch_max_option_width">@dimen/wallpaper_quick_switch_selected_option_height</dimen>
@@ -287,8 +294,19 @@
     <dimen name="spacing_10dp">10dp</dimen>
 
     <!-- Horizontal padding around the "duo tabs" at the top of the screen. -->
-    <dimen name="tab_container_horizontal_padding">24dp</dimen>
+    <dimen name="tab_container_horizontal_padding">16dp</dimen>
+
+    <!-- Top margin for the "duo tabs" tab buttons -->
+    <dimen name="tab_container_top_margin">8dp</dimen>
+
+    <!-- Bottom margin for the "duo tabs" tab buttons -->
+    <dimen name="tab_container_bottom_margin">12dp</dimen>
+
 
     <!-- Size for option items. -->
     <dimen name="option_item_size">74dp</dimen>
+
+    <!-- Screen preview section -->
+    <dimen name="screen_preview_section_vertical_space">12dp</dimen>
+
 </resources>

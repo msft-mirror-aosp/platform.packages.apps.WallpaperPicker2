@@ -18,9 +18,12 @@
 package com.android.wallpaper.picker.customization.domain.interactor
 
 import androidx.test.filters.SmallTest
+import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.picker.customization.data.content.FakeWallpaperClient
 import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
+import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
+import com.android.wallpaper.testing.TestWallpaperPreferences
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -54,6 +57,7 @@ class WallpaperInteractorTest {
                     WallpaperRepository(
                         scope = testScope.backgroundScope,
                         client = client,
+                        wallpaperPreferences = TestWallpaperPreferences(),
                         backgroundDispatcher = testDispatcher,
                     ),
             )
@@ -77,6 +81,51 @@ class WallpaperInteractorTest {
                         FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS.size - 1,
                     )
                 )
+        }
+
+    @Test
+    fun `previews - handles empty recents list`() =
+        testScope.runTest {
+            client.setRecentWallpapers(
+                buildMap { put(WallpaperDestination.HOME, listOf<WallpaperModel>()) }
+            )
+            val homeWallpaperUpdateEvents =
+                collectLastValue(
+                    underTest.wallpaperUpdateEvents(CustomizationSections.Screen.HOME_SCREEN)
+                )
+
+            assertThat(homeWallpaperUpdateEvents()).isNull()
+        }
+
+    @Test
+    fun wallpaperUpdateEvents() =
+        testScope.runTest {
+            val homeWallpaperUpdateEvents =
+                collectLastValue(
+                    underTest.wallpaperUpdateEvents(CustomizationSections.Screen.HOME_SCREEN)
+                )
+            val lockWallpaperUpdateEvents =
+                collectLastValue(
+                    underTest.wallpaperUpdateEvents(CustomizationSections.Screen.LOCK_SCREEN)
+                )
+            val homeWallpaperUpdateOutput1 = homeWallpaperUpdateEvents()
+            val lockWallpaperUpdateOutput1 = lockWallpaperUpdateEvents()
+
+            val homeWallpaperId1 = FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS[1].wallpaperId
+            val lockWallpaperId1 = FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS[2].wallpaperId
+            underTest.setWallpaper(WallpaperDestination.HOME, homeWallpaperId1)
+            underTest.setWallpaper(WallpaperDestination.LOCK, lockWallpaperId1)
+            assertThat(homeWallpaperUpdateEvents()).isNotEqualTo(homeWallpaperUpdateOutput1)
+            assertThat(lockWallpaperUpdateEvents()).isNotEqualTo(lockWallpaperUpdateOutput1)
+            val homeWallpaperUpdateOutput2 = homeWallpaperUpdateEvents()
+            val lockWallpaperUpdateOutput2 = lockWallpaperUpdateEvents()
+
+            val homeWallpaperId2 = FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS[2].wallpaperId
+            val lockWallpaperId2 = FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS[2].wallpaperId
+            underTest.setWallpaper(WallpaperDestination.HOME, homeWallpaperId2)
+            underTest.setWallpaper(WallpaperDestination.LOCK, lockWallpaperId2)
+            assertThat(homeWallpaperUpdateEvents()).isNotEqualTo(homeWallpaperUpdateOutput2)
+            assertThat(lockWallpaperUpdateEvents()).isEqualTo(lockWallpaperUpdateOutput2)
         }
 
     @Test

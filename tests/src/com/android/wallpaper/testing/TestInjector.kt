@@ -245,7 +245,15 @@ open class TestInjector : Injector {
     }
 
     override fun getFlags(): BaseFlags {
-        return flags ?: object : BaseFlags() {}.also { flags = it }
+        return flags
+            ?: object : BaseFlags() {
+                    override fun isFullscreenWallpaperPreviewEnabled(context: Context): Boolean {
+                        // This is already true by default in all environments, only keeping the
+                        // flag for now in case we need to roll back
+                        return true
+                    }
+                }
+                .also { flags = it }
     }
 
     override fun getUndoInteractor(context: Context): UndoInteractor {
@@ -264,6 +272,7 @@ open class TestInjector : Injector {
                         WallpaperRepository(
                             scope = GlobalScope,
                             client = WallpaperClientImpl(context = context),
+                            wallpaperPreferences = getPreferences(context = context),
                             backgroundDispatcher = Dispatchers.IO,
                         ),
                 )
