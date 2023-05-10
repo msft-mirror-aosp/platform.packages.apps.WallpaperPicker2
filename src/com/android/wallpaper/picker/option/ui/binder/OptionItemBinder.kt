@@ -26,13 +26,13 @@ import android.view.animation.PathInterpolator
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.annotation.ColorInt
+import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.android.wallpaper.R
 import com.android.wallpaper.picker.common.icon.ui.viewbinder.ContentDescriptionViewBinder
-import com.android.wallpaper.picker.common.icon.ui.viewbinder.IconViewBinder
 import com.android.wallpaper.picker.common.text.ui.viewbinder.TextViewBinder
 import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel
 import kotlinx.coroutines.DisposableHandle
@@ -70,21 +70,17 @@ object OptionItemBinder {
      */
     fun bind(
         view: View,
-        viewModel: OptionItemViewModel,
+        viewModel: OptionItemViewModel<*>,
         lifecycleOwner: LifecycleOwner,
         animationSpec: AnimationSpec = AnimationSpec(),
         foregroundTintSpec: TintSpec? = null,
     ): DisposableHandle {
         val borderView: View = view.requireViewById(R.id.selection_border)
         val backgroundView: View = view.requireViewById(R.id.background)
-        val foregroundView: ImageView = view.requireViewById(R.id.foreground)
+        val foregroundView: View = view.requireViewById(R.id.foreground)
         val textView: TextView? = view.findViewById(R.id.text)
 
-        IconViewBinder.bind(
-            view = foregroundView,
-            viewModel = viewModel.icon,
-        )
-        if (textView != null) {
+        if (textView != null && viewModel.isTextUserVisible) {
             TextViewBinder.bind(
                 view = textView,
                 viewModel = viewModel.text,
@@ -97,6 +93,8 @@ object OptionItemBinder {
                 viewModel = viewModel.text,
             )
         }
+        textView?.isVisible = viewModel.isTextUserVisible
+
         view.alpha =
             if (viewModel.isEnabled) {
                 animationSpec.enabledAlpha
@@ -135,7 +133,7 @@ object OptionItemBinder {
                                 viewModel.isSelected
                             }
                             .collect { isSelected ->
-                                if (foregroundTintSpec != null) {
+                                if (foregroundTintSpec != null && foregroundView is ImageView) {
                                     if (isSelected) {
                                         foregroundView.setColorFilter(
                                             foregroundTintSpec.selectedColor

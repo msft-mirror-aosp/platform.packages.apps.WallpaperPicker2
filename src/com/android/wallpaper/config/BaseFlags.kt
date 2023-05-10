@@ -26,7 +26,6 @@ abstract class BaseFlags {
     var customizationProviderClient: CustomizationProviderClient? = null
     open fun isStagingBackdropContentEnabled() = false
     open fun isWallpaperEffectEnabled() = false
-    open fun isEffectOnMultiplePanelEnabled() = false
     open fun isFullscreenWallpaperPreviewEnabled(context: Context): Boolean {
         return runBlocking { getCustomizationProviderClient(context).queryFlags() }
             .firstOrNull { flag ->
@@ -53,6 +52,15 @@ abstract class BaseFlags {
             .firstOrNull { flag -> flag.name == Contract.FlagsTable.FLAG_NAME_MONOCHROMATIC_THEME }
             ?.value == true
     }
+
+    fun isAIWallpaperEnabled(context: Context): Boolean {
+        return runBlocking { getCustomizationProviderClient(context).queryFlags() }
+            .firstOrNull { flag ->
+                flag.name == Contract.FlagsTable.FLAG_NAME_WALLPAPER_PICKER_UI_FOR_AIWP
+            }
+            ?.value == true
+    }
+
     private fun getCustomizationProviderClient(context: Context): CustomizationProviderClient {
         return customizationProviderClient
             ?: CustomizationProviderClientImpl(context, Dispatchers.IO).also {
