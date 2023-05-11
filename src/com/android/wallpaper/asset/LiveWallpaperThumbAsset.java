@@ -28,6 +28,8 @@ import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.ImageView;
 
@@ -88,9 +90,7 @@ public class LiveWallpaperThumbAsset extends Asset {
 
             // Live wallpaper components may or may not specify a thumbnail drawable.
             if (thumb instanceof BitmapDrawable) {
-                decodeBitmapCompleted(receiver,
-                        Bitmap.createScaledBitmap(((BitmapDrawable) thumb).getBitmap(), targetWidth,
-                                targetHeight, true));
+                decodeBitmapCompleted(receiver, ((BitmapDrawable) thumb).getBitmap());
                 return;
             } else if (thumb != null) {
                 Bitmap bitmap;
@@ -133,8 +133,12 @@ public class LiveWallpaperThumbAsset extends Asset {
                     result = ((BitmapDrawable) layer).getBitmap();
                 }
             }
-            receiver.onDimensionsDecoded(
-                    result == null ? null : new Point(result.getWidth(), result.getHeight()));
+            final Bitmap lr = result;
+            new Handler(Looper.getMainLooper()).post(
+                    () ->
+                            receiver.onDimensionsDecoded(
+                                    lr == null ? null : new Point(lr.getWidth(), lr.getHeight()))
+            );
         });
     }
 
