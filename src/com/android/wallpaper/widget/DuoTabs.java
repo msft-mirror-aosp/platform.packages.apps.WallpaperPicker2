@@ -57,7 +57,10 @@ public final class DuoTabs extends FrameLayout {
 
     private OnTabSelectedListener mOnTabSelectedListener;
     private final TextView mPrimaryTab;
+    private final FrameLayout mPrimaryTabContainer;
     private final TextView mSecondaryTab;
+    private final FrameLayout mSecondaryTabContainer;
+
     @Tab private int mCurrentOverlayTab;
 
     /**
@@ -75,11 +78,17 @@ public final class DuoTabs extends FrameLayout {
 
         mPrimaryTab = findViewById(R.id.tab_primary);
         mSecondaryTab = findViewById(R.id.tab_secondary);
-        mPrimaryTab.setOnClickListener(v -> selectTab(TAB_PRIMARY));
-        mSecondaryTab.setOnClickListener(v -> selectTab(TAB_SECONDARY));
+        mPrimaryTabContainer = findViewById(R.id.tab_primary_container);
+        mSecondaryTabContainer = findViewById(R.id.tab_secondary_container);
+
+        if (mPrimaryTabContainer != null && mSecondaryTabContainer != null) {
+            mPrimaryTabContainer.setOnClickListener(v -> selectTab(TAB_PRIMARY));
+            mSecondaryTabContainer.setOnClickListener(v -> selectTab(TAB_SECONDARY));
+        } else {
+            mPrimaryTab.setOnClickListener(v -> selectTab(TAB_PRIMARY));
+            mSecondaryTab.setOnClickListener(v -> selectTab(TAB_SECONDARY));
+        }
     }
-
-
 
     /**
      * Set tab text
