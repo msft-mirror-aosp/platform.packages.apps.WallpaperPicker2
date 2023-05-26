@@ -58,6 +58,7 @@ public class WallpaperPickerDelegate implements MyPhotosStarter {
 
     private final FragmentActivity mActivity;
     private final WallpapersUiContainer mContainer;
+    public static boolean DISABLE_MY_PHOTOS_BLOCK_PREVIEW = false;
     public static final int SHOW_CATEGORY_REQUEST_CODE = 0;
     public static final int PREVIEW_WALLPAPER_REQUEST_CODE = 1;
     public static final int VIEW_ONLY_PREVIEW_WALLPAPER_REQUEST_CODE = 2;
@@ -119,22 +120,25 @@ public class WallpaperPickerDelegate implements MyPhotosStarter {
 
     @Override
     public void requestCustomPhotoPicker(PermissionChangedListener listener) {
-        if (!isReadExternalStoragePermissionGranted()) {
-            PermissionChangedListener wrappedListener = new PermissionChangedListener() {
-                @Override
-                public void onPermissionsGranted() {
-                    listener.onPermissionsGranted();
-                    showCustomPhotoPicker();
-                }
+        //TODO (b/282073506): Figure out a better way to have better photos experience
+        if (DISABLE_MY_PHOTOS_BLOCK_PREVIEW) {
+            if (!isReadExternalStoragePermissionGranted()) {
+                PermissionChangedListener wrappedListener = new PermissionChangedListener() {
+                    @Override
+                    public void onPermissionsGranted() {
+                        listener.onPermissionsGranted();
+                        showCustomPhotoPicker();
+                    }
 
-                @Override
-                public void onPermissionsDenied(boolean dontAskAgain) {
-                    listener.onPermissionsDenied(dontAskAgain);
-                }
-            };
-            requestExternalStoragePermission(wrappedListener);
+                    @Override
+                    public void onPermissionsDenied(boolean dontAskAgain) {
+                        listener.onPermissionsDenied(dontAskAgain);
+                    }
+                };
+                requestExternalStoragePermission(wrappedListener);
 
-            return;
+                return;
+            }
         }
 
         showCustomPhotoPicker();
@@ -467,7 +471,6 @@ public class WallpaperPickerDelegate implements MyPhotosStarter {
                         PREVIEW_WALLPAPER_REQUEST_CODE);
                 return false;
             case PREVIEW_LIVE_WALLPAPER_REQUEST_CODE:
-                mWallpaperPersister.onLiveWallpaperSet();
                 populateCategories(/* forceRefresh= */ true);
                 return true;
             case VIEW_ONLY_PREVIEW_WALLPAPER_REQUEST_CODE:
@@ -475,7 +478,6 @@ public class WallpaperPickerDelegate implements MyPhotosStarter {
             case PREVIEW_WALLPAPER_REQUEST_CODE:
                 // User previewed and selected a wallpaper, so finish this activity.
                 if (data != null && data.getBooleanExtra(IS_LIVE_WALLPAPER, false)) {
-                    mWallpaperPersister.onLiveWallpaperSet();
                     populateCategories(/* forceRefresh= */ true);
                 }
                 return true;

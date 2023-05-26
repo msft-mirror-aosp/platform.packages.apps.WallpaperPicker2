@@ -21,11 +21,13 @@ import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.transition.Slide;
 import android.view.Window;
+import android.widget.Toast;
 
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
 import com.android.wallpaper.R;
+import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.InjectorProvider;
 import com.android.wallpaper.picker.AppbarFragment.AppbarFragmentHost;
@@ -74,7 +76,9 @@ public class FullPreviewActivity extends BasePreviewActivity implements AppbarFr
         if (fragment == null) {
             Intent intent = getIntent();
             WallpaperInfo wallpaper = intent.getParcelableExtra(EXTRA_WALLPAPER_INFO);
-            boolean viewAsHome = intent.getBooleanExtra(EXTRA_VIEW_AS_HOME, true);
+            BaseFlags flags = InjectorProvider.getInjector().getFlags();
+            boolean viewAsHome = intent.getBooleanExtra(EXTRA_VIEW_AS_HOME, !flags
+                    .isFullscreenWallpaperPreviewEnabled(this));
             boolean testingModeEnabled = intent.getBooleanExtra(EXTRA_TESTING_MODE_ENABLED, false);
             fragment = InjectorProvider.getInjector().getPreviewFragment(
                     /* context= */ this,
@@ -107,6 +111,12 @@ public class FullPreviewActivity extends BasePreviewActivity implements AppbarFr
                 ? ActivityInfo.SCREEN_ORIENTATION_USER : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
         setRequestedOrientation(orientation);
         if (isInMultiWindowMode()) {
+            Toast.makeText(
+                            this,
+                            R.string.wallpaper_exit_split_screen,
+                            Toast.LENGTH_SHORT
+                    )
+                    .show();
             onBackPressed();
         }
     }

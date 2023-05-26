@@ -16,6 +16,7 @@
 package com.android.wallpaper.widget;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.widget.FrameLayout;
@@ -56,7 +57,10 @@ public final class DuoTabs extends FrameLayout {
 
     private OnTabSelectedListener mOnTabSelectedListener;
     private final TextView mPrimaryTab;
+    private final FrameLayout mPrimaryTabContainer;
     private final TextView mSecondaryTab;
+    private final FrameLayout mSecondaryTabContainer;
+
     @Tab private int mCurrentOverlayTab;
 
     /**
@@ -64,11 +68,26 @@ public final class DuoTabs extends FrameLayout {
      */
     public DuoTabs(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
-        LayoutInflater.from(context).inflate(R.layout.duo_tabs, this, true);
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.DuoTabs, 0, 0);
+        boolean shouldUseShortTabs = a.getBoolean(R.styleable.DuoTabs_should_use_short_tabs, false);
+        a.recycle();
+        LayoutInflater.from(context).inflate(
+                shouldUseShortTabs ? R.layout.duo_tabs_short : R.layout.duo_tabs,
+                this,
+                true);
+
         mPrimaryTab = findViewById(R.id.tab_primary);
         mSecondaryTab = findViewById(R.id.tab_secondary);
-        mPrimaryTab.setOnClickListener(v -> selectTab(TAB_PRIMARY));
-        mSecondaryTab.setOnClickListener(v -> selectTab(TAB_SECONDARY));
+        mPrimaryTabContainer = findViewById(R.id.tab_primary_container);
+        mSecondaryTabContainer = findViewById(R.id.tab_secondary_container);
+
+        if (mPrimaryTabContainer != null && mSecondaryTabContainer != null) {
+            mPrimaryTabContainer.setOnClickListener(v -> selectTab(TAB_PRIMARY));
+            mSecondaryTabContainer.setOnClickListener(v -> selectTab(TAB_SECONDARY));
+        } else {
+            mPrimaryTab.setOnClickListener(v -> selectTab(TAB_PRIMARY));
+            mSecondaryTab.setOnClickListener(v -> selectTab(TAB_SECONDARY));
+        }
     }
 
     /**

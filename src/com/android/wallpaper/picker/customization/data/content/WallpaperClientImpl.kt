@@ -24,6 +24,7 @@ import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Looper
 import android.util.Log
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
@@ -42,6 +43,10 @@ class WallpaperClientImpl(
         limit: Int,
     ): Flow<List<WallpaperModel>> {
         return callbackFlow {
+            // TODO(b/280891780) Remove this check
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                throw IllegalStateException("Do not call method recentWallpapers() on main thread")
+            }
             suspend fun queryAndSend(limit: Int) {
                 send(queryRecentWallpapers(destination = destination, limit = limit))
             }
@@ -62,12 +67,6 @@ class WallpaperClientImpl(
 
             awaitClose { context.contentResolver.unregisterContentObserver(contentObserver) }
         }
-    }
-
-    override suspend fun getCurrentWallpaper(
-        destination: WallpaperDestination,
-    ): WallpaperModel {
-        return queryRecentWallpapers(destination = destination, limit = 1).first()
     }
 
     override suspend fun setWallpaper(
@@ -92,10 +91,7 @@ class WallpaperClientImpl(
         context.contentResolver
             .query(
                 LIST_RECENTS_URI.buildUpon().appendPath(destination.asString()).build(),
-                arrayOf(
-                    KEY_ID,
-                    KEY_PLACEHOLDER_COLOR,
-                ),
+                arrayOf(KEY_ID, KEY_PLACEHOLDER_COLOR, KEY_LAST_UPDATED),
                 null,
                 null,
             )
@@ -107,13 +103,16 @@ class WallpaperClientImpl(
                 return buildList {
                     val idColumnIndex = cursor.getColumnIndex(KEY_ID)
                     val placeholderColorColumnIndex = cursor.getColumnIndex(KEY_PLACEHOLDER_COLOR)
+                    val lastUpdatedColumnIndex = cursor.getColumnIndex(KEY_LAST_UPDATED)
                     while (cursor.moveToNext() && size < limit) {
                         val wallpaperId = cursor.getString(idColumnIndex)
                         val placeholderColor = cursor.getInt(placeholderColorColumnIndex)
+                        val lastUpdated = cursor.getLong(lastUpdatedColumnIndex)
                         add(
                             WallpaperModel(
                                 wallpaperId = wallpaperId,
                                 placeholderColor = placeholderColor,
+                                lastUpdated = lastUpdated
                             )
                         )
                     }
@@ -182,6 +181,7 @@ class WallpaperClientImpl(
         private const val KEY_ID = "id"
         /** Key for a parameter used to pass the screen to/from the content provider. */
         private const val KEY_SCREEN = "screen"
+        private const val KEY_LAST_UPDATED = "last_updated"
         private const val SCREEN_ALL = "all_screens"
         private const val SCREEN_HOME = "home_screen"
         private const val SCREEN_LOCK = "lock_screen"

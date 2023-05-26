@@ -48,9 +48,6 @@ class WallpaperQuickSwitchSectionController(
                     R.layout.wallpaper_quick_switch_section,
                     /* parent= */ null,
                 ) as WallpaperQuickSwitchView
-        viewModel.setOnLockScreen(
-            isLockScreenSelected = screen == CustomizationSections.Screen.LOCK_SCREEN,
-        )
         WallpaperQuickSwitchSectionBinder.bind(
             view = view,
             viewModel = viewModel,
@@ -60,9 +57,5 @@ class WallpaperQuickSwitchSectionController(
             },
         )
         return view
-    }
-
-    override fun onScreenSwitched(isOnLockScreen: Boolean) {
-        viewModel.setOnLockScreen(isLockScreenSelected = isOnLockScreen)
     }
 }
