@@ -19,6 +19,7 @@ package com.android.wallpaper.picker.customization.ui.section
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.WallpaperManager
 import android.content.Context
 import android.os.Bundle
 import android.view.Gravity
@@ -59,12 +60,11 @@ open class ScreenPreviewSectionController(
     private val displayUtils: DisplayUtils,
     private val wallpaperPreviewNavigator: WallpaperPreviewNavigator,
     private val wallpaperInteractor: WallpaperInteractor,
+    private val wallpaperManager: WallpaperManager,
     private val isTwoPaneAndSmallWidth: Boolean,
 ) : CustomizationSectionController<ScreenPreviewView> {
 
     private val isOnLockScreen: Boolean = screen == CustomizationSections.Screen.LOCK_SCREEN
-
-    protected lateinit var previewViewBinding: ScreenPreviewBinder.Binding
 
     /** Override to hide the lock screen clock preview. */
     open val hideLockScreenClockPreview = false
@@ -118,76 +118,80 @@ open class ScreenPreviewSectionController(
             .setOnClickListener(onClickListener)
         val previewView: CardView = view.requireViewById(R.id.preview)
 
-        previewViewBinding =
-            ScreenPreviewBinder.bind(
-                activity = activity,
-                previewView = previewView,
-                viewModel =
-                    ScreenPreviewViewModel(
-                        previewUtils =
-                            if (isOnLockScreen) {
-                                PreviewUtils(
-                                    context = context,
-                                    authority =
-                                        context.getString(
-                                            R.string.lock_screen_preview_provider_authority,
-                                        ),
-                                )
-                            } else {
-                                PreviewUtils(
-                                    context = context,
-                                    authorityMetadataKey =
-                                        context.getString(
-                                            R.string.grid_control_metadata_name,
-                                        ),
-                                )
-                            },
-                        wallpaperInfoProvider = {
-                            suspendCancellableCoroutine { continuation ->
-                                wallpaperInfoFactory.createCurrentWallpaperInfos(
-                                    { homeWallpaper, lockWallpaper, _ ->
-                                        val wallpaper =
-                                            if (isOnLockScreen) {
-                                                lockWallpaper ?: homeWallpaper
-                                            } else {
-                                                homeWallpaper ?: lockWallpaper
-                                            }
-                                        loadInitialColors(
-                                            context = context,
-                                            wallpaper = wallpaper,
-                                            screen = screen,
-                                        )
-                                        continuation.resume(wallpaper, null)
-                                    },
-                                    /* forceRefresh= */ true,
-                                )
-                            }
+        ScreenPreviewBinder.bind(
+            activity = activity,
+            previewView = previewView,
+            viewModel =
+                ScreenPreviewViewModel(
+                    previewUtils =
+                        if (isOnLockScreen) {
+                            PreviewUtils(
+                                context = context,
+                                authority =
+                                    context.getString(
+                                        R.string.lock_screen_preview_provider_authority,
+                                    ),
+                            )
+                        } else {
+                            PreviewUtils(
+                                context = context,
+                                authorityMetadataKey =
+                                    context.getString(
+                                        R.string.grid_control_metadata_name,
+                                    ),
+                            )
                         },
-                        onWallpaperColorChanged = { colors ->
-                            if (isOnLockScreen) {
-                                colorViewModel.setLockWallpaperColors(colors)
-                            } else {
-                                colorViewModel.setHomeWallpaperColors(colors)
-                            }
-                        },
-                        initialExtrasProvider = { getInitialExtras(isOnLockScreen) },
-                        wallpaperInteractor = wallpaperInteractor,
-                        screen = screen,
-                    ),
-                lifecycleOwner = lifecycleOwner,
-                offsetToStart = displayUtils.isSingleDisplayOrUnfoldedHorizontalHinge(activity),
-                onPreviewDirty = { activity.recreate() },
-            )
+                    wallpaperInfoProvider = { forceReload ->
+                        suspendCancellableCoroutine { continuation ->
+                            wallpaperInfoFactory.createCurrentWallpaperInfos(
+                                { homeWallpaper, lockWallpaper, _ ->
+                                    val wallpaper =
+                                        if (isOnLockScreen) {
+                                            lockWallpaper ?: homeWallpaper
+                                        } else {
+                                            homeWallpaper ?: lockWallpaper
+                                        }
+                                    loadInitialColors(
+                                        context = context,
+                                        screen = screen,
+                                    )
+                                    continuation.resume(wallpaper, null)
+                                },
+                                forceReload,
+                            )
+                        }
+                    },
+                    onWallpaperColorChanged = { colors ->
+                        if (isOnLockScreen) {
+                            colorViewModel.setLockWallpaperColors(colors)
+                        } else {
+                            colorViewModel.setHomeWallpaperColors(colors)
+                        }
+                    },
+                    initialExtrasProvider = { getInitialExtras(isOnLockScreen) },
+                    wallpaperInteractor = wallpaperInteractor,
+                    screen = screen,
+                ),
+            lifecycleOwner = lifecycleOwner,
+            offsetToStart = displayUtils.isSingleDisplayOrUnfoldedHorizontalHinge(activity),
+            onPreviewDirty = { activity.recreate() },
+        )
         return view
     }
 
     private fun loadInitialColors(
         context: Context,
-        wallpaper: WallpaperInfo?,
         screen: CustomizationSections.Screen,
     ) {
         lifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val colors = wallpaper?.computeColorInfo(context)?.get()?.wallpaperColors
+            val colors =
+                wallpaperManager.getWallpaperColors(
+                    if (screen == CustomizationSections.Screen.LOCK_SCREEN) {
+                        WallpaperManager.FLAG_LOCK
+                    } else {
+                        WallpaperManager.FLAG_SYSTEM
+                    }
+                )
             withContext(Dispatchers.Main) {
                 if (colors != null) {
                     if (screen == CustomizationSections.Screen.LOCK_SCREEN) {

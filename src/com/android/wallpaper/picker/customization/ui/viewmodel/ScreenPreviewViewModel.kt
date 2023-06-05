@@ -19,6 +19,7 @@ package com.android.wallpaper.picker.customization.ui.viewmodel
 
 import android.app.WallpaperColors
 import android.os.Bundle
+import com.android.wallpaper.R
 import com.android.wallpaper.model.WallpaperInfo
 import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
@@ -30,11 +31,20 @@ import kotlinx.coroutines.flow.Flow
 class ScreenPreviewViewModel(
     val previewUtils: PreviewUtils,
     private val initialExtrasProvider: () -> Bundle? = { null },
-    private val wallpaperInfoProvider: suspend () -> WallpaperInfo?,
+    private val wallpaperInfoProvider: suspend (forceReload: Boolean) -> WallpaperInfo?,
     private val onWallpaperColorChanged: (WallpaperColors?) -> Unit = {},
     private val wallpaperInteractor: WallpaperInteractor,
-    private val screen: CustomizationSections.Screen,
+    val screen: CustomizationSections.Screen,
 ) {
+
+    val previewContentDescription: Int =
+        when (screen) {
+            CustomizationSections.Screen.HOME_SCREEN ->
+                R.string.home_wallpaper_preview_card_content_description
+            CustomizationSections.Screen.LOCK_SCREEN ->
+                R.string.lock_wallpaper_preview_card_content_description
+        }
+
     /** Returns whether wallpaper picker should handle reload */
     fun shouldHandleReload(): Boolean {
         return wallpaperInteractor.shouldHandleReload()
@@ -49,8 +59,14 @@ class ScreenPreviewViewModel(
         return initialExtrasProvider.invoke()
     }
 
-    suspend fun getWallpaperInfo(): WallpaperInfo? {
-        return wallpaperInfoProvider.invoke()
+    /**
+     * Returns the current wallpaper's WallpaperInfo
+     *
+     * @param forceReload if true, any cached values will be ignored and current wallpaper info will
+     *   be reloaded
+     */
+    suspend fun getWallpaperInfo(forceReload: Boolean = false): WallpaperInfo? {
+        return wallpaperInfoProvider.invoke(forceReload)
     }
 
     fun onWallpaperColorsChanged(colors: WallpaperColors?) {

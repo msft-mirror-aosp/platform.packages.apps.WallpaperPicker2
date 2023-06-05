@@ -16,6 +16,7 @@
 package com.android.wallpaper.picker;
 
 import android.app.Activity;
+import android.app.WallpaperManager;
 import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
@@ -110,7 +111,7 @@ public class CustomizationPickerFragment extends AppbarFragment implements
                     CustomizationPickerViewModel.newFactory(
                             this,
                             savedInstanceState,
-                            injector.getUndoInteractor(requireContext()),
+                            injector.getUndoInteractor(requireContext(), requireActivity()),
                             injector.getWallpaperInteractor(requireContext()))
             ).get(CustomizationPickerViewModel.class);
             final Bundle arguments = getArguments();
@@ -278,6 +279,18 @@ public class CustomizationPickerFragment extends AppbarFragment implements
         }
     }
 
+    @Override
+    public void standaloneNavigateTo(String destinationId) {
+        final Fragment fragment = mFragmentFactory.create(destinationId);
+
+        FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
+        fragmentManager
+                .beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .commit();
+        fragmentManager.executePendingTransactions();
+    }
+
     /** Saves state of the fragment. */
     private void onSaveInstanceStateInternal(Bundle savedInstanceState) {
         if (mHomeScrollContainer != null) {
@@ -330,6 +343,7 @@ public class CustomizationPickerFragment extends AppbarFragment implements
                     injector.getDisplayUtils(activity),
                     mViewModel,
                     injector.getWallpaperInteractor(requireContext()),
+                    WallpaperManager.getInstance(requireContext()),
                     isTwoPaneAndSmallWidth);
         }
     }
