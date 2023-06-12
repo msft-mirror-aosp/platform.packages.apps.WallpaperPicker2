@@ -15,6 +15,7 @@
  */
 package com.android.wallpaper.module
 
+import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -290,7 +291,7 @@ open class WallpaperPicker2Injector : Injector {
             ?: UndoInteractor(
                     getApplicationCoroutineScope(),
                     UndoRepository(),
-                    getSnapshotRestorers(context, lifecycleOwner),
+                    getSnapshotRestorers(context),
                 )
                 .also { undoInteractor = it }
     }
@@ -301,7 +302,12 @@ open class WallpaperPicker2Injector : Injector {
                     repository =
                         WallpaperRepository(
                             scope = getApplicationCoroutineScope(),
-                            client = WallpaperClientImpl(context = context),
+                            client =
+                                WallpaperClientImpl(
+                                    context = context.applicationContext,
+                                    infoFactory = getCurrentWallpaperInfoFactory(context),
+                                    wallpaperManager = WallpaperManager.getInstance(context)
+                                ),
                             wallpaperPreferences = getPreferences(context = context),
                             backgroundDispatcher = Dispatchers.IO,
                         ),
@@ -321,7 +327,7 @@ open class WallpaperPicker2Injector : Injector {
     protected fun getSecureSettingsRepository(context: Context): SecureSettingsRepository {
         return secureSettingsRepository
             ?: SecureSettingsRepositoryImpl(
-                    contentResolver = context.contentResolver,
+                    contentResolver = context.applicationContext.contentResolver,
                     backgroundDispatcher = Dispatchers.IO,
                 )
                 .also { secureSettingsRepository = it }
