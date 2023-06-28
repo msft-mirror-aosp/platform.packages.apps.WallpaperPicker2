@@ -35,7 +35,7 @@
     <string name="set_wallpaper_dialog_message" msgid="2110475703996853076">"为以下屏幕设置壁纸："</string>
     <string name="set_wallpaper_home_screen_destination" msgid="7315594722013109354">"主屏幕"</string>
     <string name="set_wallpaper_lock_screen_destination" msgid="6224685559375417945">"锁定屏幕"</string>
-    <string name="set_wallpaper_both_destination" msgid="2536004558738350775">"主屏幕和锁定的屏幕"</string>
+    <string name="set_wallpaper_both_destination" msgid="2536004558738350775">"主屏幕和锁屏"</string>
     <string name="no_backup_image_wallpaper_label" msgid="6316627676107284851">"轮换展示图片壁纸"</string>
     <string name="permission_needed_explanation" msgid="139166837541426823">"要在这里显示当前壁纸，<xliff:g id="APP_NAME">%1$s</xliff:g>需要访问您设备的存储空间。"</string>
     <string name="permission_needed_explanation_go_to_settings" msgid="3923551582092599609">"要在这里显示当前壁纸，壁纸应用需要访问您设备的存储空间。\n\n要更改此设置，请转到壁纸应用的应用信息的“权限”部分。"</string>
@@ -81,11 +81,12 @@
     <string name="tab_info" msgid="818614080690111416">"信息"</string>
     <string name="tab_customize" msgid="2533745409174959960">"自定义"</string>
     <string name="tab_effects" msgid="3213606157589233901">"效果"</string>
+    <string name="tab_share" msgid="6676269624804601227">"分享"</string>
     <string name="my_photos" msgid="8613021349284084982">"我的照片"</string>
     <string name="configure_wallpaper" msgid="849882179182976621">"设置…"</string>
     <string name="delete_live_wallpaper" msgid="589212696102662329">"删除"</string>
-    <!-- no translation found for delete_wallpaper_confirmation (33790318361863778) -->
-    <skip />
+    <string name="edit_live_wallpaper" msgid="3132060073690558045">"修改"</string>
+    <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"要从您的设备中删除此壁纸吗？"</string>
     <string name="bottom_action_bar_back" msgid="8237013112999946725">"返回"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"修改"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"下载"</string>
@@ -115,8 +116,7 @@
     <string name="lock_screen_tab" msgid="6672930765010407652">"锁定屏幕"</string>
     <string name="home_screen_tab" msgid="1080445697837877526">"主屏幕"</string>
     <string name="reset" msgid="4945445169532850631">"重置"</string>
-    <!-- no translation found for reset_confirmation_dialog_title (3006691785800178536) -->
-    <skip />
-    <!-- no translation found for reset_confirmation_dialog_message (4304013650135221616) -->
-    <skip />
+    <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"要重置更改吗？"</string>
+    <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"您所做的更改将不会保存"</string>
+    <string name="more_wallpapers" msgid="7585665124282737376">"更多壁纸"</string>
 </resources>

@@ -35,7 +35,7 @@
     <string name="set_wallpaper_dialog_message" msgid="2110475703996853076">"வால்பேப்பரை அமையுங்கள்"</string>
     <string name="set_wallpaper_home_screen_destination" msgid="7315594722013109354">"முகப்புத் திரை"</string>
     <string name="set_wallpaper_lock_screen_destination" msgid="6224685559375417945">"பூட்டுத் திரை"</string>
-    <string name="set_wallpaper_both_destination" msgid="2536004558738350775">"முகப்புத் திரைகளும் பூட்டுத் திரைகளும்"</string>
+    <string name="set_wallpaper_both_destination" msgid="2536004558738350775">"முகப்பு &amp; பூட்டுத் திரை"</string>
     <string name="no_backup_image_wallpaper_label" msgid="6316627676107284851">"சுழலும் பட வால்பேப்பர்"</string>
     <string name="permission_needed_explanation" msgid="139166837541426823">"இந்த வால்பேப்பரை இங்கே காட்ட, <xliff:g id="APP_NAME">%1$s</xliff:g> பயன்பாட்டிற்கு உங்கள் சாதனத்தின் சேமிப்பகத்திற்கான அணுகல் தேவை."</string>
     <string name="permission_needed_explanation_go_to_settings" msgid="3923551582092599609">"இந்த வால்பேப்பரை இங்கே காட்ட, வால்பேப்பர்களுக்கு உங்கள் சாதனத்தின் சேமிப்பகத்திற்கான அணுகல் தேவை.\n\nஇந்த அமைப்பை மாற்ற, வால்பேப்பர்களின் ஆப்ஸ் தகவல் பக்கத்தில் உள்ள அனுமதிகள் பகுதிக்குச் செல்லவும்."</string>
@@ -81,11 +81,12 @@
     <string name="tab_info" msgid="818614080690111416">"தகவல்"</string>
     <string name="tab_customize" msgid="2533745409174959960">"பிரத்தியேகமாக்கு"</string>
     <string name="tab_effects" msgid="3213606157589233901">"எஃபெக்ட்டுகள்"</string>
+    <string name="tab_share" msgid="6676269624804601227">"பகிர்"</string>
     <string name="my_photos" msgid="8613021349284084982">"எனது புகைப்படங்கள்"</string>
     <string name="configure_wallpaper" msgid="849882179182976621">"அமைப்புகள்…"</string>
     <string name="delete_live_wallpaper" msgid="589212696102662329">"நீக்கு"</string>
-    <!-- no translation found for delete_wallpaper_confirmation (33790318361863778) -->
-    <skip />
+    <string name="edit_live_wallpaper" msgid="3132060073690558045">"மாற்று"</string>
+    <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"உங்கள் சாதனத்திலிருந்து இந்த வால்பேப்பரை நீக்கவா?"</string>
     <string name="bottom_action_bar_back" msgid="8237013112999946725">"பின்செல்வதற்கான பட்டன்"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"திருத்துவதற்கான பட்டன்"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"பதிவிறக்குவதற்கான பட்டன்"</string>
@@ -115,8 +116,7 @@
     <string name="lock_screen_tab" msgid="6672930765010407652">"பூட்டுத் திரை"</string>
     <string name="home_screen_tab" msgid="1080445697837877526">"முகப்புத் திரை"</string>
     <string name="reset" msgid="4945445169532850631">"மீட்டமை"</string>
-    <!-- no translation found for reset_confirmation_dialog_title (3006691785800178536) -->
-    <skip />
-    <!-- no translation found for reset_confirmation_dialog_message (4304013650135221616) -->
-    <skip />
+    <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"மாற்றங்களை மீட்டமைக்கவா?"</string>
+    <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"உங்கள் மாற்றங்கள் சேமிக்கப்படாது"</string>
+    <string name="more_wallpapers" msgid="7585665124282737376">"கூடுதல் வால்பேப்பர்கள்"</string>
 </resources>

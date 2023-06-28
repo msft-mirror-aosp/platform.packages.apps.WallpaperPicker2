@@ -32,10 +32,10 @@
     <string name="home_screen_message" msgid="106444102822522813">"Skrini ya kwanza"</string>
     <string name="lock_screen_message" msgid="1534506081955058013">"Skrini iliyofungwa"</string>
     <string name="home_and_lock_short_label" msgid="2937922943541927983">"Skrini ya Kwanza na Iliyofungwa"</string>
-    <string name="set_wallpaper_dialog_message" msgid="2110475703996853076">"Weka madhari"</string>
+    <string name="set_wallpaper_dialog_message" msgid="2110475703996853076">"Weka mandhari"</string>
     <string name="set_wallpaper_home_screen_destination" msgid="7315594722013109354">"Skrini ya kwanza"</string>
     <string name="set_wallpaper_lock_screen_destination" msgid="6224685559375417945">"Skrini iliyofungwa"</string>
-    <string name="set_wallpaper_both_destination" msgid="2536004558738350775">"Skrini ya kwanza na skrini zilizofungwa"</string>
+    <string name="set_wallpaper_both_destination" msgid="2536004558738350775">"Skrini ya kwanza na skrini iliyofungwa"</string>
     <string name="no_backup_image_wallpaper_label" msgid="6316627676107284851">"Mandhari ya Picha Yanayozunguka"</string>
     <string name="permission_needed_explanation" msgid="139166837541426823">"Ili kuonyesha mandhari yanayotumika kwa sasa hapa, <xliff:g id="APP_NAME">%1$s</xliff:g> inahitaji idhini ya kufikia hifadhi ya kifaa chako."</string>
     <string name="permission_needed_explanation_go_to_settings" msgid="3923551582092599609">"Ili kuonyesha hapa mandhari yaliyopo sasa, programu ya Mandhari inahitaji ruhusa ya kufikia hifadhi ya kifaa chako.\n\nIli kubadilisha mipangilio hii, nenda kwenye sehemu ya Ruhusa katika maelezo ya programu ya Mandhari."</string>
@@ -81,11 +81,12 @@
     <string name="tab_info" msgid="818614080690111416">"Maelezo"</string>
     <string name="tab_customize" msgid="2533745409174959960">"Weka mapendeleo"</string>
     <string name="tab_effects" msgid="3213606157589233901">"Madoido"</string>
+    <string name="tab_share" msgid="6676269624804601227">"Shiriki"</string>
     <string name="my_photos" msgid="8613021349284084982">"Picha Zangu"</string>
     <string name="configure_wallpaper" msgid="849882179182976621">"Mipangilio…"</string>
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Futa"</string>
-    <!-- no translation found for delete_wallpaper_confirmation (33790318361863778) -->
-    <skip />
+    <string name="edit_live_wallpaper" msgid="3132060073690558045">"Badilisha"</string>
+    <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Ungependa kufuta mandhari haya kwenye kifaa chako?"</string>
     <string name="bottom_action_bar_back" msgid="8237013112999946725">"Nyuma"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Badilisha"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Pakua"</string>
@@ -115,8 +116,7 @@
     <string name="lock_screen_tab" msgid="6672930765010407652">"Skrini iliyofungwa"</string>
     <string name="home_screen_tab" msgid="1080445697837877526">"Skrini ya kwanza"</string>
     <string name="reset" msgid="4945445169532850631">"Weka upya"</string>
-    <!-- no translation found for reset_confirmation_dialog_title (3006691785800178536) -->
-    <skip />
-    <!-- no translation found for reset_confirmation_dialog_message (4304013650135221616) -->
-    <skip />
+    <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Ungependa kuweka mabadiliko upya?"</string>
+    <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Mabadiliko yako hayatahifadhiwa"</string>
+    <string name="more_wallpapers" msgid="7585665124282737376">"Mandhari Zaidi"</string>
 </resources>
