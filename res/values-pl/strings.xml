@@ -35,7 +35,7 @@
     <string name="set_wallpaper_dialog_message" msgid="2110475703996853076">"Ustaw tapetę"</string>
     <string name="set_wallpaper_home_screen_destination" msgid="7315594722013109354">"Ekran główny"</string>
     <string name="set_wallpaper_lock_screen_destination" msgid="6224685559375417945">"Ekran blokady"</string>
-    <string name="set_wallpaper_both_destination" msgid="233216830256235288">"Ekran główny i ekran blokady"</string>
+    <string name="set_wallpaper_both_destination" msgid="2536004558738350775">"Ekran główny i ekran blokady"</string>
     <string name="no_backup_image_wallpaper_label" msgid="6316627676107284851">"Tapeta z obracanym obrazem"</string>
     <string name="permission_needed_explanation" msgid="139166837541426823">"Aby wyświetlić tutaj bieżącą tapetę, <xliff:g id="APP_NAME">%1$s</xliff:g> musi mieć dostęp do pamięci urządzenia."</string>
     <string name="permission_needed_explanation_go_to_settings" msgid="3923551582092599609">"Aby wyświetlać tutaj aktualną tapetę, Tapety muszą mieć dostęp do pamięci urządzenia.\n\nTo ustawienie możesz zmienić w sekcji Uprawnienia w informacjach o aplikacji Tapety."</string>
@@ -81,15 +81,10 @@
     <string name="tab_info" msgid="818614080690111416">"Informacje"</string>
     <string name="tab_customize" msgid="2533745409174959960">"Dostosuj"</string>
     <string name="tab_effects" msgid="3213606157589233901">"Efekty"</string>
-    <string name="wallpaper_effects_title" msgid="5110174050421199311">"Efekty tapety"</string>
-    <string name="wallpaper_effects_subtitle" msgid="3361423448179458015">"Wzbogać swoje tapety o piękne efekty stworzone przez systemy uczące się."</string>
-    <string name="cinematic_effects_toogle" msgid="5696400014676763458">"Włącz efekt filmowy"</string>
-    <string name="effect_error_dialog_title" msgid="4071975649967210990">"O nie!"</string>
-    <string name="effect_error_dialog_body" msgid="1975016108816493359">"Nie udało się zastosować efektów filmowych.\nSpróbuj je dodać do innego zdjęcia."</string>
     <string name="my_photos" msgid="8613021349284084982">"Moje zdjęcia"</string>
     <string name="configure_wallpaper" msgid="849882179182976621">"Ustawienia…"</string>
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Usuń"</string>
-    <string name="delete_wallpaper_confirmation" msgid="33790318361863778">"Usunąć tę tapetę z telefonu?"</string>
+    <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Usunąć tę tapetę z urządzenia?"</string>
     <string name="bottom_action_bar_back" msgid="8237013112999946725">"Wstecz"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Edytuj"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Pobierz"</string>
@@ -115,4 +110,11 @@
     <string name="accessibility_info_shown" msgid="6626025722456105632">"Panel informacyjny jest widoczny"</string>
     <string name="settings_snackbar_description" msgid="890168814524778486">"W ustawieniach włącz dostęp do plików i multimediów."</string>
     <string name="settings_snackbar_enable" msgid="5992112808061426068">"Włącz"</string>
+    <string name="open_my_photos" msgid="4107196465713868381">"Otwórz Moje zdjęcia"</string>
+    <string name="lock_screen_tab" msgid="6672930765010407652">"Ekran blokady"</string>
+    <string name="home_screen_tab" msgid="1080445697837877526">"Ekran główny"</string>
+    <string name="reset" msgid="4945445169532850631">"Resetuj"</string>
+    <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Zresetować zmiany?"</string>
+    <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Zmiany nie zostaną zapisane"</string>
+    <string name="more_wallpapers" msgid="7585665124282737376">"Więcej tapet"</string>
 </resources>
