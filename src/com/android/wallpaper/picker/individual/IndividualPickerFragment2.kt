@@ -222,6 +222,10 @@ class IndividualPickerFragment2 :
         category?.fetchWallpapers(
             context.applicationContext,
             { fetchedWallpapers ->
+                if (getContext() == null) {
+                    Log.w(TAG, "Null context!!")
+                    return@fetchWallpapers
+                }
                 isWallpapersReceived = true
                 updateLoading()
                 val supportsUserCreated = category?.supportsUserCreatedWallpapers() == true
@@ -495,13 +499,15 @@ class IndividualPickerFragment2 :
         gridLayoutManager.spanSizeLookup =
             object : GridLayoutManager.SpanSizeLookup() {
                 override fun getSpanSize(position: Int): Int {
-                    return when (items[position]) {
-                        is PickerItem.CreativeCollection,
-                        is PickerItem.FirstHeaderItem,
-                        is PickerItem.HeaderItem -> {
-                            gridLayoutManager.spanCount
+                    return if (position >= 0 && position < items.size) {
+                        when (items[position]) {
+                            is PickerItem.CreativeCollection,
+                            is PickerItem.FirstHeaderItem,
+                            is PickerItem.HeaderItem -> gridLayoutManager.spanCount
+                            else -> 1
                         }
-                        else -> 1
+                    } else {
+                        1
                     }
                 }
             }

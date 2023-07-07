@@ -1,5 +1,6 @@
 package com.android.wallpaper.module;
 
+import android.app.WallpaperManager;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
@@ -47,7 +48,9 @@ public interface CustomizationSections {
             CurrentWallpaperInfoFactory wallpaperInfoFactory,
             DisplayUtils displayUtils,
             CustomizationPickerViewModel customizationPickerViewModel,
-            WallpaperInteractor wallpaperInteractor);
+            WallpaperInteractor wallpaperInteractor,
+            WallpaperManager wallpaperManager,
+            boolean isTwoPaneAndSmallWidth);
 
     /**
      * Gets a new instance of the section controller list.

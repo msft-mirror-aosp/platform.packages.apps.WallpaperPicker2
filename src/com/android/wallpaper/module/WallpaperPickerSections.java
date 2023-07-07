@@ -1,5 +1,6 @@
 package com.android.wallpaper.module;
 
+import android.app.WallpaperManager;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
@@ -37,7 +38,9 @@ public final class WallpaperPickerSections implements CustomizationSections {
             CurrentWallpaperInfoFactory wallpaperInfoFactory,
             DisplayUtils displayUtils,
             CustomizationPickerViewModel customizationPickerViewModel,
-            WallpaperInteractor wallpaperInteractor) {
+            WallpaperInteractor wallpaperInteractor,
+            WallpaperManager wallpaperManager,
+            boolean isTwoPaneAndSmallWidth) {
         List<CustomizationSectionController<?>> sectionControllers = new ArrayList<>();
 
         sectionControllers.add(
@@ -49,13 +52,15 @@ public final class WallpaperPickerSections implements CustomizationSections {
                         wallpaperColorsViewModel,
                         displayUtils,
                         wallpaperPreviewNavigator,
-                        wallpaperInteractor));
+                        wallpaperInteractor,
+                        wallpaperManager,
+                        isTwoPaneAndSmallWidth));
         sectionControllers.add(
                 new WallpaperQuickSwitchSectionController(
-                        screen,
                         customizationPickerViewModel.getWallpaperQuickSwitchViewModel(screen),
                         lifecycleOwner,
-                        sectionNavigationController));
+                        sectionNavigationController,
+                        savedInstanceState == null));
 
         return sectionControllers;
     }

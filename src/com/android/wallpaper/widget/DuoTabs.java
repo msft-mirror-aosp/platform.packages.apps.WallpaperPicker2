@@ -57,8 +57,19 @@ public final class DuoTabs extends FrameLayout {
 
     private OnTabSelectedListener mOnTabSelectedListener;
     private final TextView mPrimaryTab;
+    private final FrameLayout mPrimaryTabContainer;
     private final TextView mSecondaryTab;
+    private final FrameLayout mSecondaryTabContainer;
+
     @Tab private int mCurrentOverlayTab;
+
+    private final int mSelectedTabDrawable;
+
+    private final int mNonSelectedTabDrawable;
+
+    private final int mSelectedTabTextColor;
+
+    private final int mNonSelectedTabTextColor;
 
     /**
      * Constructor
@@ -67,6 +78,16 @@ public final class DuoTabs extends FrameLayout {
         super(context, attrs);
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.DuoTabs, 0, 0);
         boolean shouldUseShortTabs = a.getBoolean(R.styleable.DuoTabs_should_use_short_tabs, false);
+
+        mSelectedTabDrawable = a.getResourceId(R.styleable.DuoTabs_selected_tab_drawable,
+                R.drawable.duo_tabs_preview_button_indicator_background);
+        mNonSelectedTabDrawable = a.getResourceId(R.styleable.DuoTabs_non_selected_tab_drawable,
+                R.drawable.duo_tabs_preview_button_background);
+        mSelectedTabTextColor = a.getColor(R.styleable.DuoTabs_selected_tab_text_color,
+                getResources().getColor(R.color.text_color_on_accent));
+        mNonSelectedTabTextColor = a.getColor(R.styleable.DuoTabs_non_selected_tab_text_color,
+                SystemColors.getColor(getContext(), android.R.attr.textColorPrimary));
+
         a.recycle();
         LayoutInflater.from(context).inflate(
                 shouldUseShortTabs ? R.layout.duo_tabs_short : R.layout.duo_tabs,
@@ -75,11 +96,17 @@ public final class DuoTabs extends FrameLayout {
 
         mPrimaryTab = findViewById(R.id.tab_primary);
         mSecondaryTab = findViewById(R.id.tab_secondary);
-        mPrimaryTab.setOnClickListener(v -> selectTab(TAB_PRIMARY));
-        mSecondaryTab.setOnClickListener(v -> selectTab(TAB_SECONDARY));
+        mPrimaryTabContainer = findViewById(R.id.tab_primary_container);
+        mSecondaryTabContainer = findViewById(R.id.tab_secondary_container);
+
+        if (mPrimaryTabContainer != null && mSecondaryTabContainer != null) {
+            mPrimaryTabContainer.setOnClickListener(v -> selectTab(TAB_PRIMARY));
+            mSecondaryTabContainer.setOnClickListener(v -> selectTab(TAB_SECONDARY));
+        } else {
+            mPrimaryTab.setOnClickListener(v -> selectTab(TAB_PRIMARY));
+            mSecondaryTab.setOnClickListener(v -> selectTab(TAB_SECONDARY));
+        }
     }
-
-
 
     /**
      * Set tab text
@@ -118,23 +145,34 @@ public final class DuoTabs extends FrameLayout {
     }
 
     private void updateTabIndicator(@Tab int tab) {
-        Context c = getContext();
         mPrimaryTab.setBackgroundResource(
                 tab == TAB_PRIMARY
-                        ? R.drawable.duo_tabs_button_indicator_background
-                        : R.drawable.duo_tabs_button_background);
+                        ? mSelectedTabDrawable
+                        : mNonSelectedTabDrawable);
         mPrimaryTab.setTextColor(
                 tab == TAB_PRIMARY
-                        ? getResources().getColor(R.color.text_color_on_accent)
-                        : SystemColors.getColor(c, android.R.attr.textColorPrimary));
+                        ? mSelectedTabTextColor
+                        : mNonSelectedTabTextColor);
+        // Set selected for talkback
+        if (mPrimaryTabContainer != null) {
+            mPrimaryTabContainer.setSelected(tab == TAB_PRIMARY);
+        } else {
+            mPrimaryTab.setSelected(tab == TAB_PRIMARY);
+        }
         mSecondaryTab.setBackgroundResource(
                 tab == TAB_SECONDARY
-                        ? R.drawable.duo_tabs_button_indicator_background
-                        : R.drawable.duo_tabs_button_background);
+                        ? mSelectedTabDrawable
+                        : mNonSelectedTabDrawable);
         mSecondaryTab.setTextColor(
                 tab == TAB_SECONDARY
-                        ? getResources().getColor(R.color.text_color_on_accent)
-                        : SystemColors.getColor(c, android.R.attr.textColorPrimary));
+                        ? mSelectedTabTextColor
+                        : mNonSelectedTabTextColor);
+        // Set selected for talkback
+        if (mSecondaryTabContainer != null) {
+            mSecondaryTabContainer.setSelected(tab == TAB_SECONDARY);
+        } else {
+            mSecondaryTab.setSelected(tab == TAB_SECONDARY);
+        }
     }
 
     public @Tab int getSelectedTab() {
