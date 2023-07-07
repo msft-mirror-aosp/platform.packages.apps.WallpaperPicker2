@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"Тушкагаз категориялары"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"Тушкагаз коюу"</string>
+    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"Тушкагаз орнотуу"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"Тушкагаз орнотулууда…"</string>
     <string name="try_again" msgid="8278874823700921234">"Кайталоо"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"Тушкагаз орнотулбай жатат."</string>
@@ -29,10 +29,6 @@
     <string name="static_wallpaper_presentation_mode_message" msgid="417940227049360906">"Учурда тушкагаз катары орнотулган"</string>
     <string name="rotating_wallpaper_presentation_mode_message" msgid="3361676041605733288">"Күнүмдүк тушкагаз"</string>
     <string name="wallpaper_destination_both" msgid="1124197176741944063">"Башкы жана кулпуланган экран"</string>
-    <!-- no translation found for choose_a_wallpaper_section_title (1009823506890453891) -->
-    <skip />
-    <!-- no translation found for creative_wallpaper_title (8459226435723103934) -->
-    <skip />
     <string name="home_screen_message" msgid="106444102822522813">"Башкы экран"</string>
     <string name="lock_screen_message" msgid="1534506081955058013">"Кулпуланган экран"</string>
     <string name="home_and_lock_short_label" msgid="2937922943541927983">"Башкы жана кулпуланган экран"</string>
@@ -47,7 +43,7 @@
     <string name="no_backup_image_wallpaper_description" msgid="8303268619408738057">"Жандуу тушкагаз кызматы тушкагаздарды алмаштырат"</string>
     <string name="daily_refresh_tile_title" msgid="3270456074558525091">"Күнүмдүк тушкагаз"</string>
     <string name="daily_refresh_tile_subtitle" msgid="3976682014885446443">"Күйгүзүү үчүн таптап коюңуз"</string>
-    <string name="start_rotation_dialog_body_live_wallpaper_needed" msgid="5132580257563846082">"Тушкагаз күн сайын автоматтык түрдө алмашып турат. Жөндөөнү аягына чыгаруу үчүн кийинки экрандан &lt;strong&gt;Тушкагаз коюу&lt;/strong&gt; баскычын таптап коюңуз."</string>
+    <string name="start_rotation_dialog_body_live_wallpaper_needed" msgid="5132580257563846082">"Тушкагаз күн сайын автоматтык түрдө алмашып турат. Жөндөөнү аягына чыгаруу үчүн кийинки экрандан &lt;strong&gt;Тушкагаз орнотуу&lt;/strong&gt; баскычын таптап коюңуз."</string>
     <string name="start_rotation_dialog_wifi_only_option_message" msgid="3126269859713666225">"Келечекте тушкагаздар Wi-Fi аркылуу гана жүктөлүп алынсын"</string>
     <string name="start_rotation_dialog_continue" msgid="276678987852274872">"Улантуу"</string>
     <string name="start_rotation_progress_message" msgid="7872623873682262083">"Биринчи тушкагаз жүктөлүп алынууда…"</string>
@@ -85,11 +81,9 @@
     <string name="tab_info" msgid="818614080690111416">"Маалымат"</string>
     <string name="tab_customize" msgid="2533745409174959960">"Ыңгайлаштыруу"</string>
     <string name="tab_effects" msgid="3213606157589233901">"Кубулуштар"</string>
-    <string name="tab_share" msgid="6676269624804601227">"Бөлүшүү"</string>
     <string name="my_photos" msgid="8613021349284084982">"Сүрөттөрүм"</string>
     <string name="configure_wallpaper" msgid="849882179182976621">"Параметрлер…"</string>
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Жок кылуу"</string>
-    <string name="edit_live_wallpaper" msgid="3132060073690558045">"Түзөтүү"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Бул тушкагаз түзмөгүңүздөн өчүрүлсүнбү?"</string>
     <string name="bottom_action_bar_back" msgid="8237013112999946725">"Артка"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Түзөтүү"</string>
@@ -122,5 +116,6 @@
     <string name="reset" msgid="4945445169532850631">"Баштапкы абалга келтирүү"</string>
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Өзгөртүүлөр жоюлсунбу?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Өзгөртүүлөрүңүз сакталбайт"</string>
-    <string name="more_wallpapers" msgid="8116268433411881705">"Дагы башка тушкагаздар"</string>
+    <!-- no translation found for more_wallpapers (7585665124282737376) -->
+    <skip />
 </resources>

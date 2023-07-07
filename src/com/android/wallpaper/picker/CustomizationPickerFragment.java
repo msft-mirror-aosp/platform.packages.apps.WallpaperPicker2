@@ -15,6 +15,8 @@
  */
 package com.android.wallpaper.picker;
 
+import android.app.Activity;
+import android.app.WallpaperManager;
 import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
@@ -22,6 +24,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.activity.ComponentActivity;
 import androidx.annotation.Nullable;
 import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
@@ -38,9 +41,11 @@ import com.android.wallpaper.module.CustomizationSections;
 import com.android.wallpaper.module.FragmentFactory;
 import com.android.wallpaper.module.Injector;
 import com.android.wallpaper.module.InjectorProvider;
+import com.android.wallpaper.module.LargeScreenMultiPanesChecker;
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationPickerBinder;
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel;
 import com.android.wallpaper.util.ActivityUtils;
+import com.android.wallpaper.util.DisplayUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -107,7 +112,7 @@ public class CustomizationPickerFragment extends AppbarFragment implements
                     CustomizationPickerViewModel.newFactory(
                             this,
                             savedInstanceState,
-                            injector.getUndoInteractor(requireContext()),
+                            injector.getUndoInteractor(requireContext(), requireActivity()),
                             injector.getWallpaperInteractor(requireContext()))
             ).get(CustomizationPickerViewModel.class);
             final Bundle arguments = getArguments();
@@ -126,10 +131,10 @@ public class CustomizationPickerFragment extends AppbarFragment implements
                     this,
                     isOnLockScreen -> filterAvailableSections(
                             getSectionControllers(
-                                isOnLockScreen
-                                        ? CustomizationSections.Screen.LOCK_SCREEN
-                                        : CustomizationSections.Screen.HOME_SCREEN,
-                                finalSavedInstanceState)));
+                                    isOnLockScreen
+                                            ? CustomizationSections.Screen.LOCK_SCREEN
+                                            : CustomizationSections.Screen.HOME_SCREEN,
+                                    finalSavedInstanceState)));
         } else {
             setContentView(view, R.layout.fragment_customization_picker);
         }
@@ -275,6 +280,18 @@ public class CustomizationPickerFragment extends AppbarFragment implements
         }
     }
 
+    @Override
+    public void standaloneNavigateTo(String destinationId) {
+        final Fragment fragment = mFragmentFactory.create(destinationId);
+
+        FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
+        fragmentManager
+                .beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .commit();
+        fragmentManager.executePendingTransactions();
+    }
+
     /** Saves state of the fragment. */
     private void onSaveInstanceStateInternal(Bundle savedInstanceState) {
         if (mHomeScrollContainer != null) {
@@ -291,16 +308,17 @@ public class CustomizationPickerFragment extends AppbarFragment implements
         mSectionControllers.addAll(
                 filterAvailableSections(
                         getSectionControllers(
-                            null,
-                            savedInstanceState)));
+                                null,
+                                savedInstanceState)));
     }
 
     private List<CustomizationSectionController<?>> getSectionControllers(
             @Nullable CustomizationSections.Screen screen,
             @Nullable Bundle savedInstanceState) {
         final Injector injector = InjectorProvider.getInjector();
+        ComponentActivity activity = requireActivity();
 
-        CustomizationSections sections = injector.getCustomizationSections(getActivity());
+        CustomizationSections sections = injector.getCustomizationSections(activity);
         if (screen == null) {
             return sections.getAllSectionControllers(
                     getActivity(),
@@ -310,8 +328,9 @@ public class CustomizationPickerFragment extends AppbarFragment implements
                     getWallpaperPreviewNavigator(),
                     this,
                     savedInstanceState,
-                    injector.getDisplayUtils(getActivity()));
+                    injector.getDisplayUtils(activity));
         } else {
+            boolean isTwoPaneAndSmallWidth = getIsTwoPaneAndSmallWidth(activity);
             return sections.getRevampedUISectionControllersForScreen(
                     screen,
                     getActivity(),
@@ -322,9 +341,11 @@ public class CustomizationPickerFragment extends AppbarFragment implements
                     this,
                     savedInstanceState,
                     injector.getCurrentWallpaperInfoFactory(requireContext()),
-                    injector.getDisplayUtils(getActivity()),
+                    injector.getDisplayUtils(activity),
                     mViewModel,
-                    injector.getWallpaperInteractor(requireContext()));
+                    injector.getWallpaperInteractor(requireContext()),
+                    WallpaperManager.getInstance(requireContext()),
+                    isTwoPaneAndSmallWidth);
         }
     }
 
@@ -361,5 +382,18 @@ public class CustomizationPickerFragment extends AppbarFragment implements
                     "Must contain KEY_IS_USE_REVAMPED_UI argument, did you instantiate directly"
                             + " instead of using the newInstance function?");
         }
+    }
+
+    // TODO (b/282237387): Move wallpaper picker out of the 2-pane settings and make it a
+    //                     standalone app. Remove this flag when the bug is fixed.
+    private boolean getIsTwoPaneAndSmallWidth(Activity activity) {
+        DisplayUtils utils = InjectorProvider.getInjector().getDisplayUtils(requireContext());
+        LargeScreenMultiPanesChecker multiPanesChecker = new LargeScreenMultiPanesChecker();
+        int activityWidth = activity.getDisplay().getWidth();
+        int widthThreshold = getResources()
+                .getDimensionPixelSize(R.dimen.two_pane_small_width_threshold);
+        return utils.isOnWallpaperDisplay(activity)
+                && multiPanesChecker.isMultiPanesEnabled(requireContext())
+                && activityWidth <= widthThreshold;
     }
 }

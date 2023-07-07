@@ -29,8 +29,6 @@
     <string name="static_wallpaper_presentation_mode_message" msgid="417940227049360906">"Obecnie ustawiona"</string>
     <string name="rotating_wallpaper_presentation_mode_message" msgid="3361676041605733288">"Codzienna tapeta"</string>
     <string name="wallpaper_destination_both" msgid="1124197176741944063">"Ekran główny i ekran blokady"</string>
-    <string name="choose_a_wallpaper_section_title" msgid="1009823506890453891">"Wybierz tapetę"</string>
-    <string name="creative_wallpaper_title" msgid="8459226435723103934">"Utwórz tapetę"</string>
     <string name="home_screen_message" msgid="106444102822522813">"Ekran główny"</string>
     <string name="lock_screen_message" msgid="1534506081955058013">"Ekran blokady"</string>
     <string name="home_and_lock_short_label" msgid="2937922943541927983">"Ekran główny i ekran blokady"</string>
@@ -83,11 +81,9 @@
     <string name="tab_info" msgid="818614080690111416">"Informacje"</string>
     <string name="tab_customize" msgid="2533745409174959960">"Dostosuj"</string>
     <string name="tab_effects" msgid="3213606157589233901">"Efekty"</string>
-    <string name="tab_share" msgid="6676269624804601227">"Udostępnij"</string>
     <string name="my_photos" msgid="8613021349284084982">"Moje zdjęcia"</string>
     <string name="configure_wallpaper" msgid="849882179182976621">"Ustawienia…"</string>
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Usuń"</string>
-    <string name="edit_live_wallpaper" msgid="3132060073690558045">"Edytuj"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Usunąć tę tapetę z urządzenia?"</string>
     <string name="bottom_action_bar_back" msgid="8237013112999946725">"Wstecz"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Edytuj"</string>
@@ -120,5 +116,5 @@
     <string name="reset" msgid="4945445169532850631">"Resetuj"</string>
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Zresetować zmiany?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Zmiany nie zostaną zapisane"</string>
-    <string name="more_wallpapers" msgid="8116268433411881705">"Więcej tapet"</string>
+    <string name="more_wallpapers" msgid="7585665124282737376">"Więcej tapet"</string>
 </resources>

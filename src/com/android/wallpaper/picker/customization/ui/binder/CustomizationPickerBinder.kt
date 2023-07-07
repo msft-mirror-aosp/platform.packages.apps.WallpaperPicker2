@@ -112,27 +112,27 @@ object CustomizationPickerBinder {
             topMargin = 0
         }
 
+        // create and add sections to both the lock and home screen tabs ahead of time, since
+        // the lock and home screen preview sections are both needed to load initial wallpaper
+        // colors for the correct functioning of the color picker
+        createAndAddSections(
+            view.context,
+            homeSectionContainer,
+            isOnLockScreen = false,
+            sectionControllerProvider
+        )
+        createAndAddSections(
+            view.context,
+            lockSectionContainer,
+            isOnLockScreen = true,
+            sectionControllerProvider
+        )
+
         val job =
             lifecycleOwner.lifecycleScope.launch {
                 lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                     launch {
                         viewModel.isOnLockScreen.collect { isOnLockScreen ->
-                            if (isOnLockScreen && lockSectionContainer.childCount == 0) {
-                                createAndAddSections(
-                                    view.context,
-                                    lockSectionContainer,
-                                    isOnLockScreen = true,
-                                    sectionControllerProvider
-                                )
-                            } else if (!isOnLockScreen && homeSectionContainer.childCount == 0) {
-                                createAndAddSections(
-                                    view.context,
-                                    homeSectionContainer,
-                                    isOnLockScreen = false,
-                                    sectionControllerProvider
-                                )
-                            }
-
                             // Offset the scroll position of both tabs
                             lockScrollContainer.scrollTo(0, 0)
                             homeScrollContainer.scrollTo(0, 0)
@@ -145,12 +145,18 @@ object CustomizationPickerBinder {
 
                 // This happens when the lifecycle is stopped.
                 lockSectionContainer.children
-                    .mapNotNull { it.tag as? CustomizationSectionController<out SectionView> }
-                    .forEach { controller -> controller.release() }
+                    .map { Pair(it, it.tag as? CustomizationSectionController<out SectionView>) }
+                    .forEach {
+                        it.second?.release()
+                        it.first?.tag = null
+                    }
                 lockSectionContainer.removeAllViews()
                 homeSectionContainer.children
-                    .mapNotNull { it.tag as? CustomizationSectionController<out SectionView> }
-                    .forEach { controller -> controller.release() }
+                    .map { Pair(it, it.tag as? CustomizationSectionController<out SectionView>) }
+                    .forEach {
+                        it.second?.release()
+                        it.first?.tag = null
+                    }
                 homeSectionContainer.removeAllViews()
             }
         return DisposableHandle { job.cancel() }

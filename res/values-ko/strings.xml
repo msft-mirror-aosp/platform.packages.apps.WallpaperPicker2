@@ -29,10 +29,6 @@
     <string name="static_wallpaper_presentation_mode_message" msgid="417940227049360906">"현재 설정"</string>
     <string name="rotating_wallpaper_presentation_mode_message" msgid="3361676041605733288">"일일 배경화면"</string>
     <string name="wallpaper_destination_both" msgid="1124197176741944063">"홈 및 잠금 화면"</string>
-    <!-- no translation found for choose_a_wallpaper_section_title (1009823506890453891) -->
-    <skip />
-    <!-- no translation found for creative_wallpaper_title (8459226435723103934) -->
-    <skip />
     <string name="home_screen_message" msgid="106444102822522813">"홈 화면"</string>
     <string name="lock_screen_message" msgid="1534506081955058013">"잠금 화면"</string>
     <string name="home_and_lock_short_label" msgid="2937922943541927983">"홈 및 잠금"</string>
@@ -85,11 +81,9 @@
     <string name="tab_info" msgid="818614080690111416">"정보"</string>
     <string name="tab_customize" msgid="2533745409174959960">"맞춤설정"</string>
     <string name="tab_effects" msgid="3213606157589233901">"효과"</string>
-    <string name="tab_share" msgid="6676269624804601227">"공유"</string>
     <string name="my_photos" msgid="8613021349284084982">"내 사진"</string>
     <string name="configure_wallpaper" msgid="849882179182976621">"설정…"</string>
     <string name="delete_live_wallpaper" msgid="589212696102662329">"삭제"</string>
-    <string name="edit_live_wallpaper" msgid="3132060073690558045">"수정"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"기기에서 이 배경화면을 삭제하시겠습니까?"</string>
     <string name="bottom_action_bar_back" msgid="8237013112999946725">"뒤로"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"수정"</string>
@@ -122,5 +116,6 @@
     <string name="reset" msgid="4945445169532850631">"초기화"</string>
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"변경사항을 재설정하시겠습니까?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"변경사항이 저장되지 않습니다."</string>
-    <string name="more_wallpapers" msgid="8116268433411881705">"배경화면 더보기"</string>
+    <!-- no translation found for more_wallpapers (7585665124282737376) -->
+    <skip />
 </resources>

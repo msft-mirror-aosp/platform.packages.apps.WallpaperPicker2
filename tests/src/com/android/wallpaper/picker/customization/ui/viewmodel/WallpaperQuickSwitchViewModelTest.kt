@@ -18,11 +18,11 @@
 package com.android.wallpaper.picker.customization.ui.viewmodel
 
 import androidx.test.filters.SmallTest
-import com.android.wallpaper.picker.customization.data.content.FakeWallpaperClient
 import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
+import com.android.wallpaper.testing.FakeWallpaperClient
 import com.android.wallpaper.testing.TestWallpaperPreferences
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
@@ -112,6 +112,30 @@ class WallpaperQuickSwitchViewModelTest {
                         placeholderColor = 1400,
                     ),
                 )
+            client.setRecentWallpapers(buildMap { put(WallpaperDestination.HOME, models) })
+
+            assertOptions(
+                observed = options(),
+                expected =
+                    expectations(
+                        models = models,
+                    ),
+            )
+        }
+
+    @Test
+    fun `recentOptions_lastUpdatedChange_updatesOptions`() =
+        testScope.runTest {
+            val options = collectLastValue(underTest.options)
+
+            val models =
+                FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS.mapIndexed { idx, wp ->
+                    WallpaperModel(
+                        wp.wallpaperId,
+                        wp.placeholderColor,
+                        if (idx == 0) 100 else wp.lastUpdated
+                    )
+                }
             client.setRecentWallpapers(buildMap { put(WallpaperDestination.HOME, models) })
 
             assertOptions(
