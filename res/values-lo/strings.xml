@@ -35,7 +35,7 @@
     <string name="set_wallpaper_dialog_message" msgid="2110475703996853076">"ຕັ້ງຮູບພື້ນຫຼັງ"</string>
     <string name="set_wallpaper_home_screen_destination" msgid="7315594722013109354">"ໜ້າຈໍຫຼັກ"</string>
     <string name="set_wallpaper_lock_screen_destination" msgid="6224685559375417945">"ໜ້າຈໍລັອກ"</string>
-    <string name="set_wallpaper_both_destination" msgid="233216830256235288">"ໂຮມສະກຣີນ ແລະ ໜ້າຈໍລັອກ"</string>
+    <string name="set_wallpaper_both_destination" msgid="2536004558738350775">"ໂຮມສະກຣີນ ແລະ ໜ້າຈໍລັອກ"</string>
     <string name="no_backup_image_wallpaper_label" msgid="6316627676107284851">"ໝຸນຮູບພື້ນຫຼັງ"</string>
     <string name="permission_needed_explanation" msgid="139166837541426823">"ເພື່ອສະແດງພາບພື້ນຫຼັງປັດຈຸບັນຢູ່ບ່ອນນີ້, <xliff:g id="APP_NAME">%1$s</xliff:g> ຕ້ອງການສິດເຂົ້າເຖິງບ່ອນຈັດເກັບຂໍ້ມູນອຸປະກອນຂອງທ່ານ."</string>
     <string name="permission_needed_explanation_go_to_settings" msgid="3923551582092599609">"ເພື່ອສະແດງຮູບພື້ນຫຼັງປັດຈຸບັນຢູ່ບ່ອນນີ້, ແອັບ Wallpapers ຈະຕ້ອງໃຊ້ສິດອະນຸຍາດເຂົ້າເຖິງບ່ອນຈັດເກັບຂໍ້ມູນອຸປະກອນຂອງທ່ານກ່ອນ.\n\nເພື່ອປ່ຽນການຕັ້ງຄ່ານີ້, ໃຫ້ໄປທີ່ພື້ນທີ່ສິດອະນຸຍາດຂອງຂໍ້ມູນແອັບຂອງ Wallpapers."</string>
@@ -81,15 +81,10 @@
     <string name="tab_info" msgid="818614080690111416">"ຂໍ້ມູນ"</string>
     <string name="tab_customize" msgid="2533745409174959960">"ປັບແຕ່ງ"</string>
     <string name="tab_effects" msgid="3213606157589233901">"ເອັບເຟັກ"</string>
-    <string name="wallpaper_effects_title" msgid="5110174050421199311">"ເອັບເຟັກຮູບພື້ນຫຼັງ"</string>
-    <string name="wallpaper_effects_subtitle" msgid="3361423448179458015">"ປັບປຸງຮູບພື້ນຫຼັງຂອງທ່ານດ້ວຍເອັບເຟັກທີ່ເຄື່ອງໄດ້ຮຽນຮູ້ມາ."</string>
-    <string name="cinematic_effects_toogle" msgid="5696400014676763458">"ເປີດການນຳໃຊ້ເອັບເຟັກຊິເນແມຕິກ"</string>
-    <string name="effect_error_dialog_title" msgid="4071975649967210990">"ຂໍອະໄພ!"</string>
-    <string name="effect_error_dialog_body" msgid="1975016108816493359">"ພວກເຮົາບໍ່ສາມາດນຳໃຊ້ເອັບເຟັກຊິເນແມຕິກໄດ້.\nກະລຸນາລອງໃຊ້ກັບຮູບພາບອື່ນ."</string>
     <string name="my_photos" msgid="8613021349284084982">"​ຮູບ​ພາບ​ຂອງ​ຂ້ອຍ"</string>
     <string name="configure_wallpaper" msgid="849882179182976621">"ການຕັ້ງຄ່າ…"</string>
     <string name="delete_live_wallpaper" msgid="589212696102662329">"ລຶບອອກ"</string>
-    <string name="delete_wallpaper_confirmation" msgid="33790318361863778">"ລຶບຮູບພື້ນຫຼັງນີ້ອອກຈາກໂທລະສັບຂອງທ່ານບໍ?"</string>
+    <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"ລຶບຮູບພື້ນຫຼັງນີ້ອອກຈາກອຸປະກອນຂອງທ່ານບໍ?"</string>
     <string name="bottom_action_bar_back" msgid="8237013112999946725">"ກັບຄືນ"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"ແກ້ໄຂ"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"ດາວໂຫຼດ"</string>
@@ -115,4 +110,11 @@
     <string name="accessibility_info_shown" msgid="6626025722456105632">"ສະແດງແຜງຂໍ້ມູນແລ້ວ"</string>
     <string name="settings_snackbar_description" msgid="890168814524778486">"ກະລຸນາເປີດການນຳໃຊ້ໄຟລ໌ ແລະ ມີເດຍໃນການຕັ້ງຄ່າ"</string>
     <string name="settings_snackbar_enable" msgid="5992112808061426068">"ເປີດການນຳໃຊ້"</string>
+    <string name="open_my_photos" msgid="4107196465713868381">"ເປີດຮູບພາບຂອງຂ້ອຍ"</string>
+    <string name="lock_screen_tab" msgid="6672930765010407652">"ໜ້າຈໍລັອກ"</string>
+    <string name="home_screen_tab" msgid="1080445697837877526">"ໂຮມສະກຣີນ"</string>
+    <string name="reset" msgid="4945445169532850631">"ຣີເຊັດ"</string>
+    <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"ຣີເຊັດການປ່ຽນແປງບໍ?"</string>
+    <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"ການປ່ຽນ​ແປງ​ຂອງ​ທ່ານ​ຈະບໍ່​ຖືກບັນ​ທຶກ"</string>
+    <string name="more_wallpapers" msgid="7585665124282737376">"ຮູບພື້ນຫຼັງເພີ່ມເຕີມ"</string>
 </resources>
