@@ -1,5 +1,6 @@
 package com.android.wallpaper.module;
 
+import android.app.WallpaperManager;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
@@ -12,9 +13,10 @@ import com.android.wallpaper.model.PermissionRequester;
 import com.android.wallpaper.model.WallpaperColorsViewModel;
 import com.android.wallpaper.model.WallpaperPreviewNavigator;
 import com.android.wallpaper.model.WallpaperSectionController;
+import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor;
 import com.android.wallpaper.picker.customization.ui.section.ScreenPreviewSectionController;
 import com.android.wallpaper.picker.customization.ui.section.WallpaperQuickSwitchSectionController;
-import com.android.wallpaper.picker.customization.ui.viewmodel.WallpaperQuickSwitchViewModel;
+import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel;
 import com.android.wallpaper.util.DisplayUtils;
 
 import java.util.ArrayList;
@@ -35,7 +37,10 @@ public final class WallpaperPickerSections implements CustomizationSections {
             @Nullable Bundle savedInstanceState,
             CurrentWallpaperInfoFactory wallpaperInfoFactory,
             DisplayUtils displayUtils,
-            WallpaperQuickSwitchViewModel wallpaperQuickSwitchViewModel) {
+            CustomizationPickerViewModel customizationPickerViewModel,
+            WallpaperInteractor wallpaperInteractor,
+            WallpaperManager wallpaperManager,
+            boolean isTwoPaneAndSmallWidth) {
         List<CustomizationSectionController<?>> sectionControllers = new ArrayList<>();
 
         sectionControllers.add(
@@ -46,13 +51,16 @@ public final class WallpaperPickerSections implements CustomizationSections {
                         wallpaperInfoFactory,
                         wallpaperColorsViewModel,
                         displayUtils,
-                        sectionNavigationController));
+                        wallpaperPreviewNavigator,
+                        wallpaperInteractor,
+                        wallpaperManager,
+                        isTwoPaneAndSmallWidth));
         sectionControllers.add(
                 new WallpaperQuickSwitchSectionController(
-                        screen,
-                        wallpaperQuickSwitchViewModel,
+                        customizationPickerViewModel.getWallpaperQuickSwitchViewModel(screen),
                         lifecycleOwner,
-                        sectionNavigationController));
+                        sectionNavigationController,
+                        savedInstanceState == null));
 
         return sectionControllers;
     }

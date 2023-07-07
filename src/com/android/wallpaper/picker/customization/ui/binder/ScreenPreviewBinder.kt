@@ -19,14 +19,18 @@ package com.android.wallpaper.picker.customization.ui.binder
 
 import android.app.Activity
 import android.app.WallpaperColors
+import android.app.WallpaperManager
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceView
 import android.view.View
+import android.view.View.OnAttachStateChangeListener
 import android.view.ViewGroup
 import androidx.cardview.widget.CardView
 import androidx.core.view.isVisible
+import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -43,6 +47,7 @@ import com.android.wallpaper.util.ResourceUtils
 import com.android.wallpaper.util.WallpaperConnection
 import com.android.wallpaper.util.WallpaperSurfaceCallback
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
@@ -53,8 +58,6 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 object ScreenPreviewBinder {
     interface Binding {
-        fun show()
-        fun hide()
         fun sendMessage(
             id: Int,
             args: Bundle = Bundle.EMPTY,
@@ -77,10 +80,29 @@ object ScreenPreviewBinder {
         lifecycleOwner: LifecycleOwner,
         offsetToStart: Boolean,
         dimWallpaper: Boolean = false,
+        onWallpaperPreviewDirty: () -> Unit,
+        onWorkspacePreviewDirty: () -> Unit = {},
     ): Binding {
         val workspaceSurface: SurfaceView = previewView.requireViewById(R.id.workspace_surface)
         val wallpaperSurface: SurfaceView = previewView.requireViewById(R.id.wallpaper_surface)
+        val thumbnailRequested = AtomicBoolean(false)
+
+        val fixedWidthDisplayFrameLayout = previewView.parent as? View
+        val screenPreviewClickView = fixedWidthDisplayFrameLayout?.parent as? View
+        // Set the content description on the parent view
+        screenPreviewClickView?.contentDescription =
+            activity.resources.getString(viewModel.previewContentDescription)
+        fixedWidthDisplayFrameLayout?.importantForAccessibility =
+            View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+
+        // This ensures that we do not announce the time multiple times
+        previewView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+        val surfaceViewsReady = {
+            wallpaperSurface.setBackgroundColor(Color.TRANSPARENT)
+            workspaceSurface.visibility = View.VISIBLE
+        }
         wallpaperSurface.setZOrderOnTop(false)
+        val wallpaperManager = WallpaperManager.getInstance(activity)
 
         if (dimWallpaper) {
             previewView.requireViewById<View>(R.id.wallpaper_dimming_scrim).isVisible = true
@@ -98,6 +120,20 @@ object ScreenPreviewBinder {
         val job =
             lifecycleOwner.lifecycleScope.launch {
                 launch {
+                    val lifecycleObserver =
+                        object : DefaultLifecycleObserver {
+                            override fun onStop(owner: LifecycleOwner) {
+                                super.onStop(owner)
+                                wallpaperConnection?.destroy()
+                                wallpaperConnection = null
+                            }
+
+                            override fun onPause(owner: LifecycleOwner) {
+                                super.onPause(owner)
+                                wallpaperConnection?.setVisibility(false)
+                            }
+                        }
+
                     lifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
                         previewSurfaceCallback =
                             WorkspaceSurfaceHolderCallback(
@@ -130,90 +166,107 @@ object ScreenPreviewBinder {
                                     wallpaperInfo = wallpaperInfo,
                                     surfaceCallback = wallpaperSurfaceCallback,
                                     offsetToStart = offsetToStart,
+                                    onSurfaceViewsReady = surfaceViewsReady,
+                                    thumbnailRequested = thumbnailRequested
                                 )
                             }
                         wallpaperSurface.holder.addCallback(wallpaperSurfaceCallback)
                         if (!dimWallpaper) {
                             wallpaperSurface.setZOrderMediaOverlay(true)
                         }
+
+                        lifecycleOwner.lifecycle.addObserver(lifecycleObserver)
                     }
 
-                    // Here when destroyed.
+                    lifecycleOwner.lifecycle.removeObserver(lifecycleObserver)
                     workspaceSurface.holder.removeCallback(previewSurfaceCallback)
                     previewSurfaceCallback?.cleanUp()
                     wallpaperSurface.holder.removeCallback(wallpaperSurfaceCallback)
-                    wallpaperSurfaceCallback?.cleanUp()
+                    wallpaperSurfaceCallback?.homeImageWallpaper?.post {
+                        wallpaperSurfaceCallback?.cleanUp()
+                    }
                 }
 
                 launch {
                     lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        // Do nothing.
+                        var initialWallpaperUpdate = true
+                        viewModel.shouldReloadWallpaper().collect { shouldReload ->
+                            viewModel.getWallpaperInfo(forceReload = false)
+                            // Do not update screen preview on initial update,since the initial
+                            // update results from starting or resuming the activity.
+                            if (initialWallpaperUpdate) {
+                                initialWallpaperUpdate = false
+                            } else if (shouldReload) {
+                                onWallpaperPreviewDirty()
+                            }
+                        }
                     }
+                }
 
-                    // Here when stopped.
-                    wallpaperConnection?.disconnect()
+                launch {
+                    lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                        var initialWorkspaceUpdate = true
+                        viewModel.workspaceUpdateEvents()?.collect {
+                            if (initialWorkspaceUpdate) {
+                                initialWorkspaceUpdate = false
+                            } else {
+                                onWorkspacePreviewDirty()
+                            }
+                        }
+                    }
                 }
 
                 launch {
                     lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                         lifecycleOwner.lifecycleScope.launch {
-                            wallpaperInfo = viewModel.getWallpaperInfo()
-                            (wallpaperInfo as? LiveWallpaperInfo)?.let { liveWallpaperInfo ->
-                                if (WallpaperConnection.isPreviewAvailable()) {
-                                    wallpaperConnection =
-                                        WallpaperConnection(
-                                            Intent(WallpaperService.SERVICE_INTERFACE).apply {
-                                                setClassName(
-                                                    liveWallpaperInfo.wallpaperComponent
-                                                        .packageName,
-                                                    liveWallpaperInfo.wallpaperComponent.serviceName
-                                                )
-                                            },
-                                            previewView.context,
-                                            object :
-                                                WallpaperConnection.WallpaperConnectionListener {
-                                                override fun onWallpaperColorsChanged(
-                                                    colors: WallpaperColors?,
-                                                    displayId: Int
-                                                ) {
-                                                    viewModel.onWallpaperColorsChanged(colors)
-                                                }
-                                            },
-                                            wallpaperSurface,
-                                            null,
-                                        )
-
-                                    wallpaperConnection?.connect()
-                                    wallpaperConnection?.setVisibility(true)
-                                }
-                            }
+                            wallpaperInfo = viewModel.getWallpaperInfo(forceReload = false)
                             maybeLoadThumbnail(
                                 activity = activity,
                                 wallpaperInfo = wallpaperInfo,
                                 surfaceCallback = wallpaperSurfaceCallback,
                                 offsetToStart = offsetToStart,
+                                onSurfaceViewsReady = surfaceViewsReady,
+                                thumbnailRequested = thumbnailRequested
                             )
+                            (wallpaperInfo as? LiveWallpaperInfo)?.let { liveWallpaperInfo ->
+                                val connection =
+                                    wallpaperConnection
+                                        ?: createWallpaperConnection(
+                                                liveWallpaperInfo,
+                                                previewView,
+                                                viewModel,
+                                                wallpaperSurface,
+                                                surfaceViewsReady
+                                            )
+                                            .also { wallpaperConnection = it }
+                                if (!previewView.isAttachedToWindow) {
+                                    // Sometimes the service gets connected before the view
+                                    // is valid.
+                                    // TODO(b/284233455): investigate why and remove this workaround
+                                    previewView.addOnAttachStateChangeListener(
+                                        object : OnAttachStateChangeListener {
+                                            override fun onViewAttachedToWindow(v: View?) {
+                                                connection.connect()
+                                                connection.setVisibility(true)
+                                                previewView.removeOnAttachStateChangeListener(this)
+                                            }
+
+                                            override fun onViewDetachedFromWindow(v: View?) {
+                                                // Do nothing
+                                            }
+                                        }
+                                    )
+                                } else {
+                                    connection.connect()
+                                    connection.setVisibility(true)
+                                }
+                            }
                         }
                     }
-
-                    // Here when paused.
-                    wallpaperConnection?.setVisibility(false)
                 }
             }
 
         return object : Binding {
-            override fun show() {
-                previewView.isVisible = true
-                wallpaperSurface.isVisible = true
-                workspaceSurface.isVisible = true
-            }
-
-            override fun hide() {
-                previewView.isVisible = false
-                wallpaperSurface.isVisible = false
-                workspaceSurface.isVisible = false
-            }
-
             override fun sendMessage(id: Int, args: Bundle) {
                 previewSurfaceCallback?.send(id, args)
             }
@@ -227,6 +280,34 @@ object ScreenPreviewBinder {
             }
         }
     }
+
+    private fun createWallpaperConnection(
+        liveWallpaperInfo: LiveWallpaperInfo,
+        previewView: CardView,
+        viewModel: ScreenPreviewViewModel,
+        wallpaperSurface: SurfaceView,
+        onSurfaceViewsReady: () -> Unit
+    ) =
+        WallpaperConnection(
+            Intent(WallpaperService.SERVICE_INTERFACE).apply {
+                setClassName(
+                    liveWallpaperInfo.wallpaperComponent.packageName,
+                    liveWallpaperInfo.wallpaperComponent.serviceName
+                )
+            },
+            previewView.context,
+            object : WallpaperConnection.WallpaperConnectionListener {
+                override fun onWallpaperColorsChanged(colors: WallpaperColors?, displayId: Int) {
+                    viewModel.onWallpaperColorsChanged(colors)
+                }
+
+                override fun onEngineShown() {
+                    onSurfaceViewsReady()
+                }
+            },
+            wallpaperSurface,
+            null,
+        )
 
     private fun removeAndReadd(view: View) {
         (view.parent as? ViewGroup)?.let { parent ->
@@ -243,6 +324,8 @@ object ScreenPreviewBinder {
         wallpaperInfo: WallpaperInfo?,
         surfaceCallback: WallpaperSurfaceCallback?,
         offsetToStart: Boolean,
+        onSurfaceViewsReady: () -> Unit,
+        thumbnailRequested: AtomicBoolean
     ) {
         if (wallpaperInfo == null || surfaceCallback == null) {
             return
@@ -251,6 +334,9 @@ object ScreenPreviewBinder {
         val imageView = surfaceCallback.homeImageWallpaper
         val thumbAsset: Asset = wallpaperInfo.getThumbAsset(activity)
         if (imageView != null && imageView.drawable == null) {
+            if (!thumbnailRequested.compareAndSet(false, true)) {
+                return
+            }
             // Respect offsetToStart only for CurrentWallpaperAssetVN otherwise true.
             BitmapCachingAsset(activity, thumbAsset)
                 .loadPreviewImage(
@@ -259,6 +345,26 @@ object ScreenPreviewBinder {
                     ResourceUtils.getColorAttr(activity, android.R.attr.colorSecondary),
                     /* offsetToStart= */ thumbAsset !is CurrentWallpaperAssetVN || offsetToStart
                 )
+            if (wallpaperInfo !is LiveWallpaperInfo) {
+                imageView.addOnLayoutChangeListener(
+                    object : View.OnLayoutChangeListener {
+                        override fun onLayoutChange(
+                            v: View?,
+                            left: Int,
+                            top: Int,
+                            right: Int,
+                            bottom: Int,
+                            oldLeft: Int,
+                            oldTop: Int,
+                            oldRight: Int,
+                            oldBottom: Int
+                        ) {
+                            v?.removeOnLayoutChangeListener(this)
+                            onSurfaceViewsReady()
+                        }
+                    }
+                )
+            }
         }
     }
 }

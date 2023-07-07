@@ -17,20 +17,22 @@
 
 package com.android.wallpaper.picker.option.ui.viewmodel
 
-import com.android.wallpaper.picker.common.icon.ui.viewmodel.Icon
 import com.android.wallpaper.picker.common.text.ui.viewmodel.Text
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /** Models UI state for an item in a list of selectable options. */
-data class OptionItemViewModel(
+data class OptionItemViewModel<Payload>(
     /**
      * A stable key that uniquely identifies this option amongst all other options in the same list
      * of options.
      */
-    val key: Flow<String>,
+    val key: StateFlow<String>,
 
-    /** An icon to show. */
-    val icon: Icon,
+    /**
+     * The view model representing additional details needed for binding the icon of an option item
+     */
+    val payload: Payload? = null,
 
     /**
      * A text to show to the user (or attach as content description on the icon, if there's no
@@ -38,8 +40,11 @@ data class OptionItemViewModel(
      */
     val text: Text,
 
+    /** Hides text and places the provided text in the content description instead */
+    val isTextUserVisible: Boolean = true,
+
     /** Whether this option is selected. */
-    val isSelected: Flow<Boolean>,
+    val isSelected: StateFlow<Boolean>,
 
     /** Whether this option is enabled. */
     val isEnabled: Boolean = true,
@@ -49,4 +54,15 @@ data class OptionItemViewModel(
 
     /** Notifies that the option has been long-clicked by the user. */
     val onLongClicked: (() -> Unit)? = null,
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        val otherItem = other as? OptionItemViewModel<*> ?: return false
+        // skipping comparison of onClicked because it is correlated with
+        // changes on isSelected
+        return this.payload == otherItem.payload &&
+            this.text == otherItem.text &&
+            this.isSelected.value == otherItem.isSelected.value &&
+            this.isEnabled == otherItem.isEnabled &&
+            this.onLongClicked == otherItem.onLongClicked
+    }
+}

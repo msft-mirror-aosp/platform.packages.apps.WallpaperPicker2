@@ -46,19 +46,29 @@ public class WorkspaceSurfaceHolderCallback implements SurfaceHolder.Callback {
 
     private static final String TAG = "WsSurfaceHolderCallback";
     private static final String KEY_WALLPAPER_COLORS = "wallpaper_colors";
+    public static final int MESSAGE_ID_UPDATE_PREVIEW = 1337;
+    public static final String KEY_HIDE_BOTTOM_ROW = "hide_bottom_row";
+    public static final int MESSAGE_ID_COLOR_OVERRIDE = 1234;
+    public static final String KEY_COLOR_OVERRIDE = "color_override"; // ColorInt Encoded as string
     private final SurfaceView mWorkspaceSurface;
     private final PreviewUtils mPreviewUtils;
     private final boolean mShouldUseWallpaperColors;
     private final AtomicBoolean mRequestPending = new AtomicBoolean(false);
 
     private WallpaperColors mWallpaperColors;
+    private boolean mHideBottomRow;
     private boolean mIsWallpaperColorsReady;
     private Surface mLastSurface;
     private Message mCallback;
+    private Message mDelayedMessage;
     private WorkspaceRenderListener mListener;
 
     private boolean mNeedsToCleanUp;
     @Nullable private final Bundle mExtras;
+
+    private int mWidth = -1;
+
+    private int mHeight = -1;
 
     public WorkspaceSurfaceHolderCallback(
             SurfaceView workspaceSurface,
@@ -126,27 +136,42 @@ public class WorkspaceSurfaceHolderCallback implements SurfaceHolder.Callback {
         }
         mWallpaperColors = colors;
         mIsWallpaperColorsReady = true;
-        maybeRenderPreview();
+    }
+
+    /**
+     * Set the current flag if we should hide the workspace bottom row.
+     */
+    public void setHideBottomRow(boolean hideBottomRow) {
+        mHideBottomRow = hideBottomRow;
     }
 
     public void setListener(WorkspaceRenderListener listener) {
         mListener = listener;
     }
 
-    private void maybeRenderPreview() {
+    /**
+     * Render the preview with the current selected {@link #mWallpaperColors} and
+     * {@link #mHideBottomRow}.
+     */
+    public void maybeRenderPreview() {
         if ((mShouldUseWallpaperColors && !mIsWallpaperColorsReady) || mLastSurface == null) {
             return;
         }
-
         mRequestPending.set(true);
         requestPreview(mWorkspaceSurface, (result) -> {
             mRequestPending.set(false);
             if (result != null && mLastSurface != null) {
                 mWorkspaceSurface.setChildSurfacePackage(
                         SurfaceViewUtils.getSurfacePackage(result));
-
                 mCallback = SurfaceViewUtils.getCallback(result);
-
+                if (mCallback != null && mDelayedMessage != null) {
+                    try {
+                        mCallback.replyTo.send(mDelayedMessage);
+                    } catch (RemoteException e) {
+                        Log.w(TAG, "Couldn't send message to workspace preview", e);
+                    }
+                    mDelayedMessage = null;
+                }
                 if (mNeedsToCleanUp) {
                     cleanUp();
                 } else if (mListener != null) {
@@ -157,7 +182,13 @@ public class WorkspaceSurfaceHolderCallback implements SurfaceHolder.Callback {
     }
 
     @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) { }
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        if ((mWidth != -1 || mHeight != -1) && (mWidth != width || mHeight != height)) {
+            maybeRenderPreview();
+        }
+        mWidth = width;
+        mHeight = height;
+    }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
@@ -172,15 +203,17 @@ public class WorkspaceSurfaceHolderCallback implements SurfaceHolder.Callback {
      * {@link Message#getData()}.
      */
     public void send(final int what, @Nullable Bundle bundle) {
+        final Message message = new Message();
+        message.what = what;
+        message.setData(bundle);
         if (mCallback != null) {
             try {
-                final Message message = new Message();
-                message.what = what;
-                message.setData(bundle);
                 mCallback.replyTo.send(message);
             } catch (RemoteException e) {
                 Log.w(TAG, "Couldn't send message to workspace preview", e);
             }
+        } else {
+            mDelayedMessage = message;
         }
     }
 
@@ -217,6 +250,7 @@ public class WorkspaceSurfaceHolderCallback implements SurfaceHolder.Callback {
         if (mWallpaperColors != null) {
             request.putParcelable(KEY_WALLPAPER_COLORS, mWallpaperColors);
         }
+        request.putBoolean(KEY_HIDE_BOTTOM_ROW, mHideBottomRow);
         mPreviewUtils.renderPreview(request, callback);
     }
 }

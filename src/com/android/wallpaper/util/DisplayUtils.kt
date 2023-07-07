@@ -21,6 +21,11 @@ import android.graphics.Point
 import android.hardware.display.DisplayManager
 import android.util.Log
 import android.view.Display
+import android.view.DisplayInfo
+import android.view.Surface.ROTATION_270
+import android.view.Surface.ROTATION_90
+import com.android.systemui.shared.recents.utilities.Utilities
+import kotlin.math.min
 
 /**
  * Utility class to provide methods to find and obtain information about displays via {@link
@@ -29,6 +34,8 @@ import android.view.Display
 class DisplayUtils(private val context: Context) {
     companion object {
         private const val TAG = "DisplayUtils"
+        private val ROTATION_HORIZONTAL_HINGE = setOf(ROTATION_90, ROTATION_270)
+        private const val TABLET_MIN_DPS = 600f // See Sysui's Utilities.TABLET_MIN_DPS
     }
 
     private val displayManager: DisplayManager by lazy {
@@ -39,11 +46,55 @@ class DisplayUtils(private val context: Context) {
         return getInternalDisplays().size > 1
     }
 
-    /** Returns the {@link Display} to be used to calculate wallpaper size and cropping. */
+    /**
+     * Returns the internal {@link Display} with the largest area to be used to calculate wallpaper
+     * size and cropping.
+     */
     fun getWallpaperDisplay(): Display {
         val internalDisplays = getInternalDisplays()
-        return internalDisplays.maxWithOrNull { a, b -> getRealSize(a) - getRealSize(b) }
+        return internalDisplays.maxWithOrNull { a, b -> getRealArea(a) - getRealArea(b) }
             ?: internalDisplays[0]
+    }
+
+    /**
+     * Checks if the device only has one display or unfolded screen in horizontal hinge orientation.
+     */
+    fun isSingleDisplayOrUnfoldedHorizontalHinge(activity: Activity): Boolean {
+        return !hasMultiInternalDisplays() || isUnfoldedHorizontalHinge(activity)
+    }
+
+    /**
+     * Checks if the device is a foldable and it's unfolded and in horizontal hinge orientation
+     * (portrait).
+     */
+    fun isUnfoldedHorizontalHinge(activity: Activity): Boolean {
+        return activity.display.rotation in ROTATION_HORIZONTAL_HINGE &&
+            isOnWallpaperDisplay(activity) &&
+            hasMultiInternalDisplays()
+    }
+
+    fun getMaxDisplaysDimension(): Point {
+        val dimen = Point()
+        getInternalDisplays().let { displays ->
+            dimen.x = displays.maxOf { getRealSize(it).x }
+            dimen.y = displays.maxOf { getRealSize(it).y }
+        }
+        return dimen
+    }
+
+    /**
+     * Returns true if this device's screen (or largest screen in case of multiple screen devices)
+     * is considered a "Large screen"
+     */
+    fun isLargeScreenDevice(): Boolean {
+        // We need to use MaxDisplay's dimensions because if we're in embedded mode, our window
+        // will only be the size of the embedded Activity.
+        val maxDisplaysDimension = getRealSize(getWallpaperDisplay())
+        val smallestWidth = min(maxDisplaysDimension.x, maxDisplaysDimension.y)
+        return Utilities.dpiFromPx(
+            smallestWidth.toFloat(),
+            context.resources.configuration.densityDpi
+        ) >= TABLET_MIN_DPS
     }
 
     /**
@@ -51,15 +102,23 @@ class DisplayUtils(private val context: Context) {
      *
      * On a multi-display device the wallpaper display is the largest display while on a single
      * display device the only display is both the wallpaper display and the current display.
+     *
+     * For single display device, this is always true.
      */
     fun isOnWallpaperDisplay(activity: Activity): Boolean {
         return activity.display.uniqueId == getWallpaperDisplay().uniqueId
     }
 
-    private fun getRealSize(display: Display): Int {
-        val p = Point()
-        display.getRealSize(p)
-        return p.x * p.y
+    private fun getRealArea(display: Display): Int {
+        val displayInfo = DisplayInfo()
+        display.getDisplayInfo(displayInfo)
+        return displayInfo.logicalHeight * displayInfo.logicalWidth
+    }
+
+    private fun getRealSize(display: Display): Point {
+        val displayInfo = DisplayInfo()
+        display.getDisplayInfo(displayInfo)
+        return Point(displayInfo.logicalWidth, displayInfo.logicalHeight)
     }
 
     private fun getInternalDisplays(): List<Display> {
