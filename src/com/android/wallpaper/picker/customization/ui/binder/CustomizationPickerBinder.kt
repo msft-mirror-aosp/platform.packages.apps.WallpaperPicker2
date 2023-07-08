@@ -139,26 +139,24 @@ object CustomizationPickerBinder {
 
                             lockScrollContainer.isInvisible = !isOnLockScreen
                             homeScrollContainer.isInvisible = isOnLockScreen
-
-                            view.announceForAccessibility(
-                                if (isOnLockScreen) {
-                                    view.context.getString(R.string.lock_screen_tab)
-                                } else {
-                                    view.context.getString(R.string.home_screen_tab)
-                                }
-                            )
                         }
                     }
                 }
 
                 // This happens when the lifecycle is stopped.
                 lockSectionContainer.children
-                    .mapNotNull { it.tag as? CustomizationSectionController<out SectionView> }
-                    .forEach { controller -> controller.release() }
+                    .map { Pair(it, it.tag as? CustomizationSectionController<out SectionView>) }
+                    .forEach {
+                        it.second?.release()
+                        it.first?.tag = null
+                    }
                 lockSectionContainer.removeAllViews()
                 homeSectionContainer.children
-                    .mapNotNull { it.tag as? CustomizationSectionController<out SectionView> }
-                    .forEach { controller -> controller.release() }
+                    .map { Pair(it, it.tag as? CustomizationSectionController<out SectionView>) }
+                    .forEach {
+                        it.second?.release()
+                        it.first?.tag = null
+                    }
                 homeSectionContainer.removeAllViews()
             }
         return DisposableHandle { job.cancel() }

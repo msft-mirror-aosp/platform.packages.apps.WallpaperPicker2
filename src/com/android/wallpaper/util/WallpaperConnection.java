@@ -43,8 +43,10 @@ import android.view.SurfaceControl;
 import android.view.SurfaceHolder;
 import android.view.SurfaceHolder.Callback;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.WindowManager.LayoutParams;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.lang.reflect.InvocationTargetException;
@@ -73,10 +75,10 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
     private static final Looper sMainLooper = Looper.getMainLooper();
     private final Context mContext;
     private final Intent mIntent;
-    private final WallpaperConnectionListener mListener;
-    private final SurfaceView mContainerView;
-    private final SurfaceView mSecondContainerView;
     private final List<SurfaceControl> mMirrorSurfaceControls = new ArrayList<>();
+    private WallpaperConnectionListener mListener;
+    private SurfaceView mContainerView;
+    private SurfaceView mSecondContainerView;
     private IWallpaperService mService;
     @Nullable private IWallpaperEngine mEngine;
     @Nullable private Point mDisplayMetrics;
@@ -84,6 +86,7 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
     private boolean mIsVisible;
     private boolean mIsEngineVisible;
     private boolean mEngineReady;
+    private boolean mDestroyed;
 
     /**
      * @param intent used to bind the wallpaper service
@@ -92,7 +95,7 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
      * @param containerView SurfaceView that will display the wallpaper
      */
     public WallpaperConnection(Intent intent, Context context,
-            @Nullable WallpaperConnectionListener listener, SurfaceView containerView) {
+            @Nullable WallpaperConnectionListener listener, @NonNull SurfaceView containerView) {
         this(intent, context, listener, containerView, null);
     }
 
@@ -105,7 +108,7 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
      *                               version of the wallpaper
      */
     public WallpaperConnection(Intent intent, Context context,
-            @Nullable WallpaperConnectionListener listener, SurfaceView containerView,
+            @Nullable WallpaperConnectionListener listener, @NonNull SurfaceView containerView,
             @Nullable SurfaceView secondaryContainerView) {
         mContext = context.getApplicationContext();
         mIntent = intent;
@@ -118,6 +121,9 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
      * Bind the Service for this connection.
      */
     public boolean connect() {
+        if (mDestroyed) {
+            throw new IllegalStateException("Cannot connect on a destroyed WallpaperConnection");
+        }
         synchronized (this) {
             if (mConnected) {
                 return true;
@@ -170,30 +176,35 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
     }
 
     /**
+     * Clean up references on this WallpaperConnection.
+     * After calling this method, {@link #connect()} cannot be called again.
+     */
+    public void destroy() {
+        disconnect();
+        mContainerView = null;
+        mSecondContainerView = null;
+        mListener = null;
+        mDestroyed = true;
+    }
+
+    /**
      * @see ServiceConnection#onServiceConnected(ComponentName, IBinder)
      */
     public void onServiceConnected(ComponentName name, IBinder service) {
         mService = IWallpaperService.Stub.asInterface(service);
-        try {
-            int displayId = mContainerView.getDisplay().getDisplayId();
-            try {
-                Method preUMethod = mService.getClass().getMethod("attach",
-                        IWallpaperConnection.class, IBinder.class, int.class, boolean.class,
-                        int.class, int.class, Rect.class, int.class);
-                preUMethod.invoke(mService, this, mContainerView.getWindowToken(),
-                        LayoutParams.TYPE_APPLICATION_MEDIA, true, mContainerView.getWidth(),
-                        mContainerView.getHeight(), new Rect(0, 0, 0, 0), displayId);
-            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-                Log.d(TAG, "IWallpaperService#attach method without which argument not available, "
-                        + "will use newer version");
-                // Let's try the new attach method that takes "which" argument
-                mService.attach(this, mContainerView.getWindowToken(),
-                        LayoutParams.TYPE_APPLICATION_MEDIA, true, mContainerView.getWidth(),
-                        mContainerView.getHeight(), new Rect(0, 0, 0, 0), displayId,
-                        WallpaperManager.FLAG_SYSTEM);
-            }
-        } catch (RemoteException e) {
-            Log.w(TAG, "Failed attaching wallpaper; clearing", e);
+        if (mContainerView.getDisplay() == null) {
+            mContainerView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+                @Override
+                public void onViewAttachedToWindow(View v) {
+                    attachConnection(v.getDisplay().getDisplayId());
+                    mContainerView.removeOnAttachStateChangeListener(this);
+                }
+
+                @Override
+                public void onViewDetachedFromWindow(View v) {}
+            });
+        } else {
+            attachConnection(mContainerView.getDisplay().getDisplayId());
         }
     }
 
@@ -305,6 +316,29 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
         synchronized (this) {
             mIsVisible = visible;
             setEngineVisibility(visible);
+        }
+    }
+
+    private void attachConnection(int displayId) {
+        try {
+            try {
+                Method preUMethod = mService.getClass().getMethod("attach",
+                        IWallpaperConnection.class, IBinder.class, int.class, boolean.class,
+                        int.class, int.class, Rect.class, int.class);
+                preUMethod.invoke(mService, this, mContainerView.getWindowToken(),
+                        LayoutParams.TYPE_APPLICATION_MEDIA, true, mContainerView.getWidth(),
+                        mContainerView.getHeight(), new Rect(0, 0, 0, 0), displayId);
+            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                Log.d(TAG, "IWallpaperService#attach method without which argument not available, "
+                        + "will use newer version");
+                // Let's try the new attach method that takes "which" argument
+                mService.attach(this, mContainerView.getWindowToken(),
+                        LayoutParams.TYPE_APPLICATION_MEDIA, true, mContainerView.getWidth(),
+                        mContainerView.getHeight(), new Rect(0, 0, 0, 0), displayId,
+                        WallpaperManager.FLAG_SYSTEM);
+            }
+        } catch (RemoteException e) {
+            Log.w(TAG, "Failed attaching wallpaper; clearing", e);
         }
     }
 

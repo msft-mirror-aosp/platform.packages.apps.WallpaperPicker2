@@ -29,8 +29,6 @@
     <string name="static_wallpaper_presentation_mode_message" msgid="417940227049360906">"Nuvarande bakgrund"</string>
     <string name="rotating_wallpaper_presentation_mode_message" msgid="3361676041605733288">"Dagens bakgrund"</string>
     <string name="wallpaper_destination_both" msgid="1124197176741944063">"Start- och låsskärm"</string>
-    <string name="choose_a_wallpaper_section_title" msgid="1009823506890453891">"Välj en bakgrund"</string>
-    <string name="creative_wallpaper_title" msgid="8459226435723103934">"Skapa en bakgrund"</string>
     <string name="home_screen_message" msgid="106444102822522813">"Startskärm"</string>
     <string name="lock_screen_message" msgid="1534506081955058013">"Låsskärm"</string>
     <string name="home_and_lock_short_label" msgid="2937922943541927983">"Start- och låsskärm"</string>
@@ -83,11 +81,9 @@
     <string name="tab_info" msgid="818614080690111416">"Information"</string>
     <string name="tab_customize" msgid="2533745409174959960">"Anpassa"</string>
     <string name="tab_effects" msgid="3213606157589233901">"Effekter"</string>
-    <string name="tab_share" msgid="6676269624804601227">"Dela"</string>
     <string name="my_photos" msgid="8613021349284084982">"Mina bilder"</string>
     <string name="configure_wallpaper" msgid="849882179182976621">"Inställningar…"</string>
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Radera"</string>
-    <string name="edit_live_wallpaper" msgid="3132060073690558045">"Redigera"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Vill du radera den här bakgrunden från enheten?"</string>
     <string name="bottom_action_bar_back" msgid="8237013112999946725">"Tillbaka"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Redigera"</string>
@@ -100,7 +96,6 @@
     <string name="wallpaper_title" msgid="6754214682228331092">"Bakgrund"</string>
     <string name="wallpaper_preview_card_content_description" msgid="6049261033541034584">"Förhandsgranska bakgrunden"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Samlingen finns inte"</string>
-    <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"Avsluta läget för delad skärm och försök igen"</string>
     <string name="cancel" msgid="4970902691067201584">"Avbryt"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"Dölj förhandsgranskning av UI"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"Döljer gränssnitt förhandsg. Dubbeltryck och visa"</string>
@@ -121,5 +116,6 @@
     <string name="reset" msgid="4945445169532850631">"Återställ"</string>
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Vill du återställa ändringarna?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Dina ändringar sparas inte"</string>
-    <string name="more_wallpapers" msgid="8116268433411881705">"Fler bakgrunder"</string>
+    <!-- no translation found for more_wallpapers (7585665124282737376) -->
+    <skip />
 </resources>
