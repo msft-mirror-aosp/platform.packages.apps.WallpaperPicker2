@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"Ekrano fonų kategorijos"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"Nustatyti ekrano foną"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"Nustatyti ekrano foną"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"Nustatomas fonas…"</string>
     <string name="try_again" msgid="8278874823700921234">"Bandyti dar kartą"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"Nepavyko nustatyti ekrano fono."</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Ištrinti"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"Redaguoti"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Ištrinti šį ekrano foną iš įrenginio?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"Atgal"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"Naršyti į viršų"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Redaguoti"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Atsisiųsti"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Ekrano fono skaidrių demonstr."</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Pagrindinio ekrano fono peržiūra"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Rinkinio nėra"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"Išeikite iš išskaidyto ekrano režimo ir bandykite dar kartą"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"Nustatyti"</string>
     <string name="cancel" msgid="4970902691067201584">"Atšaukti"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"Slėpti NS peržiūrą"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"NS paslėpta peržiūroje. Dukart paliesd. parodykite"</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Nustatyti pakeitimus iš naujo?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Pakeitimai nebus išsaugoti"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"Daugiau darbalaukio fonų"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"Ekrano fonas"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"Palieskite, kad redaguotumėte nuotrauką"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"Koreguokite nuotraukų padėtį, mastelį ir kampą"</string>
 </resources>

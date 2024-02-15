@@ -20,9 +20,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.Build;
+import android.util.Log;
 
-import com.android.wallpaper.util.DiskBasedLogger;
 import com.android.wallpaper.util.FileMover;
 
 import java.io.File;
@@ -45,12 +44,7 @@ public class RotationWallpaperUpdateReceiver extends BroadcastReceiver {
         // MY_PACKAGE_REPLACED intent.
         if (intent.getAction() == null
                 || !(intent.getAction().equals(Intent.ACTION_MY_PACKAGE_REPLACED)
-                || intent.getAction().equals(Intent.ACTION_BOOT_COMPLETED))
-                || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
-            DiskBasedLogger.e(
-                    TAG,
-                    "Unexpected action or Android version!",
-                    context);
+                || intent.getAction().equals(Intent.ACTION_BOOT_COMPLETED))) {
             throw new IllegalStateException(
                     "Unexpected broadcast action or unsupported Android version");
         }
@@ -78,11 +72,8 @@ public class RotationWallpaperUpdateReceiver extends BroadcastReceiver {
             FileMover.moveFileBetweenContexts(context, ROTATING_WALLPAPER_FILE_PATH,
                     deviceProtectedContext, ROTATING_WALLPAPER_FILE_PATH);
         } catch (Exception ex) {
-            DiskBasedLogger.e(
-                    TAG,
-                    "Failed to move rotating wallpaper file to device protected storage: "
-                            + ex.getMessage(),
-                    context);
+            Log.e(TAG, "Failed to move rotating wallpaper file to device protected storage: "
+                            + ex.getMessage());
         }
     }
 
@@ -98,14 +89,13 @@ public class RotationWallpaperUpdateReceiver extends BroadcastReceiver {
 
             injector.getWallpaperPersister(appContext).setWallpaperInRotation(bitmap,
                     wallpaperPreferences.getHomeWallpaperAttributions(),
-                    wallpaperPreferences.getHomeWallpaperActionLabelRes(),
-                    wallpaperPreferences.getHomeWallpaperActionIconRes(),
                     wallpaperPreferences.getHomeWallpaperActionUrl(),
-                    wallpaperPreferences.getHomeWallpaperCollectionId());
+                    wallpaperPreferences.getHomeWallpaperCollectionId(),
+                    wallpaperPreferences.getHomeWallpaperRemoteId());
             wallpaperFile.delete();
 
         } catch (Exception ex) {
-            DiskBasedLogger.e(TAG, "Unable to set static wallpaper", appContext);
+            Log.e(TAG, "Unable to set static wallpaper");
         }
     }
 }

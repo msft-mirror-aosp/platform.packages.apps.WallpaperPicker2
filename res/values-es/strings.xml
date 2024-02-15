@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"Categorías de fondos de pantalla"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"Establecer fondo de pantalla"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"Establecer fondo"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"Estableciendo fondo de pantalla…"</string>
     <string name="try_again" msgid="8278874823700921234">"Reintentar"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"No se puede establecer el fondo de pantalla."</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Eliminar"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"Editar"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"¿Eliminar este fondo de pantalla de tu dispositivo?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"Volver"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"Desplazarse hacia arriba"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Editar"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Descargar"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Fondo de diapositivas"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Vista previa del fondo de pantalla de inicio"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"La colección no existe"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"Sal del modo Pantalla dividida y vuelve a intentarlo"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"Seleccionar"</string>
     <string name="cancel" msgid="4970902691067201584">"Cancelar"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"Ocultar vista previa de UI"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"UI oculta en la vista previa. Toca dos veces para mostrar."</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"¿Revertir cambios?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Tus cambios no se guardarán"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"Más fondos de pantalla"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"Fondo de pantalla"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"Toca para editar tu foto"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"Ajusta la posición, la escala y el ángulo de tus fotos"</string>
 </resources>

@@ -17,7 +17,6 @@ package com.android.wallpaper.picker;
 
 import android.app.Activity;
 import android.app.WallpaperManager;
-import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -25,14 +24,18 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.activity.ComponentActivity;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.transition.Transition;
 
 import com.android.settingslib.activityembedding.ActivityEmbeddingUtils;
 import com.android.wallpaper.R;
+import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.model.CustomizationSectionController;
 import com.android.wallpaper.model.CustomizationSectionController.CustomizationSectionNavigationController;
 import com.android.wallpaper.model.PermissionRequester;
@@ -59,17 +62,13 @@ public class CustomizationPickerFragment extends AppbarFragment implements
 
     private static final String TAG = "CustomizationPickerFragment";
     private static final String SCROLL_POSITION_Y = "SCROLL_POSITION_Y";
-    protected static final String KEY_IS_USE_REVAMPED_UI = "is_use_revamped_ui";
     private static final String KEY_START_FROM_LOCK_SCREEN = "start_from_lock_screen";
     private DisposableHandle mBinding;
 
     /** Returns a new instance of {@link CustomizationPickerFragment}. */
-    public static CustomizationPickerFragment newInstance(
-            boolean isUseRevampedUi,
-            boolean startFromLockScreen) {
+    public static CustomizationPickerFragment newInstance(boolean startFromLockScreen) {
         final CustomizationPickerFragment fragment = new CustomizationPickerFragment();
         final Bundle args = new Bundle();
-        args.putBoolean(KEY_IS_USE_REVAMPED_UI, isUseRevampedUi);
         args.putBoolean(KEY_START_FROM_LOCK_SCREEN, startFromLockScreen);
         fragment.setArguments(args);
         return fragment;
@@ -92,10 +91,7 @@ public class CustomizationPickerFragment extends AppbarFragment implements
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             @Nullable Bundle savedInstanceState) {
-        final boolean shouldUseRevampedUi = shouldUseRevampedUi();
-        final int layoutId = shouldUseRevampedUi
-                ? R.layout.toolbar_container_layout
-                : R.layout.collapsing_toolbar_container_layout;
+        final int layoutId = R.layout.toolbar_container_layout;
         final View view = inflater.inflate(layoutId, container, false);
         if (ActivityUtils.isLaunchedFromSettingsRelated(getActivity().getIntent())) {
             setUpToolbar(view, !ActivityEmbeddingUtils.shouldHideNavigateUpButton(
@@ -105,39 +101,41 @@ public class CustomizationPickerFragment extends AppbarFragment implements
         }
 
         final Injector injector = InjectorProvider.getInjector();
-        if (shouldUseRevampedUi) {
-            setContentView(view, R.layout.fragment_tabbed_customization_picker);
-            mViewModel = new ViewModelProvider(
-                    this,
-                    CustomizationPickerViewModel.newFactory(
-                            this,
-                            savedInstanceState,
-                            injector.getUndoInteractor(requireContext(), requireActivity()),
-                            injector.getWallpaperInteractor(requireContext()))
-            ).get(CustomizationPickerViewModel.class);
-            final Bundle arguments = getArguments();
-            mViewModel.setInitialScreen(
-                    arguments != null && arguments.getBoolean(KEY_START_FROM_LOCK_SCREEN));
+        setContentView(view, R.layout.fragment_tabbed_customization_picker);
+        mViewModel = new ViewModelProvider(
+                this,
+                CustomizationPickerViewModel.newFactory(
+                        this,
+                        savedInstanceState,
+                        injector.getUndoInteractor(requireContext(), requireActivity()),
+                        injector.getWallpaperInteractor(requireContext()),
+                        injector.getUserEventLogger())
+        ).get(CustomizationPickerViewModel.class);
+        final Bundle arguments = getArguments();
+        mViewModel.setInitialScreen(
+                arguments != null && arguments.getBoolean(KEY_START_FROM_LOCK_SCREEN));
 
-            setUpToolbarMenu(R.menu.undoable_customization_menu);
-            final Bundle finalSavedInstanceState = savedInstanceState;
-            if (mBinding != null) {
-                mBinding.dispose();
-            }
-            mBinding = CustomizationPickerBinder.bind(
-                    view,
-                    getToolbarId(),
-                    mViewModel,
-                    this,
-                    isOnLockScreen -> filterAvailableSections(
-                            getSectionControllers(
-                                    isOnLockScreen
-                                            ? CustomizationSections.Screen.LOCK_SCREEN
-                                            : CustomizationSections.Screen.HOME_SCREEN,
-                                    finalSavedInstanceState)));
-        } else {
-            setContentView(view, R.layout.fragment_customization_picker);
+        setUpToolbarMenu(R.menu.undoable_customization_menu);
+        final Bundle finalSavedInstanceState = savedInstanceState;
+        if (mBinding != null) {
+            mBinding.dispose();
         }
+        final List<CustomizationSectionController<?>> lockSectionControllers =
+                getSectionControllers(CustomizationSections.Screen.LOCK_SCREEN,
+                        finalSavedInstanceState);
+        final List<CustomizationSectionController<?>> homeSectionControllers =
+                getSectionControllers(CustomizationSections.Screen.HOME_SCREEN,
+                        finalSavedInstanceState);
+        mSectionControllers.addAll(lockSectionControllers);
+        mSectionControllers.addAll(homeSectionControllers);
+        mBinding = CustomizationPickerBinder.bind(
+                view,
+                getToolbarId(),
+                mViewModel,
+                this,
+                isOnLockScreen -> filterAvailableSections(
+                        isOnLockScreen ? lockSectionControllers : homeSectionControllers
+                ));
 
         if (mBackStackSavedInstanceState != null) {
             savedInstanceState = mBackStackSavedInstanceState;
@@ -147,57 +145,27 @@ public class CustomizationPickerFragment extends AppbarFragment implements
         mHomeScrollContainer = view.findViewById(R.id.home_scroll_container);
         mLockScrollContainer = view.findViewById(R.id.lock_scroll_container);
 
-        if (shouldUseRevampedUi) {
-            mHomeScrollContainer.setOnScrollChangeListener(
-                    (NestedScrollView.OnScrollChangeListener) (scrollView, scrollX, scrollY,
-                            oldScrollX, oldScrollY) -> {
-                        if (scrollY == 0) {
-                            setToolbarColor(android.R.color.transparent);
-                        } else {
-                            setToolbarColor(R.color.toolbar_color);
-                        }
+        mHomeScrollContainer.setOnScrollChangeListener(
+                (NestedScrollView.OnScrollChangeListener) (scrollView, scrollX, scrollY,
+                        oldScrollX, oldScrollY) -> {
+                    if (scrollY == 0) {
+                        setToolbarColor(android.R.color.transparent);
+                    } else {
+                        setToolbarColor(R.color.system_surface_container_highest);
                     }
-            );
-            mLockScrollContainer.setOnScrollChangeListener(
-                    (NestedScrollView.OnScrollChangeListener) (scrollView, scrollX, scrollY,
-                            oldScrollX, oldScrollY) -> {
-                        if (scrollY == 0) {
-                            setToolbarColor(android.R.color.transparent);
-                        } else {
-                            setToolbarColor(R.color.toolbar_color);
-                        }
+                }
+        );
+        mLockScrollContainer.setOnScrollChangeListener(
+                (NestedScrollView.OnScrollChangeListener) (scrollView, scrollX, scrollY,
+                        oldScrollX, oldScrollY) -> {
+                    if (scrollY == 0) {
+                        setToolbarColor(android.R.color.transparent);
+                    } else {
+                        setToolbarColor(R.color.system_surface_container_highest);
                     }
-            );
-        } else {
-            mHomeScrollContainer.setVisibility(View.VISIBLE);
-            ViewGroup sectionContainer = view.findViewById(R.id.home_section_container);
-            sectionContainer.setOnApplyWindowInsetsListener((v, windowInsets) -> {
-                v.setPadding(
-                        v.getPaddingLeft(),
-                        v.getPaddingTop(),
-                        v.getPaddingRight(),
-                        windowInsets.getSystemWindowInsetBottom());
-                return windowInsets.consumeSystemWindowInsets();
-            });
-
-            initSections(savedInstanceState);
-            mSectionControllers.forEach(controller ->
-                    mHomeScrollContainer.post(() -> {
-                                final Context context = getContext();
-                                if (context == null) {
-                                    Log.w(TAG, "Adding section views with null context");
-                                    return;
-                                }
-                                sectionContainer.addView(controller.createView(context));
-                            }
-                    )
-            );
-
-            final Bundle savedInstanceStateRef = savedInstanceState;
-            // Post it to the end of adding views to ensure restoring view state the last task.
-            view.post(() -> restoreViewState(savedInstanceStateRef));
-        }
-
+                }
+        );
+        ((ViewGroup) view).setTransitionGroup(true);
         return view;
     }
 
@@ -224,12 +192,17 @@ public class CustomizationPickerFragment extends AppbarFragment implements
 
     @Override
     protected int getToolbarId() {
-        return shouldUseRevampedUi() ? R.id.toolbar : R.id.action_bar;
+        return R.id.toolbar;
     }
 
     @Override
     protected int getToolbarColorId() {
         return android.R.color.transparent;
+    }
+
+    @Override
+    protected int getToolbarTextColor() {
+        return ContextCompat.getColor(requireContext(), R.color.system_on_surface);
     }
 
     @Override
@@ -262,13 +235,21 @@ public class CustomizationPickerFragment extends AppbarFragment implements
 
     @Override
     public void navigateTo(Fragment fragment) {
+        prepareFragmentTransitionAnimation();
         FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
+
+        boolean isPageTransitionsFeatureEnabled =
+                BaseFlags.get().isPageTransitionsFeatureEnabled(requireContext());
+
         fragmentManager
                 .beginTransaction()
+                .setReorderingAllowed(isPageTransitionsFeatureEnabled)
                 .replace(R.id.fragment_container, fragment)
                 .addToBackStack(null)
                 .commit();
-        fragmentManager.executePendingTransactions();
+        if (!isPageTransitionsFeatureEnabled) {
+            fragmentManager.executePendingTransactions();
+        }
     }
 
     @Override
@@ -283,13 +264,56 @@ public class CustomizationPickerFragment extends AppbarFragment implements
     @Override
     public void standaloneNavigateTo(String destinationId) {
         final Fragment fragment = mFragmentFactory.create(destinationId);
+        prepareFragmentTransitionAnimation();
+
+        boolean isPageTransitionsFeatureEnabled =
+                BaseFlags.get().isPageTransitionsFeatureEnabled(requireContext());
 
         FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
         fragmentManager
                 .beginTransaction()
+                .setReorderingAllowed(isPageTransitionsFeatureEnabled)
                 .replace(R.id.fragment_container, fragment)
                 .commit();
-        fragmentManager.executePendingTransactions();
+        if (!isPageTransitionsFeatureEnabled) {
+            fragmentManager.executePendingTransactions();
+        }
+    }
+
+    private void prepareFragmentTransitionAnimation() {
+        Transition exitTransition = ((Transition) getExitTransition());
+        if (exitTransition == null) return;
+        exitTransition.addListener(new Transition.TransitionListener() {
+            @Override
+            public void onTransitionStart(@NonNull Transition transition) {
+                setSurfaceViewsVisible(false);
+            }
+
+            @Override
+            public void onTransitionEnd(@NonNull Transition transition) {
+                setSurfaceViewsVisible(true);
+            }
+
+            @Override
+            public void onTransitionCancel(@NonNull Transition transition) {
+                setSurfaceViewsVisible(true);
+                // cancelling the transition breaks the preview, therefore recreating the activity
+                requireActivity().recreate();
+            }
+
+            @Override
+            public void onTransitionPause(@NonNull Transition transition) {}
+
+            @Override
+            public void onTransitionResume(@NonNull Transition transition) {}
+        });
+    }
+
+    private void setSurfaceViewsVisible(boolean isVisible) {
+        mHomeScrollContainer.findViewById(R.id.preview)
+                .setVisibility(isVisible ? View.VISIBLE : View.INVISIBLE);
+        mLockScrollContainer.findViewById(R.id.preview)
+                .setVisibility(isVisible ? View.VISIBLE : View.INVISIBLE);
     }
 
     /** Saves state of the fragment. */
@@ -300,18 +324,6 @@ public class CustomizationPickerFragment extends AppbarFragment implements
         mSectionControllers.forEach(c -> c.onSaveInstanceState(savedInstanceState));
     }
 
-    private void initSections(@Nullable Bundle savedInstanceState) {
-        // Release and clear if any.
-        mSectionControllers.forEach(CustomizationSectionController::release);
-        mSectionControllers.clear();
-
-        mSectionControllers.addAll(
-                filterAvailableSections(
-                        getSectionControllers(
-                                null,
-                                savedInstanceState)));
-    }
-
     private List<CustomizationSectionController<?>> getSectionControllers(
             @Nullable CustomizationSections.Screen screen,
             @Nullable Bundle savedInstanceState) {
@@ -319,34 +331,22 @@ public class CustomizationPickerFragment extends AppbarFragment implements
         ComponentActivity activity = requireActivity();
 
         CustomizationSections sections = injector.getCustomizationSections(activity);
-        if (screen == null) {
-            return sections.getAllSectionControllers(
-                    getActivity(),
-                    getViewLifecycleOwner(),
-                    injector.getWallpaperColorsViewModel(),
-                    getPermissionRequester(),
-                    getWallpaperPreviewNavigator(),
-                    this,
-                    savedInstanceState,
-                    injector.getDisplayUtils(activity));
-        } else {
-            boolean isTwoPaneAndSmallWidth = getIsTwoPaneAndSmallWidth(activity);
-            return sections.getRevampedUISectionControllersForScreen(
-                    screen,
-                    getActivity(),
-                    getViewLifecycleOwner(),
-                    injector.getWallpaperColorsViewModel(),
-                    getPermissionRequester(),
-                    getWallpaperPreviewNavigator(),
-                    this,
-                    savedInstanceState,
-                    injector.getCurrentWallpaperInfoFactory(requireContext()),
-                    injector.getDisplayUtils(activity),
-                    mViewModel,
-                    injector.getWallpaperInteractor(requireContext()),
-                    WallpaperManager.getInstance(requireContext()),
-                    isTwoPaneAndSmallWidth);
-        }
+        boolean isTwoPaneAndSmallWidth = getIsTwoPaneAndSmallWidth(activity);
+        return sections.getSectionControllersForScreen(
+                screen,
+                getActivity(),
+                getViewLifecycleOwner(),
+                injector.getWallpaperColorsRepository(),
+                getPermissionRequester(),
+                getWallpaperPreviewNavigator(),
+                this,
+                savedInstanceState,
+                injector.getCurrentWallpaperInfoFactory(requireContext()),
+                injector.getDisplayUtils(activity),
+                mViewModel,
+                injector.getWallpaperInteractor(requireContext()),
+                WallpaperManager.getInstance(requireContext()),
+                isTwoPaneAndSmallWidth);
     }
 
     /** Returns a filtered list containing only the available section controllers. */
@@ -371,17 +371,6 @@ public class CustomizationPickerFragment extends AppbarFragment implements
 
     private WallpaperPreviewNavigator getWallpaperPreviewNavigator() {
         return (WallpaperPreviewNavigator) getActivity();
-    }
-
-    private boolean shouldUseRevampedUi() {
-        final Bundle args = getArguments();
-        if (args != null && args.containsKey(KEY_IS_USE_REVAMPED_UI)) {
-            return args.getBoolean(KEY_IS_USE_REVAMPED_UI);
-        } else {
-            throw new IllegalStateException(
-                    "Must contain KEY_IS_USE_REVAMPED_UI argument, did you instantiate directly"
-                            + " instead of using the newInstance function?");
-        }
     }
 
     // TODO (b/282237387): Move wallpaper picker out of the 2-pane settings and make it a

@@ -34,12 +34,10 @@ import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
 import com.android.wallpaper.asset.BitmapUtils;
-import com.android.wallpaper.compat.WallpaperManagerCompat;
 import com.android.wallpaper.module.Injector;
 import com.android.wallpaper.module.InjectorProvider;
 import com.android.wallpaper.module.JobSchedulerJobIds;
 import com.android.wallpaper.module.WallpaperPreferences;
-import com.android.wallpaper.util.DiskBasedLogger;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -82,8 +80,6 @@ public class MissingHashCodeGeneratorJobService extends JobService {
             @Override
             public void run() {
                 Injector injector = InjectorProvider.getInjector();
-                WallpaperManagerCompat wallpaperManagerCompat = injector.getWallpaperManagerCompat(
-                        context);
                 WallpaperPreferences wallpaperPreferences = injector.getPreferences(context);
 
                 boolean isLiveWallpaperSet = wallpaperManager.getWallpaperInfo() != null;
@@ -93,17 +89,11 @@ public class MissingHashCodeGeneratorJobService extends JobService {
                 if (!isLiveWallpaperSet && wallpaperPreferences.getHomeWallpaperHashCode() == 0) {
                     wallpaperManager.forgetLoadedWallpaper();
 
-                    Drawable wallpaperDrawable = wallpaperManagerCompat.getDrawable();
+                    Drawable wallpaperDrawable = wallpaperManager.getDrawable();
                     // No work to do if the drawable returned is null due to an underlying
                     // platform issue -- being extra defensive with this check due to instability
                     // and variability of underlying platform.
                     if (wallpaperDrawable == null) {
-                        DiskBasedLogger.e(
-                                TAG,
-                                "WallpaperManager#getDrawable returned null and there's no live "
-                                        + "wallpaper set",
-                                context
-                        );
                         jobFinished(jobParameters, false /* needsReschedule */);
                         return;
                     }
@@ -116,9 +106,8 @@ public class MissingHashCodeGeneratorJobService extends JobService {
 
                 // Generate and set a lock wallpaper hash code if there's none saved.
                 if (wallpaperPreferences.getLockWallpaperHashCode() == 0) {
-                    ParcelFileDescriptor parcelFd =
-                            wallpaperManagerCompat.getWallpaperFile(
-                                    WallpaperManagerCompat.FLAG_LOCK);
+                    ParcelFileDescriptor parcelFd = wallpaperManager.getWallpaperFile(
+                            WallpaperManager.FLAG_LOCK);
                     boolean isLockWallpaperSet = parcelFd != null;
 
                     // Copy the home wallpaper's hash code to lock if there's no distinct lock

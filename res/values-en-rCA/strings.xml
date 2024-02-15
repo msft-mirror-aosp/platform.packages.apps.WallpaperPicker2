@@ -21,7 +21,8 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"Wallpaper categories"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"Set wallpaper"</string>
+    <!-- no translation found for set_wallpaper_button_text (5445978864530156290) -->
+    <skip />
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"Setting wallpaper…"</string>
     <string name="try_again" msgid="8278874823700921234">"Try again"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"Unable to set wallpaper."</string>
@@ -96,7 +97,8 @@
     <skip />
     <!-- no translation found for delete_wallpaper_confirmation (1905114562243802354) -->
     <skip />
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"Back"</string>
+    <!-- no translation found for bottom_action_bar_back (2620581414970740784) -->
+    <skip />
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Edit"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Download"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Slideshow wallpaper"</string>
@@ -112,6 +114,8 @@
     <skip />
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"The collection doesn\'t exist"</string>
     <!-- no translation found for wallpaper_exit_split_screen (1928870664619591636) -->
+    <skip />
+    <!-- no translation found for set_wallpaper_dialog_set_button (5760149969510325088) -->
     <skip />
     <string name="cancel" msgid="4970902691067201584">"Cancel"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"Hide UI preview"</string>
@@ -149,5 +153,13 @@
     <!-- no translation found for reset_confirmation_dialog_message (888669268626289603) -->
     <skip />
     <!-- no translation found for more_wallpapers (8116268433411881705) -->
+    <skip />
+    <!-- no translation found for recents_wallpaper_label (8653165542635660222) -->
+    <skip />
+    <!-- no translation found for default_wallpaper_title (2541071182656978180) -->
+    <skip />
+    <!-- no translation found for small_preview_tooltip (1920430079013352071) -->
+    <skip />
+    <!-- no translation found for full_preview_tooltip (4648994028015322759) -->
     <skip />
 </resources>

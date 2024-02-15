@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"桌布類別"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"設定桌布"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"設定桌布"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"正在設定桌布…"</string>
     <string name="try_again" msgid="8278874823700921234">"再試一次"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"無法設定桌布。"</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"刪除"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"編輯"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"要從你的裝置刪除此桌布嗎？"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"返回"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"向上導覽"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"編輯"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"下載"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"幻燈片放映桌布"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"主畫面桌布預覽"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"桌布集不存在"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"請退出分割螢幕模式，然後再試一次"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"設定"</string>
     <string name="cancel" msgid="4970902691067201584">"取消"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"隱藏使用者介面預覽"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"預覽入面隱藏咗使用者介面。㩒兩下就可以取消隱藏"</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"要重設變更嗎？"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"你的變更不會儲存"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"更多桌布"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s，%2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"桌布"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"輕按即可編輯相片"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"調整相片的位置、比例和角度"</string>
 </resources>

@@ -15,22 +15,24 @@
  */
 package com.android.wallpaper.module
 
+import android.app.WallpaperColors
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleOwner
-import com.android.wallpaper.compat.WallpaperManagerCompat
+import com.android.customization.model.color.WallpaperColorResources
 import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.effects.EffectsController
 import com.android.wallpaper.model.CategoryProvider
-import com.android.wallpaper.model.WallpaperColorsViewModel
+import com.android.wallpaper.model.InlinePreviewIntentFactory
 import com.android.wallpaper.model.WallpaperInfo
+import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.monitor.PerformanceMonitor
 import com.android.wallpaper.network.Requester
 import com.android.wallpaper.picker.MyPhotosStarter.MyPhotosIntentProvider
-import com.android.wallpaper.picker.PreviewFragment
+import com.android.wallpaper.picker.customization.data.repository.WallpaperColorsRepository
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperSnapshotRestorer
 import com.android.wallpaper.picker.undo.domain.interactor.SnapshotRestorer
@@ -88,31 +90,24 @@ interface Injector {
     fun getPreviewFragment(
         context: Context,
         wallpaperInfo: WallpaperInfo,
-        @PreviewFragment.PreviewMode mode: Int,
         viewAsHome: Boolean,
-        viewFullScreen: Boolean,
-        testingModeEnabled: Boolean
+        isAssetIdPresent: Boolean,
+        isNewTask: Boolean,
     ): Fragment
 
     fun getRequester(context: Context): Requester
 
     fun getSystemFeatureChecker(): SystemFeatureChecker
 
-    fun getUserEventLogger(context: Context): UserEventLogger
-
-    fun getWallpaperManagerCompat(context: Context): WallpaperManagerCompat
+    fun getUserEventLogger(): UserEventLogger
 
     fun getWallpaperPersister(context: Context): WallpaperPersister
 
     fun getPreferences(context: Context): WallpaperPreferences
 
-    fun getWallpaperPreviewFragmentManager(): WallpaperPreviewFragmentManager
-
     fun getWallpaperRefresher(context: Context): WallpaperRefresher
 
-    fun getWallpaperRotationRefresher(): WallpaperRotationRefresher
-
-    fun getWallpaperStatusChecker(): WallpaperStatusChecker
+    fun getWallpaperStatusChecker(context: Context): WallpaperStatusChecker
 
     fun getFragmentFactory(): FragmentFactory? {
         return null
@@ -133,7 +128,31 @@ interface Injector {
 
     fun getWallpaperSnapshotRestorer(context: Context): WallpaperSnapshotRestorer
 
-    fun getWallpaperColorsViewModel(): WallpaperColorsViewModel
+    fun getWallpaperColorsRepository(): WallpaperColorsRepository
+
+    fun getWallpaperColorResources(
+        wallpaperColors: WallpaperColors,
+        context: Context
+    ): WallpaperColorResources
 
     fun getMyPhotosIntentProvider(): MyPhotosIntentProvider
+
+    fun isInstrumentationTest(): Boolean {
+        return false
+    }
+
+    fun isCurrentSelectedColorPreset(context: Context): Boolean
+
+    /**
+     * Implements [InlinePreviewIntentFactory] that provides an intent to start [PreviewActivity].
+     */
+    fun getPreviewActivityIntentFactory(): InlinePreviewIntentFactory
+
+    /**
+     * Implements [InlinePreviewIntentFactory] that provides an intent to start
+     * [ViewOnlyPreviewActivity].
+     *
+     * TODO(b/298037335): Rename or remove view only preview.
+     */
+    fun getViewOnlyPreviewActivityIntentFactory(): InlinePreviewIntentFactory
 }

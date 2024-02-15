@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"वॉलपेपर वर्गवाऱ्या"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"वॉलपेपर सेट करा"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"वॉलपेपर सेट करा"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"वॉलपेपर सेट करत आहे…"</string>
     <string name="try_again" msgid="8278874823700921234">"पुन्हा प्रयत्न करा"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"वॉलपेपर सेट करू शकत नाही."</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"हटवा"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"संपादित करा"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"तुमच्या डिव्हाइसवरून हा वॉलपेपर हटवायचा आहे का?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"मागे जा"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"वर नेव्हिगेट करा"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"संपादित करा"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"डाउनलोड करा"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"स्लाइडशो वॉलपेपर"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"होम स्क्रीन वॉलपेपर पूर्वावलोकन"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"संग्रह अस्तित्वात नाही"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"कृपया स्प्लिट स्क्रीन मोडमधून बाहेर पडा आणि पुन्हा प्रयत्न करा"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"सेट करा"</string>
     <string name="cancel" msgid="4970902691067201584">"रद्द करा"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"UI पूर्वावलोकन लपवा"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"UI पूर्वावलोकनात लपवले आहे. दाखवण्यासाठी डबल टॅप करा"</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"बदल रीसेट करायचे आहेत का?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"तुमचे बदल सेव्ह केले जाणार नाहीत"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"अधिक वॉलपेपर"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"वॉलपेपर"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"तुमचा फोटो संपादित करण्यासाठी टॅप करा"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"तुमच्या फोटोचे स्थान, स्केल आणि कोन ॲडजस्ट करा"</string>
 </resources>

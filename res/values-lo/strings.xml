@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"ໝວດໝູ່ຮູບພື້ນຫຼັງ"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"ຕັ້ງເປັນຮູບພື້ນຫຼັງ"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"ຕັ້ງເປັນຮູບພື້ນຫຼັງ"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"ກຳລັງຕັ້ງຮູບພື້ນຫຼັງ..."</string>
     <string name="try_again" msgid="8278874823700921234">"ລອງໃໝ່"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"ບໍ່ສາມາດຕັ້ງເປັນຮູບພື້ນຫຼັງໄດ້."</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"ລຶບອອກ"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"ແກ້ໄຂ"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"ລຶບຮູບພື້ນຫຼັງນີ້ອອກຈາກອຸປະກອນຂອງທ່ານບໍ?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"ກັບຄືນ"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"ເລື່ອນຂຶ້ນ"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"ແກ້ໄຂ"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"ດາວໂຫຼດ"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"ຮູບພື້ນຫຼັງສະໄລ້ໂຊ"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"ຕົວຢ່າງຮູບພື້ນຫຼັງໂຮມສະກຣີນ"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"ບໍ່ມິຄໍເລັກຊັນ"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"ກະລຸນາອອກຈາກໂໝດແບ່ງໜ້າຈໍແລ້ວລອງໃໝ່"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"ຕັ້ງ"</string>
     <string name="cancel" msgid="4970902691067201584">"ຍົກເລີກ"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"ເຊື່ອງຕົວຢ່າງສ່ວນຕິດຕໍ່ຜູ້ໃຊ້"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"ເຊື່ອງສ່ວນຕິດຕໍ່ຜູ້ໃຊ້ໃນຕົວຢ່າງແລ້ວ. ແຕະສອງເທື່ອເພື່ອເຊົາເຊື່ອງ"</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"ຣີເຊັດການປ່ຽນແປງບໍ?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"ການປ່ຽນ​ແປງ​ຂອງ​ທ່ານ​ຈະບໍ່​ຖືກບັນ​ທຶກ"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"ຮູບພື້ນຫຼັງເພີ່ມເຕີມ"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"ຮູບພື້ນຫຼັງ"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"ແຕະເພື່ອແກ້ໄຂຮູບພາບຂອງທ່ານ"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"ປັບຕຳແໜ່ງ, ຂະໜາດ ແລະ ມຸມຂອງຮູບພາບຂອງທ່ານ"</string>
 </resources>

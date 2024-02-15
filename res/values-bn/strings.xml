@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"ওয়ালপেপারের বিভাগ"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"ওয়ালপেপার সেট করুন"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"ওয়ালপেপার সেট করুন"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"ওয়ালপেপার সেট করা হচ্ছে…"</string>
     <string name="try_again" msgid="8278874823700921234">"আবার চেষ্টা করুন"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"ওয়ালপেপার সেট করা গেল না।"</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"মুছে দিন"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"এডিট করুন"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"আপনার ডিভাইস থেকে এই ওয়ালপেপার মুছে দেবেন?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"ফিরে যান"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"উপরের দিকে নেভিগেট করুন"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"এডিট করুন"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"ডাউনলোড করুন"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"ওয়ালপেপার স্লাইডশো দেখুন"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"হোম স্ক্রিন ওয়ালপেপার প্রিভিউ"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"কালেকশন উপলভ্য নেই"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"\'স্প্লিট স্ক্রিন\' মোড থেকে বেরিয়ে আবার চেষ্টা করুন"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"সেট করুন"</string>
     <string name="cancel" msgid="4970902691067201584">"বাতিল করুন"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"UI প্রিভিউ লুকান"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"প্রিভিউতে UI লুকানো হয়েছে। দেখাতে ডবল ট্যাপ করুন"</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"পরিবর্তন রিসেট করবেন?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"আপনার করা পরিবর্তন সেভ করা হবে না"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"আরও ওয়ালপেপার"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"ওয়ালপেপার"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"আপনার ফটো এডিট করতে ট্যাপ করুন"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"আপনার ফটোর পজিশন, স্কেল ও কোণ অ্যাডজাস্ট করুন"</string>
 </resources>

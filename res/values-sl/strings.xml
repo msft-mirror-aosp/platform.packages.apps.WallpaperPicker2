@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"Kategorije ozadij"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"Nastavi ozadje"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"Nastavi kot zaslonsko ozadje"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"Nastavljanje ozadja …"</string>
     <string name="try_again" msgid="8278874823700921234">"Poskusi znova"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"Ozadja ni bilo mogoče nastaviti."</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Izbriši"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"Uredi"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Ali želite to zaslonsko ozadje izbrisati iz naprave?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"Nazaj"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"Pomik navzgor"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Urejanje"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Prenos"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Diaprojekcija zaslonsk. ozadij"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Predogled zaslonskega ozadja začetnega zaslona"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Zbirka ne obstaja"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"Zapustite način razdeljenega zaslona in poskusite znova"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"Nastavi"</string>
     <string name="cancel" msgid="4970902691067201584">"Prekliči"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"Skrij predogled upor. vmesnika"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"Upor. vm. je skrit. Dvakrat se dot. za razkritje."</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Želite ponastaviti spremembe?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Spremembe ne bodo shranjene."</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"Več zaslonskih ozadij"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"Zaslonsko ozadje"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"Dotik za urejanje fotografije"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"Prilagajanje položaja, velikosti in kota fotografij"</string>
 </resources>

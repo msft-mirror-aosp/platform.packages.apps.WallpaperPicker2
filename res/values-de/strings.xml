@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"Hintergrundkategorien"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"Als Hintergrund festlegen"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"Hintergrund festlegen"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"Hintergrund wird festgelegt…"</string>
     <string name="try_again" msgid="8278874823700921234">"Noch einmal versuchen"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"Hintergrund kann nicht festgelegt werden."</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Löschen"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"Bearbeiten"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Diesen Hintergrund von deinem Gerät löschen?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"Zurück"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"Nach oben"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Bearbeiten"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Herunterladen"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Diashowhintergrund"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Vorschau für Startbildschirmhintergrund"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Die Sammlung existiert nicht"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"Bitte beende den Splitscreen-Modus und versuch es noch einmal"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"Festlegen"</string>
     <string name="cancel" msgid="4970902691067201584">"Abbrechen"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"UI-Vorschau ausblenden"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"UI in der Vorschau ausgeblendet. Zum Einblenden doppeltippen."</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Änderungen zurücksetzen?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Änderungen werden nicht gespeichert."</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"Weitere Hintergrundbilder"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"Hintergrund"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"Tippen, um das Foto zu bearbeiten"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"Position, Maßstab und Winkel von Fotos anpassen"</string>
 </resources>

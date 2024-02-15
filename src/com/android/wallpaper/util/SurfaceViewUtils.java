@@ -28,9 +28,10 @@ public class SurfaceViewUtils {
     private static final String KEY_HOST_TOKEN = "host_token";
     private static final String KEY_VIEW_WIDTH = "width";
     private static final String KEY_VIEW_HEIGHT = "height";
-    private static final String KEY_DISPLAY_ID = "display_id";
+    public static final String KEY_DISPLAY_ID = "display_id";
     private static final String KEY_SURFACE_PACKAGE = "surface_package";
     private static final String KEY_CALLBACK = "callback";
+    public static final String KEY_WALLPAPER_COLORS = "wallpaper_colors";
 
     /** Create a surface view request. */
     public static Bundle createSurfaceViewRequest(SurfaceView surfaceView) {
@@ -43,7 +44,10 @@ public class SurfaceViewUtils {
             @Nullable Bundle extras) {
         Bundle bundle = new Bundle();
         bundle.putBinder(KEY_HOST_TOKEN, surfaceView.getHostToken());
-        bundle.putInt(KEY_DISPLAY_ID, surfaceView.getDisplay().getDisplayId());
+        // TODO (b/305258307): Figure out why SurfaceView.getDisplay returns null in small preview
+        if (surfaceView.getDisplay() != null) {
+            bundle.putInt(KEY_DISPLAY_ID, surfaceView.getDisplay().getDisplayId());
+        }
         bundle.putInt(KEY_VIEW_WIDTH, surfaceView.getWidth());
         bundle.putInt(KEY_VIEW_HEIGHT, surfaceView.getHeight());
         if (extras != null) {

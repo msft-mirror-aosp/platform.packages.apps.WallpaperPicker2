@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"Категории на тапети"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"Постави како тапет"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"Поставете тапет"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"Тапетот се поставува…"</string>
     <string name="try_again" msgid="8278874823700921234">"Обиди се пак"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"Тапетот не може да се постави."</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Избриши"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"Изменете"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Да се избрише овој тапет од уредот?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"Назад"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"Движење нагоре"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Измени"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Преземи"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Тапет со приказ на слајдови"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Преглед на тапетот на почетниот екран"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Збирката не постои"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"Излезете од режимот на поделен екран и обидете се повторно"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"Постави"</string>
     <string name="cancel" msgid="4970902691067201584">"Откажи"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"Скриј го прегледот на UI"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"UI е скриен во прегледот. Допрете двапати за да се прикаже"</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Да се ресетираат промените?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Промените нема да се зачуваат"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"Повеќе тапети"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"Тапет"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"Допрете за да ја измените фотографијата"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"Приспособете ја позицијата, размерот и аголот на вашите фотографии"</string>
 </resources>

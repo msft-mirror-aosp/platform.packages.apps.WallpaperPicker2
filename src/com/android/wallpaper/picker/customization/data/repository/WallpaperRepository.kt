@@ -18,11 +18,17 @@
 package com.android.wallpaper.picker.customization.data.repository
 
 import android.graphics.Bitmap
+import android.graphics.Point
+import android.graphics.Rect
 import android.util.LruCache
 import com.android.wallpaper.module.WallpaperPreferences
+import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.data.content.WallpaperClient
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
+import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
+import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
+import java.io.InputStream
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -67,8 +73,8 @@ class WallpaperRepository(
     ): String {
         val key =
             when (destination) {
-                WallpaperDestination.HOME -> wallpaperPreferences.homeWallpaperRecentsKey
-                WallpaperDestination.LOCK -> wallpaperPreferences.lockWallpaperRecentsKey
+                WallpaperDestination.HOME -> wallpaperPreferences.getHomeWallpaperRecentsKey()
+                WallpaperDestination.LOCK -> wallpaperPreferences.getLockWallpaperRecentsKey()
                 else -> error("Unsupported destination")
             }
         return key ?: previews?.firstOrNull()?.wallpaperId ?: DEFAULT_KEY
@@ -95,12 +101,16 @@ class WallpaperRepository(
             .flowOn(backgroundDispatcher)
     }
 
-    /** Returns a thumbnail for the wallpaper with the given ID. */
-    suspend fun loadThumbnail(wallpaperId: String, lastUpdatedTimestamp: Long): Bitmap? {
+    /** Returns a thumbnail for the wallpaper with the given ID and destination. */
+    suspend fun loadThumbnail(
+        wallpaperId: String,
+        lastUpdatedTimestamp: Long,
+        destination: WallpaperDestination
+    ): Bitmap? {
         val cacheKey = "$wallpaperId-$lastUpdatedTimestamp"
         return thumbnailCache[cacheKey]
             ?: withContext(backgroundDispatcher) {
-                val thumbnail = client.loadThumbnail(wallpaperId)
+                val thumbnail = client.loadThumbnail(wallpaperId, destination)
                 if (thumbnail != null) {
                     thumbnailCache.put(cacheKey, thumbnail)
                 }
@@ -108,15 +118,52 @@ class WallpaperRepository(
             }
     }
 
+    suspend fun setStaticWallpaper(
+        @SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
+        destination: WallpaperDestination,
+        wallpaperModel: StaticWallpaperModel,
+        inputStream: InputStream?,
+        bitmap: Bitmap,
+        cropHints: Map<Point, Rect>,
+    ) {
+        // TODO(b/303317694): provide set wallpaper status as flow
+        withContext(backgroundDispatcher) {
+            client.setStaticWallpaper(
+                setWallpaperEntryPoint,
+                destination,
+                wallpaperModel,
+                inputStream,
+                bitmap,
+                cropHints,
+            )
+        }
+    }
+
+    suspend fun setLiveWallpaper(
+        @SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
+        destination: WallpaperDestination,
+        wallpaperModel: LiveWallpaperModel,
+    ) {
+        withContext(backgroundDispatcher) {
+            client.setLiveWallpaper(
+                setWallpaperEntryPoint,
+                destination,
+                wallpaperModel,
+            )
+        }
+    }
+
     /** Sets the wallpaper to the one with the given ID. */
-    suspend fun setWallpaper(
+    suspend fun setRecentWallpaper(
+        @SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
         destination: WallpaperDestination,
         wallpaperId: String,
     ) {
         _selectingWallpaperId.value =
             _selectingWallpaperId.value.toMutableMap().apply { this[destination] = wallpaperId }
         withContext(backgroundDispatcher) {
-            client.setWallpaper(
+            client.setRecentWallpaper(
+                setWallpaperEntryPoint = setWallpaperEntryPoint,
                 destination = destination,
                 wallpaperId = wallpaperId,
             ) {
@@ -127,7 +174,7 @@ class WallpaperRepository(
     }
 
     companion object {
-        private const val DEFAULT_KEY = "default_missing_key"
+        const val DEFAULT_KEY = "default_missing_key"
         /** The maximum number of options to show, including the currently-selected one. */
         private const val MAX_OPTIONS = 5
     }

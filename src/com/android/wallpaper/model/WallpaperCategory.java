@@ -78,6 +78,17 @@ public class WallpaperCategory extends Category {
         // No op
     }
 
+    public List<WallpaperInfo> getWallpapers() {
+        return mWallpapers;
+    }
+
+    public Asset getThumbAsset() {
+        return mThumbAsset;
+    }
+
+    public int getFeaturedThumbnailIndex() {
+        return mFeaturedThumbnailIndex;
+    }
     @Override
     public boolean isEnumerable() {
         return true;
@@ -179,7 +190,7 @@ public class WallpaperCategory extends Category {
         public WallpaperCategory build() {
             if (mThumbResId != 0) {
                 return new WallpaperCategory(mTitle, mId,
-                        new ResourceAsset(mPartnerRes, mThumbResId), mWallpapers, mPriority);
+                        new ResourceAsset(mPartnerRes, mThumbResId, true), mWallpapers, mPriority);
             } else {
                 int featuredIndex = 0;
                 for (int i = 0; i < mWallpapers.size(); i++) {

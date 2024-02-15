@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"वालपेपरका कोटीहरू"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"वालपेपर सेट गर्नुहोस्"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"वालपेपर राख्नुहोस्"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"वालपेपर सेट गर्दै…"</string>
     <string name="try_again" msgid="8278874823700921234">"फेरि प्रयास गर्नुहोस्‌"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"वालपेपर सेट गर्न सकिएन।"</string>
@@ -80,7 +80,7 @@
     <string name="center_wallpaper_position" msgid="4166894762352288883">"मध्यभाग"</string>
     <string name="center_crop_wallpaper_position" msgid="1681980019815343348">"मध्यभागमा क्रप गरिएको"</string>
     <string name="stretch_wallpaper_position" msgid="5002680983147456935">"तन्काइएको"</string>
-    <string name="preview" msgid="1774602101743861071">"पूर्वावलोकन"</string>
+    <string name="preview" msgid="1774602101743861071">"प्रिभ्यु"</string>
     <string name="tab_info" msgid="818614080690111416">"जानकारी"</string>
     <string name="tab_customize" msgid="2533745409174959960">"आफू अनुकूल पार्नुहोस्"</string>
     <string name="tab_effects" msgid="3213606157589233901">"इफेक्टहरू"</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"मेट्नुहोस्"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"परिवर्तन गर्नुहोस्"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"आफ्नो डिभाइसबाट यो वालपेपर मेटाउने हो?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"पछाडि फर्कनुहोस्"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"माथि जानुहोस्"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"सम्पादन गर्नुहोस्"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"डाउनलोड गर्नुहोस्"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"स्लाइड सो वालपेपर"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"होम स्क्रिनमा देखिने वालपेपरको प्रिभ्यू"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"यो सङ्ग्रह छैन"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"कृपया विभाजित स्क्रिन मोडबाट बाहिरिनुहोस् र फेरि प्रयास गर्नुहोस्"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"सेट अप गर्नुहोस्"</string>
     <string name="cancel" msgid="4970902691067201584">"रद्द गर्नुहोस्"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"UI प्रिभ्यू लुकाइयोस्"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"प्रिभ्यूमा UI लुकाइएको छ। नलुकाउन डबल ट्याप गर्नुहोस्"</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"परिवर्तनहरू रिसेट गर्ने हो?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"तपाईंले गरेका परिवर्तनहरू सेभ गरिने छैनन्"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"थप वालपेपरहरू"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"वालपेपर"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"आफ्नो फोटो सम्पादन गर्न ट्याप गर्नुहोस्"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"आफ्ना फोटोहरूको स्थिति, स्केल र कोण मिलाउनुहोस्"</string>
 </resources>

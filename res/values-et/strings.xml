@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"Taustapiltide kategooriad"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"Määra taustapilt"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"Määra taustapildiks"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"Taustapildi määramine …"</string>
     <string name="try_again" msgid="8278874823700921234">"Proovi uuesti"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"Taustapilti ei saa määrata."</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Kustuta"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"Muuda"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Kas kustutada see taustapilt seadmest?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"Tagasi"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"Üles liikumine"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Muuda"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Laadi alla"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Taustapiltide slaidiseanss"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Avakuva taustapildi eelvaade"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Kogu pole olemas"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"Väljuge poolitatud ekraani režiimist ja proovige uuesti"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"Määra"</string>
     <string name="cancel" msgid="4970902691067201584">"Tühista"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"Peida kasutajaliidese eelvaade"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"Kasutajaliides on eelvaates peidetud. Topeltpuudutage kuvamiseks."</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Kas lähtestada muudatused?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Muudatusi ei salvestata"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"Rohkem taustapilte"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"Taustapilt"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"Puudutage oma foto muutmiseks"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"Reguleerige oma fotode asendit, mõõtmeid ja nurka"</string>
 </resources>

@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"Категорії фонових малюнків"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"Зробити фоном"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"Зробити фоном"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"Налаштування фонового малюнка…"</string>
     <string name="try_again" msgid="8278874823700921234">"Повторити"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"Не вдалося налаштувати фоновий малюнок."</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Видалити"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"Редагувати"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Видалити цей фоновий малюнок із пристрою?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"Назад"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"Назад"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Змінити"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Завантажити"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Фоновий малюнок слайд-шоу"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Попередній перегляд фонового малюнка головного екрана"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Колекція не існує"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"Вимкніть режим розділення екрана й повторіть спробу"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"Установити"</string>
     <string name="cancel" msgid="4970902691067201584">"Скасувати"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"Сховати інтерфейс перегляду"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"Попередній перегляд інтерфейсу приховано. Двічі торкніться, щоб показати."</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Скинути зміни?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Зміни не буде збережено"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"Більше фонових малюнків"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"Фоновий малюнок"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"Натисніть, щоб редагувати фотографію"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"Коригуйте положення, масштаб і кут повороту фотографій"</string>
 </resources>

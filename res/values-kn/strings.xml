@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"ವಾಲ್‌ಪೇಪರ್‌ ವರ್ಗಗಳು"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"ವಾಲ್‌ಪೇಪರ್ ಹೊಂದಿಸಿ"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"ವಾಲ್‌ಪೇಪರ್ ಸೆಟ್ ಮಾಡಿ"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"ವಾಲ್‌ಪೇಪರ್ ಹೊಂದಿಸಲಾಗುತ್ತಿದೆ..."</string>
     <string name="try_again" msgid="8278874823700921234">"ಪುನಃ ಪ್ರಯತ್ನಿಸಿ"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"ವಾಲ್‌ಪೇಪರ್ ಹೊಂದಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ."</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"ಅಳಿಸಿ"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"ಎಡಿಟ್ ಮಾಡಿ"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"ನಿಮ್ಮ ಸಾಧನದಿಂದ ಈ ವಾಲ್‌ಪೇಪರ್ ಅಳಿಸಬೇಕೆ?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"ಹಿಂದೆ"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"ಮೇಲಕ್ಕೆ ನ್ಯಾವಿಗೇಟ್ ಮಾಡಿ"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"ಎಡಿಟ್ ಮಾಡಿ"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"ಡೌನ್‌ಲೋಡ್"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"ಸ್ಲೈಡ್‌ಶೋ ವಾಲ್‌ಪೇಪರ್"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"ಹೋಮ್ ಸ್ಕ್ರೀನ್ ವಾಲ್‌ಪೇಪರ್‌ನ ಪೂರ್ವವೀಕ್ಷಣೆ"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"ಸಂಗ್ರಹಣೆ ಅಸ್ತಿತ್ವದಲ್ಲಿಲ್ಲ"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"ಸ್ಪ್ಲಿಟ್ ಸ್ಕ್ರೀನ್ ಮೋಡ್‌ನಿಂದ ನಿರ್ಗಮಿಸಿ ಹಾಗೂ ಪುನಃ ಪ್ರಯತ್ನಿಸಿ"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"ಸೆಟ್ ಮಾಡಿ"</string>
     <string name="cancel" msgid="4970902691067201584">"ರದ್ದುಮಾಡಿ"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"UI ಪೂರ್ವವೀಕ್ಷಣೆಯನ್ನು ಮರೆಮಾಡಿ"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"ಪೂರ್ವವೀಕ್ಷಣೆಯಲ್ಲಿ UI ಅನ್ನು ಮರೆಮಾಡಲಾಗಿದೆ. ಪ್ರದರ್ಶಿಸಲು ಡಬಲ್ ಟ್ಯಾಪ್ ಮಾಡಿ"</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"ಬದಲಾವಣೆಗಳನ್ನು ರೀಸೆಟ್ ಮಾಡಬೇಕೆ?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"ನಿಮ್ಮ ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಲಾಗುವುದಿಲ್ಲ"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"ಇನ್ನಷ್ಟು ವಾಲ್‌ಪೇಪರ್‌ಗಳು"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"ವಾಲ್‌ಪೇಪರ್"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"ನಿಮ್ಮ ಫೋಟೋ ಎಡಿಟ್ ಮಾಡಲು ಟ್ಯಾಪ್ ಮಾಡಿ"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"ನಿಮ್ಮ ಫೋಟೋಗಳ ಸ್ಥಾನ, ಅಳತೆ ಮತ್ತು ಕೋನವನ್ನು ಹೊಂದಿಸಿ"</string>
 </resources>

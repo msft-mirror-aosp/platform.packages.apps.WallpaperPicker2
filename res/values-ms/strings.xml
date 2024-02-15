@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"Kategori kertas dinding"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"Tetapkan Hiasan Latar"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"Tetapkan hiasan latar"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"Menetapkan kertas dinding…"</string>
     <string name="try_again" msgid="8278874823700921234">"Cuba lagi"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"Tidak dapat menetapkan kertas dinding."</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Padam"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"Edit"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Padamkan hiasan latar ini daripada peranti anda?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"Kembali"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"Navigasi ke atas"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Edit"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Muat turun"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Kertas Dinding Tayangan Slaid"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Pratonton hiasan latar skrin utama"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Koleksi tersebut tidak wujud"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"Sila keluar daripada mod skrin pisah dan cuba lagi"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"Tetapkan"</string>
     <string name="cancel" msgid="4970902691067201584">"Batal"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"Sembunyikan Pratontotn UI"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"Sembunyi UI dlm pratonton Dwiketik utk nyahsembunyi"</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Tetapkan semula perubahan?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Perubahan anda tidak akan disimpan"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"Lagi hiasan latar"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"Hiasan latar"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"Ketik untuk mengedit foto anda"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"Laraskan kedudukan, skala dan sudut foto anda"</string>
 </resources>

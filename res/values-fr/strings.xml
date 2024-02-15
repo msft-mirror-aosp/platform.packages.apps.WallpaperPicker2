@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"Catégories de fonds d\'écran"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"Définir comme fond d\'écran"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"Définir comme fond d\'écran"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"Définition du fond d\'écran…"</string>
     <string name="try_again" msgid="8278874823700921234">"Réessayer"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"Impossible de définir le fond d\'écran."</string>
@@ -90,7 +90,7 @@
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Supprimer"</string>
     <string name="edit_live_wallpaper" msgid="3132060073690558045">"Modifier"</string>
     <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Supprimer ce fond d\'écran de votre appareil ?"</string>
-    <string name="bottom_action_bar_back" msgid="8237013112999946725">"Retour"</string>
+    <string name="bottom_action_bar_back" msgid="2620581414970740784">"Remonter"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Modifier"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Télécharger"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Fond d\'écran diaporama"</string>
@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Aperçu du fond d\'écran d\'accueil"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Cette collection n\'existe pas"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"Veuillez quitter le mode Écran partagé et réessayer"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"Définir"</string>
     <string name="cancel" msgid="4970902691067201584">"Annuler"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"Masquer l\'aperçu de l\'UI"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"UI masquée dans aperçu. Appuyez 2 fois pour afficher"</string>
@@ -130,4 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Réinitialiser les modifications ?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Vos modifications ne seront pas enregistrées"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"Autres fonds d\'écran"</string>
+    <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
+    <string name="default_wallpaper_title" msgid="2541071182656978180">"Fond d\'écran"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"Appuyez pour modifier votre photo"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"Ajustez la position, l\'échelle et l\'angle de vos photos"</string>
 </resources>
