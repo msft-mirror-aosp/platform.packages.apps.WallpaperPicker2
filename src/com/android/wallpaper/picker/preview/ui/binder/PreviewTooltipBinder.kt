@@ -16,6 +16,7 @@
 package com.android.wallpaper.picker.preview.ui.binder
 
 import android.view.View
+import android.view.ViewStub
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -26,16 +27,25 @@ import kotlinx.coroutines.launch
 
 object PreviewTooltipBinder {
     fun bind(
-        view: View,
+        tooltipStub: ViewStub,
+        enableClickToDismiss: Boolean,
         viewModel: WallpaperPreviewViewModel,
         lifecycleOwner: LifecycleOwner,
     ) {
+        var tooltip: View? = null
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.showTooltip.collect { showTooltip ->
+                    viewModel.shouldShowTooltip().collect { shouldShowTooltip ->
+                        if (shouldShowTooltip && tooltip == null) {
+                            tooltip = tooltipStub.inflate()
+                            if (enableClickToDismiss) {
+                                tooltip?.setOnClickListener { viewModel.dismissTooltip() }
+                            }
+                        }
                         // TODO (b/303318205): animate tooltip
-                        view.isVisible = showTooltip
+                        // Only show tooltip if it has not been shown before.
+                        tooltip?.isVisible = shouldShowTooltip
                     }
                 }
             }

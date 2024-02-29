@@ -18,6 +18,9 @@
 package com.android.wallpaper.picker.customization.data.content
 
 import android.app.WallpaperManager
+import android.app.WallpaperManager.FLAG_LOCK
+import android.app.WallpaperManager.FLAG_SYSTEM
+import android.app.WallpaperManager.SetWallpaperFlags
 import android.content.ComponentName
 import android.content.ContentResolver
 import android.content.ContentValues
@@ -41,9 +44,15 @@ import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
+import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination.BOTH
+import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination.Companion.toDestinationInt
+import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination.HOME
+import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination.LOCK
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
+import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
+import com.android.wallpaper.util.WallpaperCropUtils
 import java.io.IOException
 import java.io.InputStream
 import java.util.EnumMap
@@ -123,17 +132,28 @@ class WallpaperClientImpl(
         wallpaperModel: StaticWallpaperModel,
         inputStream: InputStream?,
         bitmap: Bitmap,
-        cropHints: Map<Point, Rect>,
+        wallpaperSize: Point,
+        fullPreviewCropModels: Map<Point, FullPreviewCropModel>?,
     ) {
-        if (destination == WallpaperDestination.HOME || destination == WallpaperDestination.BOTH) {
+        if (destination == HOME || destination == BOTH) {
             // Disable rotation wallpaper when setting to home screen. Daily rotation rotates both
             // home and lock screen wallpaper when lock screen is not set; otherwise daily rotation
             // only rotates home screen while lock screen wallpaper stays as what it's set to.
             stopWallpaperRotation()
         }
 
+        val cropHintsWithParallax =
+            fullPreviewCropModels?.let { cropModels ->
+                cropModels.mapValues { it.value.adjustCropForParallax(wallpaperSize) }
+            }
+                ?: emptyMap()
         val managerId =
-            wallpaperManager.setStaticWallpaperToSystem(inputStream, bitmap, cropHints, destination)
+            wallpaperManager.setStaticWallpaperToSystem(
+                inputStream,
+                bitmap,
+                cropHintsWithParallax,
+                destination,
+            )
 
         wallpaperPreferences.setStaticWallpaperMetadata(
             metadata = wallpaperModel.getMetadata(bitmap, managerId),
@@ -188,7 +208,7 @@ class WallpaperClientImpl(
 
     private fun StaticWallpaperModel.getMetadata(
         bitmap: Bitmap,
-        managerId: Int
+        managerId: Int,
     ): StaticWallpaperPrefMetadata {
         val bitmapHash = BitmapUtils.generateHashCode(bitmap)
         return StaticWallpaperPrefMetadata(
@@ -198,8 +218,6 @@ class WallpaperClientImpl(
             bitmapHash,
             managerId,
             commonWallpaperData.id.uniqueId,
-            // TODO (b/309139122): Introduce crop hints to StaticWallpaperMetadata
-            cropHints = null,
         )
     }
 
@@ -213,15 +231,15 @@ class WallpaperClientImpl(
         destination: WallpaperDestination
     ) {
         when (destination) {
-            WallpaperDestination.HOME -> {
+            HOME -> {
                 clearHomeWallpaperMetadata()
                 setHomeStaticImageWallpaperMetadata(metadata)
             }
-            WallpaperDestination.LOCK -> {
+            LOCK -> {
                 clearLockWallpaperMetadata()
                 setLockStaticImageWallpaperMetadata(metadata)
             }
-            WallpaperDestination.BOTH -> {
+            BOTH -> {
                 clearHomeWallpaperMetadata()
                 setHomeStaticImageWallpaperMetadata(metadata)
                 clearLockWallpaperMetadata()
@@ -235,7 +253,7 @@ class WallpaperClientImpl(
         destination: WallpaperDestination,
         wallpaperModel: LiveWallpaperModel,
     ) {
-        if (destination == WallpaperDestination.HOME || destination == WallpaperDestination.BOTH) {
+        if (destination == HOME || destination == BOTH) {
             // Disable rotation wallpaper when setting to home screen. Daily rotation rotates both
             // home and lock screen wallpaper when lock screen is not set; otherwise daily rotation
             // only rotates home screen while lock screen wallpaper stays as what it's set to.
@@ -304,11 +322,7 @@ class WallpaperClientImpl(
         // WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK.
         // If destination is BOTH, either flag should return the same wallpaper manager ID.
         return getWallpaperId(
-            if (
-                destination == WallpaperDestination.BOTH || destination == WallpaperDestination.HOME
-            )
-                WallpaperManager.FLAG_SYSTEM
-            else WallpaperManager.FLAG_LOCK
+            if (destination == BOTH || destination == HOME) FLAG_SYSTEM else FLAG_LOCK
         )
     }
 
@@ -332,15 +346,15 @@ class WallpaperClientImpl(
         destination: WallpaperDestination
     ) {
         when (destination) {
-            WallpaperDestination.HOME -> {
+            HOME -> {
                 clearHomeWallpaperMetadata()
                 setHomeLiveWallpaperMetadata(metadata)
             }
-            WallpaperDestination.LOCK -> {
+            LOCK -> {
                 clearLockWallpaperMetadata()
                 setLockLiveWallpaperMetadata(metadata)
             }
-            WallpaperDestination.BOTH -> {
+            BOTH -> {
                 clearHomeWallpaperMetadata()
                 setHomeLiveWallpaperMetadata(metadata)
                 clearLockWallpaperMetadata()
@@ -361,7 +375,7 @@ class WallpaperClientImpl(
         val uri =
             Uri.parse(uriString)
                 ?.buildUpon()
-                ?.appendQueryParameter("destination", destination.toString())
+                ?.appendQueryParameter("destination", destination.toDestinationInt().toString())
                 ?.build()
                 ?: return null
         val authority = uri.authority ?: return null
@@ -446,7 +460,7 @@ class WallpaperClientImpl(
     ): WallpaperModel {
         val currentWallpapers = getCurrentWallpapers()
         val wallpaper: WallpaperInfo =
-            if (destination == WallpaperDestination.LOCK) {
+            if (destination == LOCK) {
                 currentWallpapers.second ?: currentWallpapers.first
             } else {
                 currentWallpapers.first
@@ -538,8 +552,8 @@ class WallpaperClientImpl(
     }
 
     override fun getCurrentCropHints(
-        displaySizes: MutableList<Point>,
-        @WallpaperManager.SetWallpaperFlags which: Int
+        displaySizes: List<Point>,
+        @SetWallpaperFlags which: Int
     ): Map<Point, Rect>? {
         val flags = InjectorProvider.getInjector().getFlags()
         val isMultiCropEnabled = flags.isMultiCropPreviewUiEnabled() && flags.isMultiCropEnabled()
@@ -559,18 +573,47 @@ class WallpaperClientImpl(
 
     fun WallpaperDestination.asString(): String {
         return when (this) {
-            WallpaperDestination.BOTH -> SCREEN_ALL
-            WallpaperDestination.HOME -> SCREEN_HOME
-            WallpaperDestination.LOCK -> SCREEN_LOCK
+            BOTH -> SCREEN_ALL
+            HOME -> SCREEN_HOME
+            LOCK -> SCREEN_LOCK
         }
     }
 
     private fun WallpaperDestination.toFlags(): Int {
         return when (this) {
-            WallpaperDestination.BOTH -> WallpaperManager.FLAG_LOCK or WallpaperManager.FLAG_SYSTEM
-            WallpaperDestination.HOME -> WallpaperManager.FLAG_SYSTEM
-            WallpaperDestination.LOCK -> WallpaperManager.FLAG_LOCK
+            BOTH -> FLAG_LOCK or FLAG_SYSTEM
+            HOME -> FLAG_SYSTEM
+            LOCK -> FLAG_LOCK
         }
+    }
+
+    /**
+     * Adjusts cropHints for parallax effect.
+     *
+     * [WallpaperCropUtils.calculateCropRect] calculates based on the scaled size, the scale depends
+     * on the view size hosting the preview and the wallpaper zoom of the preview on that view,
+     * whereas the rest of multi-crop is based on full wallpaper size. So scaled back at the end.
+     *
+     * If [CropSizeModel] is null, returns the original cropHint without parallax.
+     *
+     * @param wallpaperSize full wallpaper image size.
+     */
+    private fun FullPreviewCropModel.adjustCropForParallax(
+        wallpaperSize: Point,
+    ): Rect {
+        return cropSizeModel?.let {
+            WallpaperCropUtils.calculateCropRect(
+                    context,
+                    it.hostViewSize,
+                    it.cropSurfaceSize,
+                    wallpaperSize,
+                    cropHint,
+                    it.wallpaperZoom,
+                    /* cropExtraWidth= */ true,
+                )
+                .apply { scale(1f / it.wallpaperZoom) }
+        }
+            ?: cropHint
     }
 
     companion object {

@@ -12,11 +12,30 @@
   ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
+  ~
   -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:clipChildren="false">
 
-    <include layout="@layout/preview_handheld_card_view"/>
+    <com.android.wallpaper.picker.DisplayAspectRatioFrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <include
+            android:id="@+id/preview"
+            layout="@layout/small_wallpaper_preview_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"/>
+    </com.android.wallpaper.picker.DisplayAspectRatioFrameLayout>
+
+    <ViewStub
+        android:id="@+id/tooltip_stub"
+        android:inflatedId="@+id/tooltip"
+        android:layout="@layout/tooltip_small_preview"
+        android:layout_height="wrap_content"
+        android:layout_width="wrap_content"
+        android:layout_gravity="center"/>
 </FrameLayout>

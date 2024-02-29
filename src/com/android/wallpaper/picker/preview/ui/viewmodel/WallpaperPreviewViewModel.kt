@@ -31,6 +31,7 @@ import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.HomeScreenPreviewUtils
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.LockScreenPreviewUtils
 import com.android.wallpaper.picker.preview.domain.interactor.WallpaperPreviewInteractor
+import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity
 import com.android.wallpaper.util.DisplayUtils
 import com.android.wallpaper.util.PreviewUtils
@@ -68,20 +69,42 @@ constructor(
     var isViewAsHome = false
     var isNewTask = false
 
-    val showTooltip: StateFlow<Boolean> = interactor.showTooltip
+    val wallpaper: StateFlow<WallpaperModel?> = interactor.wallpaperModel
+
+    fun shouldShowTooltip(): Flow<Boolean> =
+        combine(interactor.wallpaperModel.filterNotNull(), interactor.hasTooltipBeenShown) {
+            wallpaper,
+            hasTooltipBeenShown ->
+            // Only show tooltip for non-downloadable static wallpapers. Hide tooltip for live
+            // wallpaper and downloadable wallpaper as their crop is not adjustable.
+            if (wallpaper is StaticWallpaperModel && !wallpaper.isDownloadableWallpaper()) {
+                // Only show tooltip if it has not been shown before.
+                !hasTooltipBeenShown
+            } else {
+                false
+            }
+        }
+
     fun dismissTooltip() = interactor.dismissTooltip()
 
-    val wallpaper: StateFlow<WallpaperModel?> = interactor.wallpaperModel
     private val _whichPreview = MutableStateFlow<WhichPreview?>(null)
     private val whichPreview: Flow<WhichPreview> = _whichPreview.asStateFlow().filterNotNull()
+
     fun setWhichPreview(whichPreview: WhichPreview) {
         _whichPreview.value = whichPreview
     }
 
     fun setCropHints(cropHints: Map<Point, Rect>) {
-        wallpaper.value?.let {
-            if (it is StaticWallpaperModel && !it.isDownloadableWallpaper()) {
-                staticWallpaperPreviewViewModel.updateCropHints(cropHints)
+        wallpaper.value?.let { model ->
+            if (model is StaticWallpaperModel && !model.isDownloadableWallpaper()) {
+                staticWallpaperPreviewViewModel.updateCropHintsInfo(
+                    cropHints.mapValues {
+                        FullPreviewCropModel(
+                            cropHint = it.value,
+                            cropSizeModel = null,
+                        )
+                    }
+                )
             }
         }
     }
@@ -141,15 +164,11 @@ constructor(
         _fullWorkspacePreviewConfigViewModel.filterNotNull()
 
     val onCropButtonClick: Flow<(() -> Unit)?> =
-        combine(wallpaper, fullWallpaperPreviewConfigViewModel.filterNotNull()) {
-            wallpaper,
-            previewViewModel ->
+        combine(wallpaper, fullWallpaperPreviewConfigViewModel.filterNotNull()) { wallpaper, _ ->
             if (wallpaper is StaticWallpaperModel && !wallpaper.isDownloadableWallpaper()) {
                 {
-                    staticWallpaperPreviewViewModel.fullPreviewCrop?.let {
-                        staticWallpaperPreviewViewModel.updateCropHints(
-                            mapOf(previewViewModel.displaySize to it)
-                        )
+                    staticWallpaperPreviewViewModel.run {
+                        updateCropHintsInfo(fullPreviewCropModels)
                     }
                 }
             } else {
@@ -216,7 +235,8 @@ constructor(
                                 wallpaperModel = wallpaper,
                                 inputStream = it.stream,
                                 bitmap = it.rawWallpaperBitmap,
-                                cropHints = it.cropHints ?: emptyMap(),
+                                wallpaperSize = it.rawWallpaperSize,
+                                fullPreviewCropModels = it.fullPreviewCropModels,
                             )
                         }
                     is LiveWallpaperModel -> {
@@ -292,11 +312,11 @@ constructor(
             getWorkspacePreviewConfig(screen, foldableDisplay)
     }
 
-    fun setDefaultWallpaperPreviewConfigViewModel() {
+    fun setDefaultWallpaperPreviewConfigViewModel(displaySize: Point) {
         fullWallpaperPreviewConfigViewModel.value =
             WallpaperPreviewConfigViewModel(
                 Screen.HOME_SCREEN,
-                wallpaperDisplaySize,
+                displaySize,
             )
     }
 

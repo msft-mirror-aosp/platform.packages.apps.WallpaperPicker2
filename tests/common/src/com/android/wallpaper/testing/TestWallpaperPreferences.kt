@@ -31,7 +31,6 @@ import com.android.wallpaper.module.WallpaperPreferences.PendingWallpaperSetStat
 import com.android.wallpaper.module.WallpaperPreferences.PresentationMode
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.data.WallpaperModel
-import com.google.common.collect.ImmutableMap
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -85,9 +84,7 @@ open class TestWallpaperPreferences @Inject constructor() : WallpaperPreferences
     private var mLockLiveWallpaperPrefMetadata: LiveWallpaperPrefMetadata? = null
     private val mWallStoredColor: HashMap<String, String> = HashMap()
 
-    private val wallpaperCropHints: MutableMap<Point, Rect?>
-
-    private var shouldShowPreviewTooltip = true
+    private var hasPreviewTooltipBeenShown = true
 
     init {
         wallpaperPresentationMode = WallpaperPreferences.PRESENTATION_MODE_STATIC
@@ -98,7 +95,6 @@ open class TestWallpaperPreferences @Inject constructor() : WallpaperPreferences
         lastDailyLogTimestamp = -1
         lastDailyWallpaperRotationStatus = -1
         mPendingWallpaperSetStatus = WallpaperPreferences.WALLPAPER_SET_NOT_PENDING
-        wallpaperCropHints = mutableMapOf()
     }
 
     override fun getWallpaperPresentationMode(): Int {
@@ -489,20 +485,12 @@ open class TestWallpaperPreferences @Inject constructor() : WallpaperPreferences
         wallpaperModel: WallpaperModel.LiveWallpaperModel
     ) {}
 
-    override fun getWallpaperCropHints(): Map<Point, Rect?> {
-        return ImmutableMap.copyOf(wallpaperCropHints)
+    override fun setHasPreviewTooltipBeenShown(hasTooltipBeenShown: Boolean) {
+        this.hasPreviewTooltipBeenShown = hasTooltipBeenShown
     }
 
-    override fun storeWallpaperCropHints(cropHints: Map<Point, Rect?>) {
-        wallpaperCropHints.putAll(cropHints)
-    }
-
-    override fun setShowPreviewTooltip(shouldShowTooltip: Boolean) {
-        shouldShowPreviewTooltip = shouldShowTooltip
-    }
-
-    override fun getShowPreviewTooltip(): Boolean {
-        return shouldShowPreviewTooltip
+    override fun getHasPreviewTooltipBeenShown(): Boolean {
+        return hasPreviewTooltipBeenShown
     }
 
     private fun setAppLaunchCount(count: Int) {

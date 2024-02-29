@@ -21,11 +21,13 @@ import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.service.wallpaper.WallpaperSettingsActivity
+import com.android.wallpaper.effects.EffectsController.EffectEnumInterface
 import com.android.wallpaper.picker.data.CreativeWallpaperData
 import com.android.wallpaper.picker.data.DownloadableWallpaperData
 import com.android.wallpaper.picker.data.LiveWallpaperData
 import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
+import com.android.wallpaper.picker.preview.data.repository.EffectsRepository
 import com.android.wallpaper.picker.preview.domain.interactor.PreviewActionsInteractor
 import com.android.wallpaper.picker.preview.ui.util.LiveWallpaperDeleteUtil
 import com.android.wallpaper.picker.preview.ui.viewmodel.Action.CUSTOMIZE
@@ -34,7 +36,9 @@ import com.android.wallpaper.picker.preview.ui.viewmodel.Action.EDIT
 import com.android.wallpaper.picker.preview.ui.viewmodel.Action.EFFECTS
 import com.android.wallpaper.picker.preview.ui.viewmodel.Action.INFORMATION
 import com.android.wallpaper.picker.preview.ui.viewmodel.Action.SHARE
+import com.android.wallpaper.picker.preview.ui.viewmodel.floatingSheet.EffectFloatingSheetViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.floatingSheet.InformationFloatingSheetViewModel
+import com.android.wallpaper.widget.floatingsheetcontent.WallpaperEffectsView2
 import dagger.hilt.android.scopes.ViewModelScoped
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -206,11 +210,84 @@ constructor(
         }
 
     /** [EFFECTS] */
-    private val _isEffectsVisible: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    val isEffectsVisible: Flow<Boolean> = _isEffectsVisible.asStateFlow()
+    private val _effectFloatingSheetViewModel: Flow<EffectFloatingSheetViewModel?> =
+        combine(interactor.wallpaperModel, interactor.effectsStatus, interactor.effect) {
+            wallpaper,
+            status,
+            effect ->
+            (wallpaper as? WallpaperModel.StaticWallpaperModel)?.imageWallpaperData?.uri
+                ?: return@combine null
+            effect ?: return@combine null
+            when (status) {
+                EffectsRepository.EffectStatus.EFFECT_DISABLE -> {
+                    null
+                }
+                else -> {
+                    getEffectFloatingSheetViewModel(status, effect.title, effect.type)
+                }
+            }
+        }
+
+    private fun getEffectFloatingSheetViewModel(
+        status: EffectsRepository.EffectStatus,
+        title: String,
+        effectType: EffectEnumInterface,
+    ): EffectFloatingSheetViewModel {
+        val floatingSheetViewStatus =
+            when (status) {
+                EffectsRepository.EffectStatus.EFFECT_APPLY_IN_PROGRESS ->
+                    WallpaperEffectsView2.Status.PROCESSING
+                EffectsRepository.EffectStatus.EFFECT_APPLIED ->
+                    WallpaperEffectsView2.Status.SUCCESS
+                else -> WallpaperEffectsView2.Status.IDLE
+            }
+        return EffectFloatingSheetViewModel(
+            myPhotosClickListener = {},
+            collapseFloatingSheetListener = {},
+            object : WallpaperEffectsView2.EffectSwitchListener {
+                override fun onEffectSwitchChanged(
+                    effect: EffectEnumInterface,
+                    isChecked: Boolean
+                ) {
+                    if (interactor.isTargetEffect(effect)) {
+                        if (isChecked) {
+                            interactor.enableImageEffect(effect)
+                        } else {
+                            interactor.disableImageEffect()
+                        }
+                    }
+                }
+            },
+            object : WallpaperEffectsView2.EffectDownloadClickListener {
+                override fun onEffectDownloadClick() {
+                    TODO("Not yet implemented")
+                }
+            },
+            floatingSheetViewStatus,
+            resultCode = null,
+            errorMessage = null,
+            title,
+            effectType,
+            interactor.getEffectTextRes(),
+        )
+    }
+
+    val isEffectsVisible: Flow<Boolean> = _effectFloatingSheetViewModel.map { it != null }
 
     private val _isEffectsChecked: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val isEffectsChecked: Flow<Boolean> = _isEffectsChecked.asStateFlow()
+
+    // Floating sheet contents for the bottom sheet dialog. If content is null, the bottom sheet
+    // should collapse, otherwise, expended.
+    val effectFloatingSheetViewModel: Flow<EffectFloatingSheetViewModel?> =
+        combine(isEffectsChecked, _effectFloatingSheetViewModel) { checked, viewModel ->
+                if (checked && viewModel != null) {
+                    viewModel
+                } else {
+                    null
+                }
+            }
+            .distinctUntilChanged()
 
     val onEffectsClicked: Flow<(() -> Unit)?> =
         combine(isEffectsVisible, isEffectsChecked) { show, isChecked ->
@@ -239,6 +316,10 @@ constructor(
         if (_isInformationChecked.value) {
             _isInformationChecked.value = false
         }
+
+        if (_isEffectsChecked.value) {
+            _isEffectsChecked.value = false
+        }
     }
 
     private fun uncheckAllOthersExcept(action: Action) {
@@ -261,23 +342,20 @@ constructor(
 
     companion object {
         private fun WallpaperModel.shouldShowInformationFloatingSheet(): Boolean {
-            return if (
-                commonWallpaperData.attributions.isNullOrEmpty() &&
-                    commonWallpaperData.exploreActionUrl.isNullOrEmpty()
-            ) {
-                // If neither of the attributes nor the action url exists, do not show the
-                // information floating sheet.
-                false
-            } else if (
+            if (
                 this is LiveWallpaperModel &&
                     !liveWallpaperData.systemWallpaperInfo.showMetadataInPreview
             ) {
                 // If the live wallpaper's flag of showMetadataInPreview is false, do not show the
                 // information floating sheet.
-                false
-            } else {
-                true
+                return false
             }
+            val attributions = commonWallpaperData.attributions
+            // Show information floating sheet when any of the following contents exists
+            // 1. Attributions: Any of the list values is not null nor empty
+            // 2. Explore action URL
+            return (!attributions.isNullOrEmpty() && attributions.any { !it.isNullOrEmpty() }) ||
+                !commonWallpaperData.exploreActionUrl.isNullOrEmpty()
         }
 
         private fun CreativeWallpaperData.getShareIntent(): Intent {
