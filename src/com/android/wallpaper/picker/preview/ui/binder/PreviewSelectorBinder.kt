@@ -21,8 +21,8 @@ import android.view.View
 import androidx.lifecycle.LifecycleOwner
 import androidx.viewpager.widget.ViewPager
 import androidx.viewpager2.widget.ViewPager2
+import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.adapters.TabTextPagerAdapter
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
-import kotlinx.coroutines.CoroutineScope
 
 /** Binds and synchronizes the tab and preview view pagers. */
 object PreviewSelectorBinder {
@@ -34,7 +34,6 @@ object PreviewSelectorBinder {
         wallpaperPreviewViewModel: WallpaperPreviewViewModel,
         applicationContext: Context,
         viewLifecycleOwner: LifecycleOwner,
-        mainScope: CoroutineScope,
         currentNavDestId: Int,
         navigate: (View) -> Unit,
     ) {
@@ -45,7 +44,6 @@ object PreviewSelectorBinder {
         PreviewPagerBinder.bind(
             applicationContext,
             viewLifecycleOwner,
-            mainScope,
             previewsViewPager,
             wallpaperPreviewViewModel,
             previewDisplaySize,
@@ -55,6 +53,10 @@ object PreviewSelectorBinder {
 
         // synchronize the two pagers
         synchronizePreviewAndTabsPager(tabsViewPager, previewsViewPager)
+        tabsViewPager.currentItem =
+            (tabsViewPager.adapter as TabTextPagerAdapter).getPageNumber(
+                wallpaperPreviewViewModel.isViewAsHome
+            )
     }
 
     private fun synchronizePreviewAndTabsPager(

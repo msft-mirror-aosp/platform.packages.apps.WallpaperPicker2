@@ -22,6 +22,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import android.widget.ImageView
+import androidx.cardview.widget.CardView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -29,7 +30,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.android.wallpaper.R
 import com.android.wallpaper.picker.TouchForwardingLayout
 import com.android.wallpaper.picker.data.WallpaperModel
-import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.shared.model.CropSizeModel
 import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 import com.android.wallpaper.picker.preview.ui.util.SubsamplingScaleImageViewUtil.setOnNewCropListener
@@ -43,7 +43,6 @@ import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import java.lang.Integer.min
 import kotlin.math.max
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -56,17 +55,20 @@ object FullWallpaperPreviewBinder {
         viewModel: WallpaperPreviewViewModel,
         displayUtils: DisplayUtils,
         lifecycleOwner: LifecycleOwner,
-        @MainDispatcher mainScope: CoroutineScope,
     ) {
         val wallpaperPreviewCrop: FullPreviewFrameLayout =
             view.requireViewById(R.id.wallpaper_preview_crop)
+        val previewCard: CardView = view.requireViewById(R.id.preview_card)
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.fullWallpaper.collect { (_, config, _) ->
+                    val currentSize = displayUtils.getRealSize(checkNotNull(view.context.display))
+                    val targetSize = config.displaySize
                     wallpaperPreviewCrop.setCurrentAndTargetDisplaySize(
-                        displayUtils.getRealSize(checkNotNull(view.context.display)),
-                        config.displaySize,
+                        currentSize,
+                        targetSize,
                     )
+                    if (targetSize == currentSize) previewCard.radius = 0f
                 }
             }
         }
@@ -94,7 +96,6 @@ object FullWallpaperPreviewBinder {
                                 if (wallpaper is WallpaperModel.LiveWallpaperModel) {
                                     WallpaperConnectionUtils.connect(
                                         applicationContext,
-                                        mainScope,
                                         wallpaper,
                                         whichPreview,
                                         config.screen.toFlag(),

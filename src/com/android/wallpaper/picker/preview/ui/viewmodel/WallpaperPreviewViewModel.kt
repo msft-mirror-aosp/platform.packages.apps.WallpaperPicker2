@@ -57,13 +57,15 @@ class WallpaperPreviewViewModel
 @Inject
 constructor(
     private val interactor: WallpaperPreviewInteractor,
-    val staticWallpaperPreviewViewModel: StaticWallpaperPreviewViewModel,
+    staticWallpaperPreviewViewModelFactory: StaticWallpaperPreviewViewModel.Factory,
     val previewActionsViewModel: PreviewActionsViewModel,
     private val displayUtils: DisplayUtils,
     @HomeScreenPreviewUtils private val homePreviewUtils: PreviewUtils,
     @LockScreenPreviewUtils private val lockPreviewUtils: PreviewUtils,
 ) : ViewModel() {
 
+    val staticWallpaperPreviewViewModel =
+        staticWallpaperPreviewViewModelFactory.create(viewModelScope)
     val smallerDisplaySize = displayUtils.getRealSize(displayUtils.getSmallerDisplay())
     val wallpaperDisplaySize = displayUtils.getRealSize(displayUtils.getWallpaperDisplay())
     var isViewAsHome = false
@@ -233,9 +235,9 @@ constructor(
                                     StyleEnums.SET_WALLPAPER_ENTRY_POINT_WALLPAPER_PREVIEW,
                                 destination = destination,
                                 wallpaperModel = wallpaper,
-                                inputStream = it.stream,
                                 bitmap = it.rawWallpaperBitmap,
                                 wallpaperSize = it.rawWallpaperSize,
+                                asset = it.asset,
                                 fullPreviewCropModels = it.fullPreviewCropModels,
                             )
                         }
@@ -284,22 +286,28 @@ constructor(
                     lockPreviewUtils
                 }
             }
-        val displayId =
-            when (foldableDisplay) {
-                FoldableDisplay.FOLDED -> {
-                    displayUtils.getSmallerDisplay().displayId
-                }
-                FoldableDisplay.UNFOLDED -> {
-                    displayUtils.getWallpaperDisplay().displayId
-                }
-                null -> {
-                    displayUtils.getWallpaperDisplay().displayId
-                }
-            }
+        // Do not directly store display Id in the view model because display Id can change on fold
+        // and unfold whereas view models persist. Store FoldableDisplay instead and convert in the
+        // binder.
         return WorkspacePreviewConfigViewModel(
             previewUtils = previewUtils,
-            displayId = displayId,
+            foldableDisplay = foldableDisplay,
         )
+    }
+
+    /** @param foldableDisplay Only used for foldable devices; otherwise, set to null. */
+    fun getDisplayId(foldableDisplay: FoldableDisplay?): Int {
+        return when (foldableDisplay) {
+            FoldableDisplay.FOLDED -> {
+                displayUtils.getSmallerDisplay().displayId
+            }
+            FoldableDisplay.UNFOLDED -> {
+                displayUtils.getWallpaperDisplay().displayId
+            }
+            null -> {
+                displayUtils.getWallpaperDisplay().displayId
+            }
+        }
     }
 
     fun onSmallPreviewClicked(
