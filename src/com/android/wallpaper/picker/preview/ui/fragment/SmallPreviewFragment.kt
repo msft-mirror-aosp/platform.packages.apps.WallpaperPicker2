@@ -16,19 +16,27 @@
 package com.android.wallpaper.picker.preview.ui.fragment
 
 import android.app.AlertDialog
-import android.app.ProgressDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.children
+import androidx.core.view.isVisible
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.FragmentNavigatorExtras
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.RecyclerView
+import androidx.transition.Transition
+import androidx.transition.doOnStart
+import androidx.viewpager2.widget.ViewPager2
 import com.android.wallpaper.R
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.AppbarFragment
@@ -60,7 +68,7 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
     @Inject lateinit var logger: UserEventLogger
 
     private val wallpaperPreviewViewModel by activityViewModels<WallpaperPreviewViewModel>()
-    private lateinit var setWallpaperProgressDialog: ProgressDialog
+    private lateinit var setWallpaperProgressDialog: AlertDialog
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -86,17 +94,46 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
         ) {
             findNavController().navigate(R.id.setWallpaperDialog)
         }
-        setWallpaperProgressDialog =
-            ProgressDialog(context, R.style.LightDialogTheme).apply {
-                setTitle(null)
-                setMessage(context.getString(R.string.set_wallpaper_progress_message))
-                isIndeterminate = true
-            }
+
+        setWallpaperProgressDialog = getSetWallpaperProgressDialog(inflater)
         SetWallpaperProgressDialogBinder.bind(
             dialog = setWallpaperProgressDialog,
             viewModel = wallpaperPreviewViewModel,
             lifecycleOwner = viewLifecycleOwner,
         )
+
+        // Transitions currently don't function properly with SurfaceViews. Hide all SurfaceViews
+        // before a transition as a workaround.
+        if (displayUtils.hasMultiInternalDisplays()) {
+            (exitTransition as? Transition)?.doOnStart {
+                val dualPreviewView: DualPreviewViewPager =
+                    view.requireViewById(R.id.dual_preview_pager)
+                dualPreviewView.children.forEach {
+                    val foldedPreview: FrameLayout =
+                        it.requireViewById(R.id.small_preview_folded_preview)
+                    val unfoldedPreview: FrameLayout =
+                        it.requireViewById(R.id.small_preview_unfolded_preview)
+                    foldedPreview.requireViewById<SurfaceView>(R.id.wallpaper_surface).isVisible =
+                        false
+                    foldedPreview.requireViewById<SurfaceView>(R.id.workspace_surface).isVisible =
+                        false
+                    unfoldedPreview.requireViewById<SurfaceView>(R.id.wallpaper_surface).isVisible =
+                        false
+                    unfoldedPreview.requireViewById<SurfaceView>(R.id.workspace_surface).isVisible =
+                        false
+                }
+            }
+        } else {
+            (exitTransition as? Transition)?.doOnStart {
+                val previewView: RecyclerView =
+                    view.requireViewById<ViewPager2>(R.id.pager_previews).getChildAt(0)
+                        as RecyclerView
+                previewView.children.forEach {
+                    it.requireViewById<SurfaceView>(R.id.wallpaper_surface).isVisible = false
+                    it.requireViewById<SurfaceView>(R.id.workspace_surface).isVisible = false
+                }
+            }
+        }
 
         return view
     }
@@ -229,6 +266,16 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                     .show()
             },
         )
+    }
+
+    private fun getSetWallpaperProgressDialog(
+        inflater: LayoutInflater,
+    ): AlertDialog {
+        val dialogView = inflater.inflate(R.layout.set_wallpaper_progress_dialog_view, null)
+        dialogView
+            .requireViewById<TextView>(R.id.set_wallpaper_progress_dialog_text)
+            .setText(R.string.set_wallpaper_progress_message)
+        return AlertDialog.Builder(activity).setView(dialogView).create()
     }
 
     companion object {
