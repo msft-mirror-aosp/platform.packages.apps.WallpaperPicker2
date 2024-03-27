@@ -37,7 +37,7 @@ import com.android.wallpaper.picker.AppbarFragment
 import com.android.wallpaper.picker.BasePreviewActivity
 import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.di.modules.MainDispatcher
-import com.android.wallpaper.picker.preview.data.repository.EffectsRepository
+import com.android.wallpaper.picker.preview.data.repository.ImageEffectsRepository
 import com.android.wallpaper.picker.preview.data.repository.WallpaperPreviewRepository
 import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
 import com.android.wallpaper.picker.preview.ui.fragment.SmallPreviewFragment
@@ -63,7 +63,7 @@ class WallpaperPreviewActivity :
     @Inject lateinit var displayUtils: DisplayUtils
     @Inject lateinit var wallpaperModelFactory: WallpaperModelFactory
     @Inject lateinit var wallpaperPreviewRepository: WallpaperPreviewRepository
-    @Inject lateinit var effectsRepository: EffectsRepository
+    @Inject lateinit var imageEffectsRepository: ImageEffectsRepository
     @Inject lateinit var liveWallpaperDownloader: LiveWallpaperDownloader
     @MainDispatcher @Inject lateinit var mainScope: CoroutineScope
 
@@ -112,7 +112,7 @@ class WallpaperPreviewActivity :
 
         if ((wallpaper as? WallpaperModel.StaticWallpaperModel)?.imageWallpaperData != null) {
             lifecycleScope.launch {
-                effectsRepository.initializeEffect(
+                imageEffectsRepository.initializeEffect(
                     staticWallpaperModel = wallpaper,
                     onWallpaperModelUpdated = { wallpaper ->
                         wallpaperPreviewRepository.setWallpaperModel(wallpaper)
@@ -123,20 +123,25 @@ class WallpaperPreviewActivity :
 
         val liveWallpaperModel = (wallpaper as? WallpaperModel.LiveWallpaperModel)
         if (liveWallpaperModel != null && liveWallpaperModel.isNewCreativeWallpaper()) {
-            // If it's a new creative wallpaper, override the start destination to the fullscreen
-            // fragment for the create-new flow of creative wallpapers
-            val navGraph =
-                navController.navInflater.inflate(R.navigation.wallpaper_preview_nav_graph)
-            navGraph.setStartDestination(R.id.creativeNewPreviewFragment)
-            navController.setGraph(
-                navGraph,
-                Bundle().apply {
-                    putParcelable(
-                        SmallPreviewFragment.ARG_EDIT_INTENT,
-                        liveWallpaperModel.liveWallpaperData.getEditActivityIntent()
-                    )
-                }
-            )
+            val navState = savedInstanceState?.getParcelable<Bundle?>(NAV_STATE)
+            if (navState != null) {
+                navController.restoreState(navState)
+            } else {
+                // If it's a new creative wallpaper, override the start destination to the
+                // fullscreen fragment for the create-new flow of creative wallpapers
+                val navGraph =
+                    navController.navInflater.inflate(R.navigation.wallpaper_preview_nav_graph)
+                navGraph.setStartDestination(R.id.creativeNewPreviewFragment)
+                navController.setGraph(
+                    navGraph,
+                    Bundle().apply {
+                        putParcelable(
+                            SmallPreviewFragment.ARG_EDIT_INTENT,
+                            liveWallpaperModel.liveWallpaperData.getEditActivityIntent()
+                        )
+                    }
+                )
+            }
         }
     }
 
@@ -156,7 +161,13 @@ class WallpaperPreviewActivity :
         }
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putParcelable(NAV_STATE, navController.saveState())
+    }
+
     override fun onDestroy() {
+        imageEffectsRepository.destroy()
         // TODO(b/328302105): MainScope ensures the job gets done non-blocking even if the activity
         //  has been destroyed already. Consider making this part of WallpaperConnectionUtils.
         mainScope.launch {
@@ -173,7 +184,6 @@ class WallpaperPreviewActivity :
                     wallpaperPreviewViewModel.wallpaperDisplaySize.value
                 )
             }
-            effectsRepository.destroy()
         }
         super.onDestroy()
     }
@@ -182,9 +192,14 @@ class WallpaperPreviewActivity :
         super.onConfigurationChanged(newConfig)
 
         wallpaperPreviewViewModel.updateDisplayConfiguration()
-        // Restart current navigation destination
+        // Restart current navigation destination to force preview layout changes...
         navController.apply {
             currentDestination?.id?.let {
+                // ...unless we're in the creative fragment, where it's not necessary and
+                // interferes with receiving the creative Activity result.
+                if (it == R.id.creativeNewPreviewFragment) {
+                    return@let
+                }
                 navigate(
                     resId = it,
                     args = null,
@@ -204,6 +219,8 @@ class WallpaperPreviewActivity :
     }
 
     companion object {
+        const val NAV_STATE = "wpa_nav_state"
+
         /**
          * Returns a new [Intent] that can be used to start [WallpaperPreviewActivity].
          *
