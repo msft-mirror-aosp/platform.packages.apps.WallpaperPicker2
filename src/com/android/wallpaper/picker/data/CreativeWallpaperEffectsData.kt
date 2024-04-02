@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 The Android Open Source Project
+ * Copyright 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,13 @@
 
 package com.android.wallpaper.picker.data
 
-import android.app.WallpaperInfo
+import android.net.Uri
 
-/** Represents set of attributes that are specific to live wallpapers. */
-data class LiveWallpaperData(
-    val groupName: String,
-    val systemWallpaperInfo: WallpaperInfo,
-    val isTitleVisible: Boolean,
-    val isApplied: Boolean,
-    val isEffectWallpaper: Boolean,
-    val effectNames: String?
+/** Represents data that is specific to only effects for CreativeWallpapers. */
+data class CreativeWallpaperEffectsData(
+    val effectsBottomSheetTitle: String,
+    val effectsBottomSheetSubtitle: String,
+    val currentEffectId: String,
+    val clearActionUri: Uri,
+    val effectsUri: Uri,
 )

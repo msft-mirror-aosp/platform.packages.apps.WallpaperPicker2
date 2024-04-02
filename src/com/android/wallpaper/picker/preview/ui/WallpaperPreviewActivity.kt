@@ -18,7 +18,6 @@ package com.android.wallpaper.picker.preview.ui
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
-import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Window
@@ -28,7 +27,6 @@ import androidx.activity.viewModels
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
-import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
 import com.android.wallpaper.R
 import com.android.wallpaper.model.ImageWallpaperInfo
@@ -37,6 +35,7 @@ import com.android.wallpaper.picker.AppbarFragment
 import com.android.wallpaper.picker.BasePreviewActivity
 import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.di.modules.MainDispatcher
+import com.android.wallpaper.picker.preview.data.repository.CreativeEffectsRepository
 import com.android.wallpaper.picker.preview.data.repository.ImageEffectsRepository
 import com.android.wallpaper.picker.preview.data.repository.WallpaperPreviewRepository
 import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
@@ -63,7 +62,9 @@ class WallpaperPreviewActivity :
     @Inject lateinit var displayUtils: DisplayUtils
     @Inject lateinit var wallpaperModelFactory: WallpaperModelFactory
     @Inject lateinit var wallpaperPreviewRepository: WallpaperPreviewRepository
+
     @Inject lateinit var imageEffectsRepository: ImageEffectsRepository
+    @Inject lateinit var creativeEffectsRepository: CreativeEffectsRepository
     @Inject lateinit var liveWallpaperDownloader: LiveWallpaperDownloader
     @MainDispatcher @Inject lateinit var mainScope: CoroutineScope
 
@@ -75,6 +76,7 @@ class WallpaperPreviewActivity :
         window.requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS)
         super.onCreate(savedInstanceState)
         enforcePortraitForHandheldAndFoldedDisplay()
+        wallpaperPreviewViewModel.updateDisplayConfiguration()
         window.navigationBarColor = Color.TRANSPARENT
         window.statusBarColor = Color.TRANSPARENT
         setContentView(R.layout.activity_wallpaper_preview)
@@ -110,7 +112,18 @@ class WallpaperPreviewActivity :
             )
         }
 
-        if ((wallpaper as? WallpaperModel.StaticWallpaperModel)?.imageWallpaperData != null) {
+        val creativeWallpaperEffectData =
+            (wallpaper as? WallpaperModel.LiveWallpaperModel)
+                ?.creativeWallpaperData
+                ?.creativeWallpaperEffectsData
+        if (creativeWallpaperEffectData != null) {
+            lifecycleScope.launch {
+                creativeEffectsRepository.initializeEffect(creativeWallpaperEffectData)
+            }
+        } else if (
+            (wallpaper as? WallpaperModel.StaticWallpaperModel)?.imageWallpaperData != null &&
+                imageEffectsRepository.areEffectsAvailable()
+        ) {
             lifecycleScope.launch {
                 imageEffectsRepository.initializeEffect(
                     staticWallpaperModel = wallpaper,
@@ -131,13 +144,13 @@ class WallpaperPreviewActivity :
                 // fullscreen fragment for the create-new flow of creative wallpapers
                 val navGraph =
                     navController.navInflater.inflate(R.navigation.wallpaper_preview_nav_graph)
-                navGraph.setStartDestination(R.id.creativeNewPreviewFragment)
+                navGraph.setStartDestination(R.id.creativeEditPreviewFragment)
                 navController.setGraph(
                     navGraph,
                     Bundle().apply {
                         putParcelable(
                             SmallPreviewFragment.ARG_EDIT_INTENT,
-                            liveWallpaperModel.liveWallpaperData.getEditActivityIntent()
+                            liveWallpaperModel.liveWallpaperData.getEditActivityIntent(true)
                         )
                     }
                 )
@@ -168,50 +181,32 @@ class WallpaperPreviewActivity :
 
     override fun onDestroy() {
         imageEffectsRepository.destroy()
-        // TODO(b/328302105): MainScope ensures the job gets done non-blocking even if the activity
-        //  has been destroyed already. Consider making this part of WallpaperConnectionUtils.
-        mainScope.launch {
-            liveWallpaperDownloader.cleanup()
-            (wallpaperPreviewViewModel.wallpaper.value as? WallpaperModel.LiveWallpaperModel)?.let {
-                WallpaperConnectionUtils.disconnect(
-                    appContext,
-                    it,
-                    wallpaperPreviewViewModel.smallerDisplaySize
-                )
-                WallpaperConnectionUtils.disconnect(
-                    appContext,
-                    it,
-                    wallpaperPreviewViewModel.wallpaperDisplaySize.value
-                )
+        creativeEffectsRepository.destroy()
+        // Only disconnect when leaving the Activity. If onDestroy is caused by an orientation
+        // change, we should keep the connection to avoid initiating the engines again.
+        if (isFinishing) {
+            // TODO(b/328302105): MainScope ensures the job gets done non-blocking even if the
+            //   activity has been destroyed already. Consider making this part of
+            //   WallpaperConnectionUtils.
+            mainScope.launch {
+                liveWallpaperDownloader.cleanup()
+                (wallpaperPreviewViewModel.wallpaper.value as? WallpaperModel.LiveWallpaperModel)
+                    ?.let {
+                        WallpaperConnectionUtils.disconnect(
+                            appContext,
+                            it,
+                            wallpaperPreviewViewModel.smallerDisplaySize
+                        )
+                        WallpaperConnectionUtils.disconnect(
+                            appContext,
+                            it,
+                            wallpaperPreviewViewModel.wallpaperDisplaySize.value
+                        )
+                    }
             }
         }
+
         super.onDestroy()
-    }
-
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-
-        wallpaperPreviewViewModel.updateDisplayConfiguration()
-        // Restart current navigation destination to force preview layout changes...
-        navController.apply {
-            currentDestination?.id?.let {
-                // ...unless we're in the creative fragment, where it's not necessary and
-                // interferes with receiving the creative Activity result.
-                if (it == R.id.creativeNewPreviewFragment) {
-                    return@let
-                }
-                navigate(
-                    resId = it,
-                    args = null,
-                    navOptions =
-                        NavOptions.Builder()
-                            .setPopUpTo(destinationId = it, inclusive = true)
-                            .build(),
-                )
-            }
-        }
-
-        enforcePortraitForHandheldAndFoldedDisplay()
     }
 
     private fun WallpaperInfo.convertToWallpaperModel(): WallpaperModel {

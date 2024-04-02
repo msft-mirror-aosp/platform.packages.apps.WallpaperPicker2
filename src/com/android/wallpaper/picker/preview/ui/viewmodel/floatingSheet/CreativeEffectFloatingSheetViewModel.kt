@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,14 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.picker.data
+package com.android.wallpaper.picker.preview.ui.viewmodel.floatingSheet
 
-import android.app.WallpaperInfo
+import com.android.wallpaper.model.WallpaperAction
 
-/** Represents set of attributes that are specific to live wallpapers. */
-data class LiveWallpaperData(
-    val groupName: String,
-    val systemWallpaperInfo: WallpaperInfo,
-    val isTitleVisible: Boolean,
-    val isApplied: Boolean,
-    val isEffectWallpaper: Boolean,
-    val effectNames: String?
+/** This data class represents the view data for the creative wallpaper effect floating sheet */
+data class CreativeEffectFloatingSheetViewModel(
+    val title: String,
+    val subtitle: String,
+    val wallpaperActions: List<WallpaperAction>,
+    val wallpaperEffectSwitchListener: suspend (checkedItem: Int) -> Unit,
 )

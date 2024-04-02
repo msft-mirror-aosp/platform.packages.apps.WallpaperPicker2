@@ -15,6 +15,7 @@
  */
 package com.android.wallpaper.picker.preview.ui.binder
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Point
 import android.view.LayoutInflater
@@ -23,7 +24,9 @@ import android.view.SurfaceView
 import android.view.View
 import android.widget.ImageView
 import androidx.cardview.widget.CardView
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.doOnLayout
+import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -61,28 +64,39 @@ object FullWallpaperPreviewBinder {
         transition: Transition?,
         displayUtils: DisplayUtils,
         lifecycleOwner: LifecycleOwner,
+        insetsController: WindowInsetsControllerCompat? = null,
     ) {
         val wallpaperPreviewCrop: FullPreviewFrameLayout =
             view.requireViewById(R.id.wallpaper_preview_crop)
         val previewCard: CardView = view.requireViewById(R.id.preview_card)
+        val scrimView: View = view.requireViewById(R.id.preview_scrim)
         var transitionDisposableHandle: DisposableHandle? = null
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.fullWallpaper.collect { (_, config, _) ->
+                viewModel.fullWallpaper.collect { (_, _, displaySize, _) ->
                     val currentSize = displayUtils.getRealSize(checkNotNull(view.context.display))
-                    val targetSize = config.displaySize
                     wallpaperPreviewCrop.setCurrentAndTargetDisplaySize(
                         currentSize,
-                        targetSize,
+                        displaySize,
                     )
-                    val setFinalPreviewCardRadius = {
-                        if (targetSize == currentSize) previewCard.radius = 0f
-                    }
+
+                    val setFinalPreviewCardRadiusAndStatusBarColor =
+                        { isWallpaperFullScreen: Boolean ->
+                            if (isWallpaperFullScreen) {
+                                previewCard.radius = 0f
+                                insetsController?.isAppearanceLightStatusBars = false
+                            }
+                            scrimView.isVisible = isWallpaperFullScreen
+                        }
+                    val isPreviewingFullScreen = displaySize == currentSize
                     if (transition == null) {
-                        setFinalPreviewCardRadius()
+                        setFinalPreviewCardRadiusAndStatusBarColor(isPreviewingFullScreen)
                     } else {
                         transitionDisposableHandle?.dispose()
-                        val listener = transition.doOnEnd { setFinalPreviewCardRadius() }
+                        val listener =
+                            transition.doOnEnd {
+                                setFinalPreviewCardRadiusAndStatusBarColor(isPreviewingFullScreen)
+                            }
                         transitionDisposableHandle = DisposableHandle {
                             listener.let { transition.removeListener(it) }
                         }
@@ -133,25 +147,42 @@ object FullWallpaperPreviewBinder {
 
             var job: Job? = null
 
+            // Suppress lint warning for setting on touch listener to a live wallpaper surface view.
+            // This is because the touch effect on a live wallpaper is purely visual, instead of
+            // functional. The effect can be different for different live wallpapers.
+            @SuppressLint("ClickableViewAccessibility")
             override fun surfaceCreated(holder: SurfaceHolder) {
                 job =
                     lifecycleOwner.lifecycleScope.launch {
                         viewModel.fullWallpaper.collect {
-                            (wallpaper, config, allowUserCropping, whichPreview) ->
+                            (wallpaper, config, displaySize, allowUserCropping, whichPreview) ->
                             if (wallpaper is WallpaperModel.LiveWallpaperModel) {
+                                val engineRenderingConfig =
+                                    WallpaperConnectionUtils.EngineRenderingConfig(
+                                        wallpaper.shouldEnforceSingleEngine(),
+                                        config.deviceDisplayType,
+                                        viewModel.smallerDisplaySize,
+                                        displaySize,
+                                    )
                                 WallpaperConnectionUtils.connect(
                                     applicationContext,
                                     wallpaper,
                                     whichPreview,
                                     config.screen.toFlag(),
                                     surfaceView,
-                                    WallpaperConnectionUtils.EngineRenderingConfig(
-                                        wallpaper.shouldEnforceSingleEngine(),
-                                        config.deviceDisplayType,
-                                        viewModel.smallerDisplaySize,
-                                        config.displaySize,
-                                    )
+                                    engineRenderingConfig,
                                 )
+                                surfaceTouchForwardingLayout.initTouchForwarding(surfaceView)
+                                surfaceView.setOnTouchListener { _, event ->
+                                    lifecycleOwner.lifecycleScope.launch {
+                                        WallpaperConnectionUtils.dispatchTouchEvent(
+                                            wallpaper,
+                                            engineRenderingConfig,
+                                            event,
+                                        )
+                                    }
+                                    false
+                                }
                             } else if (wallpaper is WallpaperModel.StaticWallpaperModel) {
                                 val preview =
                                     LayoutInflater.from(applicationContext)
@@ -174,7 +205,7 @@ object FullWallpaperPreviewBinder {
                                         )
                                     fullResImageView.setOnNewCropListener { crop, zoom ->
                                         viewModel.staticWallpaperPreviewViewModel
-                                            .fullPreviewCropModels[config.displaySize] =
+                                            .fullPreviewCropModels[displaySize] =
                                             FullPreviewCropModel(
                                                 cropHint = crop,
                                                 cropSizeModel =
@@ -202,7 +233,7 @@ object FullWallpaperPreviewBinder {
                                     lowResImageView,
                                     fullResImageView,
                                     viewModel.staticWallpaperPreviewViewModel,
-                                    config.displaySize,
+                                    displaySize,
                                     lifecycleOwner,
                                 )
                             }
@@ -213,6 +244,9 @@ object FullWallpaperPreviewBinder {
             override fun surfaceDestroyed(holder: SurfaceHolder) {
                 job?.cancel()
                 job = null
+                // Clean up surface view's on touche listener
+                surfaceTouchForwardingLayout.removeTouchForwarding()
+                surfaceView.setOnTouchListener(null)
                 // Note that we disconnect wallpaper connection for live wallpapers in
                 // WallpaperPreviewActivity's onDestroy().
                 // This is to reduce multiple times of connecting and disconnecting live
@@ -224,5 +258,10 @@ object FullWallpaperPreviewBinder {
     private fun TouchForwardingLayout.initTouchForwarding(targetView: View) {
         setForwardingEnabled(true)
         setTargetView(targetView)
+    }
+
+    private fun TouchForwardingLayout.removeTouchForwarding() {
+        setForwardingEnabled(false)
+        setTargetView(null)
     }
 }

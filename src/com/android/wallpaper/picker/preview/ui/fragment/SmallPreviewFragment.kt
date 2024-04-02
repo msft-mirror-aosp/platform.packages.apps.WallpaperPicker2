@@ -207,13 +207,12 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
             previewViewModel = wallpaperPreviewViewModel,
             actionsViewModel = wallpaperPreviewViewModel.previewActionsViewModel,
             deviceDisplayType = displayUtils.getCurrentDisplayType(requireActivity()),
-            displaySize = displayUtils.getRealSize(requireActivity().display),
             lifecycleOwner = viewLifecycleOwner,
             logger = logger,
             onStartEditActivity = {
                 findNavController()
                     .navigate(
-                        resId = R.id.action_smallPreviewFragment_to_fullPreviewFragment,
+                        resId = R.id.action_smallPreviewFragment_to_creativeEditPreviewFragment,
                         args = Bundle().apply { putParcelable(ARG_EDIT_INTENT, it) },
                         navOptions = null,
                         navigatorExtras = null,
