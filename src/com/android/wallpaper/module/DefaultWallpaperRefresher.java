@@ -44,6 +44,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 /**
  * Default implementation of {@link WallpaperRefresher} which refreshes wallpaper metadata
@@ -62,6 +64,8 @@ public class DefaultWallpaperRefresher implements WallpaperRefresher {
     private final DisplayUtils mDisplayUtils;
 
     private final WallpaperClient mWallpaperClient;
+
+    private final Executor mExecutor = Executors.newCachedThreadPool();
 
 
     /**
@@ -84,7 +88,7 @@ public class DefaultWallpaperRefresher implements WallpaperRefresher {
     @Override
     public void refresh(RefreshListener listener) {
         GetWallpaperMetadataAsyncTask task = new GetWallpaperMetadataAsyncTask(listener);
-        task.execute();
+        task.executeOnExecutor(mExecutor);
     }
 
     /**
@@ -145,7 +149,7 @@ public class DefaultWallpaperRefresher implements WallpaperRefresher {
                 setFallbackLockScreenWallpaperMetadata();
             }
 
-            if (mWallpaperManager.getWallpaperInfo(FLAG_LOCK) == null) {
+            if (isLockScreenStatic) {
                 wallpaperMetadatas.add(new WallpaperMetadata(
                         mWallpaperPreferences.getLockWallpaperAttributions(),
                         mWallpaperPreferences.getLockWallpaperActionUrl(),
@@ -370,7 +374,8 @@ public class DefaultWallpaperRefresher implements WallpaperRefresher {
 
         private Map<Point, Rect> getCurrentWallpaperCropHints(
                 @WallpaperManager.SetWallpaperFlags int which) {
-            List<Point> displaySizes = mDisplayUtils.getInternalDisplaySizes();
+            List<Point> displaySizes = mDisplayUtils
+                    .getInternalDisplaySizes(/* allDimensions= */ true);
             return mWallpaperClient.getCurrentCropHints(displaySizes, which);
         }
     }

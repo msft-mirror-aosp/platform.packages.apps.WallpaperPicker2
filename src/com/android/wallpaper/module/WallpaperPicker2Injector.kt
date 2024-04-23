@@ -56,6 +56,7 @@ import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.individual.IndividualPickerFragment
 import com.android.wallpaper.picker.undo.data.repository.UndoRepository
 import com.android.wallpaper.picker.undo.domain.interactor.UndoInteractor
+import com.android.wallpaper.system.UiModeManagerWrapper
 import com.android.wallpaper.util.DisplayUtils
 import dagger.Lazy
 import javax.inject.Inject
@@ -75,7 +76,6 @@ constructor(
     private var categoryProvider: CategoryProvider? = null
     private var currentWallpaperFactory: CurrentWallpaperInfoFactory? = null
     private var customizationSections: CustomizationSections? = null
-    private var displayUtils: DisplayUtils? = null
     private var drawableLayerResolver: DrawableLayerResolver? = null
     private var exploreIntentChecker: ExploreIntentChecker? = null
     private var liveWallpaperInfoFactory: LiveWallpaperInfoFactory? = null
@@ -86,21 +86,25 @@ constructor(
     private var requester: Requester? = null
     private var systemFeatureChecker: SystemFeatureChecker? = null
     private var wallpaperPersister: WallpaperPersister? = null
-    @Inject lateinit var prefs: WallpaperPreferences
     private var wallpaperRefresher: WallpaperRefresher? = null
     private var wallpaperStatusChecker: WallpaperStatusChecker? = null
     private var flags: BaseFlags? = null
     private var undoInteractor: UndoInteractor? = null
     private var wallpaperInteractor: WallpaperInteractor? = null
-    @Inject lateinit var injectedWallpaperInteractor: Lazy<WallpaperInteractor>
     private var wallpaperClient: WallpaperClient? = null
-    @Inject lateinit var injectedWallpaperClient: Lazy<WallpaperClient>
     private var wallpaperSnapshotRestorer: WallpaperSnapshotRestorer? = null
     private var secureSettingsRepository: SecureSettingsRepository? = null
     private var wallpaperColorsRepository: WallpaperColorsRepository? = null
     private var previewActivityIntentFactory: InlinePreviewIntentFactory? = null
     private var viewOnlyPreviewActivityIntentFactory: InlinePreviewIntentFactory? = null
+
+    // Injected objects, sorted by type
+    @Inject lateinit var displayUtils: Lazy<DisplayUtils>
+    @Inject lateinit var uiModeManager: Lazy<UiModeManagerWrapper>
     @Inject lateinit var userEventLogger: Lazy<UserEventLogger>
+    @Inject lateinit var injectedWallpaperClient: Lazy<WallpaperClient>
+    @Inject lateinit var injectedWallpaperInteractor: Lazy<WallpaperInteractor>
+    @Inject lateinit var prefs: Lazy<WallpaperPreferences>
 
     override fun getApplicationCoroutineScope(): CoroutineScope {
         return mainScope
@@ -148,7 +152,7 @@ constructor(
     }
 
     override fun getDisplayUtils(context: Context): DisplayUtils {
-        return displayUtils ?: DisplayUtils(context.applicationContext).also { displayUtils = it }
+        return displayUtils.get()
     }
 
     override fun getDownloadableIntentAction(): String? {
@@ -257,7 +261,7 @@ constructor(
                     WallpaperManager.getInstance(context.applicationContext),
                     getPreferences(context),
                     WallpaperChangedNotifier.getInstance(),
-                    getDisplayUtils(context),
+                    displayUtils.get(),
                     getBitmapCropper(),
                     getWallpaperStatusChecker(context),
                     getCurrentWallpaperInfoFactory(context),
@@ -268,7 +272,7 @@ constructor(
 
     @Synchronized
     override fun getPreferences(context: Context): WallpaperPreferences {
-        return prefs
+        return prefs.get()
     }
 
     @Synchronized

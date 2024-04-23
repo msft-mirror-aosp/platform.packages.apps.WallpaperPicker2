@@ -69,6 +69,7 @@ class CreativeEditPreviewFragment : Hilt_CreativeEditPreviewFragment() {
             transition = null,
             displayUtils = displayUtils,
             lifecycleOwner = viewLifecycleOwner,
+            savedInstanceState = savedInstanceState,
         )
 
         view.requireViewById<Toolbar>(R.id.toolbar).isVisible = false
@@ -84,7 +85,11 @@ class CreativeEditPreviewFragment : Hilt_CreativeEditPreviewFragment() {
             intent.getBooleanExtra(PreviewActionsViewModel.EXTRA_KEY_IS_CREATE_NEW, false)
         val creativeWallpaperEditActivityResult =
             if (isCreateNew) {
-                registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+                requireActivity().activityResultRegistry.register(
+                    CREATIVE_RESULT_REGISTRY,
+                    ActivityResultContracts.StartActivityForResult()
+                ) {
+                    wallpaperPreviewViewModel.isCurrentlyEditingCreativeWallpaper = false
                     // Callback when the overlaying edit activity is finished. Result code of
                     // RESULT_OK means the user clicked on the check button; RESULT_CANCELED
                     // otherwise.
@@ -100,13 +105,15 @@ class CreativeEditPreviewFragment : Hilt_CreativeEditPreviewFragment() {
                     }
                 }
             } else {
-                registerForActivityResult(
+                requireActivity().activityResultRegistry.register(
+                    CREATIVE_RESULT_REGISTRY,
                     object : ActivityResultContract<Intent, Int>() {
                         override fun createIntent(context: Context, input: Intent): Intent {
                             return input
                         }
 
                         override fun parseResult(resultCode: Int, intent: Intent?): Int {
+                            wallpaperPreviewViewModel.isCurrentlyEditingCreativeWallpaper = false
                             return resultCode
                         }
                     },
@@ -115,10 +122,8 @@ class CreativeEditPreviewFragment : Hilt_CreativeEditPreviewFragment() {
                 }
             }
 
-        if (savedInstanceState == null) {
-            // Launch the overlay activity only when the fragment is freshly created. Otherwise, it
-            // is from a configuration change and the overlay activity should recreate itself
-            // already, where we should not launch another one.
+        if (!wallpaperPreviewViewModel.isCurrentlyEditingCreativeWallpaper) {
+            wallpaperPreviewViewModel.isCurrentlyEditingCreativeWallpaper = true
             creativeWallpaperEditActivityResult.launch(intent)
         }
 
@@ -127,5 +132,9 @@ class CreativeEditPreviewFragment : Hilt_CreativeEditPreviewFragment() {
 
     override fun getToolbarColorId(): Int {
         return android.R.color.transparent
+    }
+
+    companion object {
+        private const val CREATIVE_RESULT_REGISTRY = "creative_result_registry"
     }
 }

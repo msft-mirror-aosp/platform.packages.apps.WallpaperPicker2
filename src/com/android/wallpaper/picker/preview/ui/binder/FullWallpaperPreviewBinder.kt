@@ -18,13 +18,15 @@ package com.android.wallpaper.picker.preview.ui.binder
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Point
+import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.cardview.widget.CardView
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -34,6 +36,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.transition.Transition
 import androidx.transition.doOnEnd
 import com.android.wallpaper.R
+import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.TouchForwardingLayout
 import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.preview.shared.model.CropSizeModel
@@ -44,6 +47,7 @@ import com.android.wallpaper.picker.preview.ui.util.SurfaceViewUtil.attachView
 import com.android.wallpaper.picker.preview.ui.view.FullPreviewFrameLayout
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.android.wallpaper.util.DisplayUtils
+import com.android.wallpaper.util.RtlUtils.isRtl
 import com.android.wallpaper.util.WallpaperCropUtils
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.shouldEnforceSingleEngine
@@ -64,7 +68,8 @@ object FullWallpaperPreviewBinder {
         transition: Transition?,
         displayUtils: DisplayUtils,
         lifecycleOwner: LifecycleOwner,
-        insetsController: WindowInsetsControllerCompat? = null,
+        savedInstanceState: Bundle?,
+        onWallpaperLoaded: ((Boolean) -> Unit)? = null,
     ) {
         val wallpaperPreviewCrop: FullPreviewFrameLayout =
             view.requireViewById(R.id.wallpaper_preview_crop)
@@ -80,22 +85,21 @@ object FullWallpaperPreviewBinder {
                         displaySize,
                     )
 
-                    val setFinalPreviewCardRadiusAndStatusBarColor =
-                        { isWallpaperFullScreen: Boolean ->
-                            if (isWallpaperFullScreen) {
-                                previewCard.radius = 0f
-                                insetsController?.isAppearanceLightStatusBars = false
-                            }
-                            scrimView.isVisible = isWallpaperFullScreen
+                    val setFinalPreviewCardRadiusAndEndLoading = { isWallpaperFullScreen: Boolean ->
+                        if (isWallpaperFullScreen) {
+                            previewCard.radius = 0f
                         }
+                        scrimView.isVisible = isWallpaperFullScreen
+                        onWallpaperLoaded?.invoke(isWallpaperFullScreen)
+                    }
                     val isPreviewingFullScreen = displaySize == currentSize
-                    if (transition == null) {
-                        setFinalPreviewCardRadiusAndStatusBarColor(isPreviewingFullScreen)
+                    if (transition == null || savedInstanceState != null) {
+                        setFinalPreviewCardRadiusAndEndLoading(isPreviewingFullScreen)
                     } else {
                         transitionDisposableHandle?.dispose()
                         val listener =
                             transition.doOnEnd {
-                                setFinalPreviewCardRadiusAndStatusBarColor(isPreviewingFullScreen)
+                                setFinalPreviewCardRadiusAndEndLoading(isPreviewingFullScreen)
                             }
                         transitionDisposableHandle = DisposableHandle {
                             listener.let { transition.removeListener(it) }
@@ -108,6 +112,20 @@ object FullWallpaperPreviewBinder {
         val surfaceView: SurfaceView = view.requireViewById(R.id.wallpaper_surface)
         val surfaceTouchForwardingLayout: TouchForwardingLayout =
             view.requireViewById(R.id.touch_forwarding_layout)
+
+        val displayId = view.context.display.displayId
+        if (displayUtils.hasMultiInternalDisplays()) {
+            val currentDescription = surfaceTouchForwardingLayout.contentDescription?.toString()
+            val descriptionResourceId =
+                if (viewModel.getDisplayId(DeviceDisplayType.FOLDED) == displayId) {
+                    R.string.folded_device_state_description
+                } else {
+                    R.string.unfolded_device_state_description
+                }
+            val descriptionString =
+                surfaceTouchForwardingLayout.context.getString(descriptionResourceId)
+            surfaceTouchForwardingLayout.contentDescription = currentDescription + descriptionString
+        }
 
         var surfaceCallback: SurfaceViewUtil.SurfaceCallback? = null
         lifecycleOwner.lifecycleScope.launch {
@@ -146,6 +164,8 @@ object FullWallpaperPreviewBinder {
         return object : SurfaceViewUtil.SurfaceCallback {
 
             var job: Job? = null
+            var surfaceOrigWidth: Int? = null
+            var surfaceOrigHeight: Int? = null
 
             // Suppress lint warning for setting on touch listener to a live wallpaper surface view.
             // This is because the touch effect on a live wallpaper is purely visual, instead of
@@ -187,7 +207,16 @@ object FullWallpaperPreviewBinder {
                                 val preview =
                                     LayoutInflater.from(applicationContext)
                                         .inflate(R.layout.fullscreen_wallpaper_preview, null)
-                                surfaceView.attachView(preview)
+                                adjustSizeAndAttachPreview(
+                                    applicationContext,
+                                    surfaceOrigWidth
+                                        ?: surfaceView.width.also { surfaceOrigWidth = it },
+                                    surfaceOrigHeight
+                                        ?: surfaceView.height.also { surfaceOrigHeight = it },
+                                    surfaceView,
+                                    preview,
+                                )
+
                                 val fullResImageView =
                                     preview.requireViewById<SubsamplingScaleImageView>(
                                         R.id.full_res_image
@@ -230,11 +259,12 @@ object FullWallpaperPreviewBinder {
 
                                 // Bind static wallpaper
                                 StaticWallpaperPreviewBinder.bind(
-                                    lowResImageView,
-                                    fullResImageView,
-                                    viewModel.staticWallpaperPreviewViewModel,
-                                    displaySize,
-                                    lifecycleOwner,
+                                    lowResImageView = lowResImageView,
+                                    fullResImageView = fullResImageView,
+                                    viewModel = viewModel.staticWallpaperPreviewViewModel,
+                                    displaySize = displaySize,
+                                    parentCoroutineScope = this,
+                                    isFullScreen = true,
                                 )
                             }
                         }
@@ -255,7 +285,51 @@ object FullWallpaperPreviewBinder {
         }
     }
 
+    // When showing full screen, we set the parent SurfaceView to be bigger than the image by N
+    // percent (usually 10%) as given by getSystemWallpaperMaximumScale. This ensures that no matter
+    // what scale and pan is set by the user, at least N% of the source image in the preview will be
+    // preserved around the visible crop. This is needed for system zoom out animations.
+    private fun adjustSizeAndAttachPreview(
+        applicationContext: Context,
+        origWidth: Int,
+        origHeight: Int,
+        surfaceView: SurfaceView,
+        preview: View,
+    ) {
+        val scale = WallpaperCropUtils.getSystemWallpaperMaximumScale(applicationContext)
+
+        val width = (origWidth * scale).toInt()
+        val height = (origHeight * scale).toInt()
+        val left =
+            ((origWidth - width) / 2).let {
+                if (isRtl(applicationContext)) {
+                    -it
+                } else {
+                    it
+                }
+            }
+        val top = (origHeight - height) / 2
+
+        val params = surfaceView.layoutParams
+        params.width = width
+        params.height = height
+        surfaceView.x = left.toFloat()
+        surfaceView.y = top.toFloat()
+        surfaceView.layoutParams = params
+        surfaceView.requestLayout()
+
+        preview.measure(
+            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
+        )
+        preview.layout(0, 0, width, height)
+
+        surfaceView.attachView(preview, width, height)
+    }
+
     private fun TouchForwardingLayout.initTouchForwarding(targetView: View) {
+        // Make sure the touch forwarding layout same size of the target view
+        layoutParams = FrameLayout.LayoutParams(targetView.width, targetView.height, Gravity.CENTER)
         setForwardingEnabled(true)
         setTargetView(targetView)
     }
