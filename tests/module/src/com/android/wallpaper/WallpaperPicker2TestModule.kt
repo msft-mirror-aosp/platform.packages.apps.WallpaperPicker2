@@ -13,29 +13,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.wallpaper.module
+package com.android.wallpaper
 
-import android.content.Context
-import com.android.wallpaper.module.logging.NoOpUserEventLogger
+import com.android.wallpaper.module.Injector
+import com.android.wallpaper.module.PartnerProvider
+import com.android.wallpaper.module.WallpaperPreferences
+import com.android.wallpaper.module.logging.TestUserEventLogger
 import com.android.wallpaper.module.logging.UserEventLogger
+import com.android.wallpaper.modules.WallpaperPicker2AppModule
 import com.android.wallpaper.picker.preview.data.util.DefaultLiveWallpaperDownloader
 import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
-import com.android.wallpaper.system.UiModeManagerImpl
-import com.android.wallpaper.system.UiModeManagerWrapper
+import com.android.wallpaper.testing.TestInjector
+import com.android.wallpaper.testing.TestPartnerProvider
+import com.android.wallpaper.testing.TestWallpaperPreferences
 import com.android.wallpaper.util.converter.DefaultWallpaperModelFactory
 import com.android.wallpaper.util.converter.WallpaperModelFactory
 import dagger.Binds
 import dagger.Module
-import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dagger.hilt.testing.TestInstallIn
 import javax.inject.Singleton
 
 @Module
-@InstallIn(SingletonComponent::class)
-abstract class AppModule {
-    @Binds @Singleton abstract fun bindInjector(impl: WallpaperPicker2Injector): Injector
+@TestInstallIn(
+    components = [SingletonComponent::class],
+    replaces = [WallpaperPicker2AppModule::class]
+)
+abstract class WallpaperPicker2TestModule {
+    @Binds @Singleton abstract fun bindInjector(impl: TestInjector): Injector
+
+    @Binds @Singleton abstract fun bindUserEventLogger(impl: TestUserEventLogger): UserEventLogger
+
+    @Binds
+    @Singleton
+    abstract fun bindWallpaperPreferences(impl: TestWallpaperPreferences): WallpaperPreferences
 
     @Binds
     @Singleton
@@ -49,21 +60,7 @@ abstract class AppModule {
         impl: DefaultLiveWallpaperDownloader
     ): LiveWallpaperDownloader
 
-    @Binds @Singleton abstract fun bindUiModeManager(impl: UiModeManagerImpl): UiModeManagerWrapper
-
-    companion object {
-        @Provides
-        @Singleton
-        fun provideWallpaperPreferences(
-            @ApplicationContext context: Context
-        ): WallpaperPreferences {
-            return DefaultWallpaperPreferences(context)
-        }
-
-        @Provides
-        @Singleton
-        fun provideUserEventLogger(): UserEventLogger {
-            return NoOpUserEventLogger()
-        }
-    }
+    @Binds
+    @Singleton
+    abstract fun providePartnerProvider(impl: TestPartnerProvider): PartnerProvider
 }

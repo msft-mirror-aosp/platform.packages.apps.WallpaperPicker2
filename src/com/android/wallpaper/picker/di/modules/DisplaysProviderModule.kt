@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,28 +16,18 @@
 
 package com.android.wallpaper.picker.di.modules
 
-import android.app.WallpaperManager
-import android.content.Context
-import android.content.pm.PackageManager
+import com.android.wallpaper.util.DisplaysProvider
+import com.android.wallpaper.util.DisplaysProviderImpl
+import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-internal object AppModule {
-    @Provides
+abstract class DisplaysProviderModule {
+    @Binds
     @Singleton
-    fun provideWallpaperManager(@ApplicationContext appContext: Context): WallpaperManager {
-        return WallpaperManager.getInstance(appContext)
-    }
-
-    @Provides
-    @Singleton
-    fun providePackageManager(@ApplicationContext appContext: Context): PackageManager {
-        return appContext.packageManager
-    }
+    abstract fun bindDisplaysProvider(impl: DisplaysProviderImpl): DisplaysProvider
 }

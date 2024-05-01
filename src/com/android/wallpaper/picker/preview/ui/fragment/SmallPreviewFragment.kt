@@ -24,13 +24,14 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
+import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.FragmentNavigatorExtras
 import androidx.navigation.fragment.findNavController
+import androidx.transition.Transition
 import com.android.wallpaper.R
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.AppbarFragment
@@ -70,6 +71,7 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?,
     ): View {
+        postponeEnterTransition()
         val view =
             inflater.inflate(
                 if (displayUtils.hasMultiInternalDisplays())
@@ -78,7 +80,7 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                 container,
                 false,
             )
-        setUpToolbar(view)
+        setUpToolbar(view, true, true)
         bindScreenPreview(view)
         bindPreviewActions(view)
 
@@ -97,15 +99,19 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
             lifecycleOwner = viewLifecycleOwner,
         )
 
+        view.doOnPreDraw {
+            // FullPreviewConfigViewModel not being null indicates that we are navigated to small
+            // preview from the full preview, and therefore should play the shared element re-enter
+            // animation. Reset it after views are finished binding.
+            wallpaperPreviewViewModel.resetFullPreviewConfigViewModel()
+            startPostponedEnterTransition()
+        }
+
         return view
     }
 
     override fun getDefaultTitle(): CharSequence {
         return getString(R.string.preview)
-    }
-
-    override fun getToolbarColorId(): Int {
-        return android.R.color.transparent
     }
 
     override fun getToolbarTextColor(): Int {
@@ -127,10 +133,11 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                 appContext,
                 viewLifecycleOwner,
                 currentNavDestId,
+                (reenterTransition as Transition?),
+                wallpaperPreviewViewModel.fullPreviewConfigViewModel.value,
             ) { sharedElement ->
                 wallpaperPreviewViewModel.isViewAsHome =
                     (viewPager.adapter as TabTextPagerAdapter).getIsHome(viewPager.currentItem)
-                ViewCompat.setTransitionName(sharedElement, SMALL_PREVIEW_SHARED_ELEMENT_ID)
                 val extras =
                     FragmentNavigatorExtras(sharedElement to FULL_PREVIEW_SHARED_ELEMENT_ID)
                 // Set to false on small-to-full preview transition to remove surfaceView jank.
@@ -156,10 +163,11 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                 appContext,
                 viewLifecycleOwner,
                 currentNavDestId,
+                (reenterTransition as Transition?),
+                wallpaperPreviewViewModel.fullPreviewConfigViewModel.value,
             ) { sharedElement ->
                 wallpaperPreviewViewModel.isViewAsHome =
                     (viewPager.adapter as TabTextPagerAdapter).getIsHome(viewPager.currentItem)
-                ViewCompat.setTransitionName(sharedElement, SMALL_PREVIEW_SHARED_ELEMENT_ID)
                 val extras =
                     FragmentNavigatorExtras(sharedElement to FULL_PREVIEW_SHARED_ELEMENT_ID)
                 // Set to false on small-to-full preview transition to remove surfaceView jank.
@@ -249,8 +257,13 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
     }
 
     companion object {
-        const val SMALL_PREVIEW_SHARED_ELEMENT_ID = "small_preview_shared_element"
-        const val FULL_PREVIEW_SHARED_ELEMENT_ID = "full_preview_shared_element"
+        const val SMALL_PREVIEW_HOME_SHARED_ELEMENT_ID = "small_preview_home"
+        const val SMALL_PREVIEW_LOCK_SHARED_ELEMENT_ID = "small_preview_lock"
+        const val SMALL_PREVIEW_HOME_FOLDED_SHARED_ELEMENT_ID = "small_preview_home_folded"
+        const val SMALL_PREVIEW_HOME_UNFOLDED_SHARED_ELEMENT_ID = "small_preview_home_unfolded"
+        const val SMALL_PREVIEW_LOCK_FOLDED_SHARED_ELEMENT_ID = "small_preview_lock_folded"
+        const val SMALL_PREVIEW_LOCK_UNFOLDED_SHARED_ELEMENT_ID = "small_preview_lock_unfolded"
+        const val FULL_PREVIEW_SHARED_ELEMENT_ID = "full_preview"
         const val ARG_EDIT_INTENT = "arg_edit_intent"
     }
 }

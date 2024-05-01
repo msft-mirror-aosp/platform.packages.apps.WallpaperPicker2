@@ -30,6 +30,7 @@ import androidx.navigation.fragment.NavHostFragment
 import com.android.wallpaper.R
 import com.android.wallpaper.model.ImageWallpaperInfo
 import com.android.wallpaper.model.WallpaperInfo
+import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.picker.AppbarFragment
 import com.android.wallpaper.picker.BasePreviewActivity
 import com.android.wallpaper.picker.data.WallpaperModel
@@ -74,6 +75,9 @@ class WallpaperPreviewActivity :
         super.onCreate(savedInstanceState)
         enforcePortraitForHandheldAndFoldedDisplay()
         wallpaperPreviewViewModel.updateDisplayConfiguration()
+        wallpaperPreviewViewModel.setIsWallpaperColorPreviewEnabled(
+            !InjectorProvider.getInjector().isCurrentSelectedColorPreset(appContext)
+        )
         window.navigationBarColor = Color.TRANSPARENT
         window.statusBarColor = Color.TRANSPARENT
         setContentView(R.layout.activity_wallpaper_preview)
@@ -163,15 +167,21 @@ class WallpaperPreviewActivity :
     override fun onDestroy() {
         imageEffectsRepository.destroy()
         creativeEffectsRepository.destroy()
+        liveWallpaperDownloader.cleanup()
         // TODO(b/333879532): Only disconnect when leaving the Activity without introducing black
         //  preview. If onDestroy is caused by an orientation change, we should keep the connection
         //  to avoid initiating the engines again.
         // TODO(b/328302105): MainScope ensures the job gets done non-blocking even if the
         //   activity has been destroyed already. Consider making this part of
         //   WallpaperConnectionUtils.
-        mainScope.launch {
-            liveWallpaperDownloader.cleanup()
-            (wallpaperPreviewViewModel.wallpaper.value as? WallpaperModel.LiveWallpaperModel)?.let {
+        (wallpaperPreviewViewModel.wallpaper.value as? WallpaperModel.LiveWallpaperModel)?.let {
+            // Keep a copy of current wallpaperPreviewViewModel.wallpaperDisplaySize as what we want
+            // to disconnect. There's a chance mainScope executes the job not until new activity
+            // is created and the wallpaperDisplaySize is updated to a new one, e.g. when
+            // orientation changed.
+            // TODO(b/328302105): maintain this state in WallpaperConnectionUtils.
+            val currentWallpaperDisplay = wallpaperPreviewViewModel.wallpaperDisplaySize.value
+            mainScope.launch {
                 WallpaperConnectionUtils.disconnect(
                     appContext,
                     it,
@@ -180,7 +190,7 @@ class WallpaperPreviewActivity :
                 WallpaperConnectionUtils.disconnect(
                     appContext,
                     it,
-                    wallpaperPreviewViewModel.wallpaperDisplaySize.value
+                    currentWallpaperDisplay,
                 )
             }
         }
