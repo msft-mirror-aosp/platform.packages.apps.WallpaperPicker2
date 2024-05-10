@@ -20,23 +20,35 @@ import android.os.Message;
 import android.view.SurfaceControlViewHost;
 import android.view.SurfaceView;
 
+import androidx.annotation.Nullable;
+
 /** Util class to generate surface view requests and parse responses */
 public class SurfaceViewUtils {
 
     private static final String KEY_HOST_TOKEN = "host_token";
     private static final String KEY_VIEW_WIDTH = "width";
     private static final String KEY_VIEW_HEIGHT = "height";
-    private static final String KEY_DISPLAY_ID = "display_id";
+    public static final String KEY_DISPLAY_ID = "display_id";
     private static final String KEY_SURFACE_PACKAGE = "surface_package";
     private static final String KEY_CALLBACK = "callback";
 
     /** Create a surface view request. */
     public static Bundle createSurfaceViewRequest(SurfaceView surfaceView) {
+        return createSurfaceViewRequest(surfaceView, null);
+    }
+
+    /** Create a surface view request. */
+    public static Bundle createSurfaceViewRequest(
+            SurfaceView surfaceView,
+            @Nullable Bundle extras) {
         Bundle bundle = new Bundle();
         bundle.putBinder(KEY_HOST_TOKEN, surfaceView.getHostToken());
         bundle.putInt(KEY_DISPLAY_ID, surfaceView.getDisplay().getDisplayId());
         bundle.putInt(KEY_VIEW_WIDTH, surfaceView.getWidth());
         bundle.putInt(KEY_VIEW_HEIGHT, surfaceView.getHeight());
+        if (extras != null) {
+            bundle.putAll(extras);
+        }
         return bundle;
     }
 

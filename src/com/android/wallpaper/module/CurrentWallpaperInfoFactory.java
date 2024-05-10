@@ -15,10 +15,12 @@
  */
 package com.android.wallpaper.module;
 
-import com.android.wallpaper.model.WallpaperInfo;
-import com.android.wallpaper.module.WallpaperPreferences.PresentationMode;
+import android.content.Context;
 
 import androidx.annotation.Nullable;
+
+import com.android.wallpaper.model.WallpaperInfo;
+import com.android.wallpaper.module.WallpaperPreferences.PresentationMode;
 
 /**
  * Interface for factories which construct {@link WallpaperInfo} objects representing the device's
@@ -34,7 +36,13 @@ public interface CurrentWallpaperInfoFactory {
      * @param forceRefresh Whether the factory should ignore cached copies of the WallpaperInfo(s) and
      *                     presentation mode that represent the currently-set wallpaper.
      */
-    void createCurrentWallpaperInfos(WallpaperInfoCallback callback, boolean forceRefresh);
+    void createCurrentWallpaperInfos(Context context, boolean forceRefresh,
+            WallpaperInfoCallback callback);
+
+    /**
+     * Clears cached wallpaper copies to let refresher load the latest wallpaper.
+     */
+    void clearCurrentWallpaperInfos();
 
     /**
      * Interface which clients may implement to receive current wallpaper {@link WallpaperInfo}

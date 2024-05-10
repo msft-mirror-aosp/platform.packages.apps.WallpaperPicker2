@@ -21,15 +21,22 @@ import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.LayerDrawable;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.ImageView;
 
 import androidx.annotation.WorkerThread;
+
+import com.android.wallpaper.module.DrawableLayerResolver;
+import com.android.wallpaper.module.InjectorProvider;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.Key;
@@ -59,31 +66,52 @@ public class LiveWallpaperThumbAsset extends Asset {
 
     protected final Context mContext;
     protected final android.app.WallpaperInfo mInfo;
+    protected final DrawableLayerResolver mLayerResolver;
     // The content Uri of thumbnail
     protected Uri mUri;
-    private Drawable mThumbnailDrawable;
+    protected boolean mShouldCacheThumbnail;
+    private Drawable mCachedThumbnail;
 
     public LiveWallpaperThumbAsset(Context context, android.app.WallpaperInfo info) {
-        mContext = context.getApplicationContext();
-        mInfo = info;
+        this(context, info, /* uri= */ null);
     }
 
     public LiveWallpaperThumbAsset(Context context, android.app.WallpaperInfo info, Uri uri) {
-        this(context, info);
+        this(context, info, uri, /* shouldCacheThumbnail= */ true);
+    }
+
+    public LiveWallpaperThumbAsset(Context context, android.app.WallpaperInfo info, Uri uri,
+            boolean shouldCacheThumbnail) {
+        mContext = context.getApplicationContext();
+        mInfo = info;
         mUri = uri;
+        mShouldCacheThumbnail = shouldCacheThumbnail;
+        mLayerResolver = InjectorProvider.getInjector().getDrawableLayerResolver();
     }
 
     @Override
-    public void decodeBitmap(int targetWidth, int targetHeight,
+    public void decodeBitmap(int targetWidth, int targetHeight, boolean useHardwareBitmapIfPossible,
                              BitmapReceiver receiver) {
         sExecutorService.execute(() -> {
             Drawable thumb = getThumbnailDrawable();
 
             // Live wallpaper components may or may not specify a thumbnail drawable.
             if (thumb instanceof BitmapDrawable) {
+                BitmapDrawable drawableThumb = (BitmapDrawable) thumb;
+                int thumbHeight = drawableThumb.getIntrinsicHeight();
+                int thumbWidth = drawableThumb.getIntrinsicWidth();
+                int height, width;
+                if (thumbHeight > 0 && thumbWidth > 0) {
+                    double ratio = thumbHeight > thumbWidth ? (double) targetHeight / thumbHeight
+                            : (double) targetWidth / thumbWidth;
+                    height = (int) (thumbHeight * ratio);
+                    width =  (int) (thumbWidth * ratio);
+                } else {
+                    height = targetHeight;
+                    width = targetWidth;
+                }
                 decodeBitmapCompleted(receiver,
-                        Bitmap.createScaledBitmap(((BitmapDrawable) thumb).getBitmap(), targetWidth,
-                                targetHeight, true));
+                        Bitmap.createScaledBitmap(drawableThumb.getBitmap(), width, height, true));
                 return;
             } else if (thumb != null) {
                 Bitmap bitmap;
@@ -107,6 +135,24 @@ public class LiveWallpaperThumbAsset extends Asset {
     }
 
     @Override
+    public void decodeBitmap(BitmapReceiver receiver) {
+        sExecutorService.execute(() -> {
+            Drawable thumb = getThumbnailDrawable();
+            Bitmap bitmap = null;
+            // Live wallpaper components may or may not specify a thumbnail drawable.
+            if (thumb instanceof BitmapDrawable) {
+                bitmap = ((BitmapDrawable) thumb).getBitmap();
+            } else if (thumb != null) {
+                if (thumb.getIntrinsicWidth() > 0 && thumb.getIntrinsicHeight() > 0) {
+                    bitmap = Bitmap.createBitmap(thumb.getIntrinsicWidth(),
+                            thumb.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+                }
+            }
+            decodeBitmapCompleted(receiver, bitmap);
+        });
+    }
+
+    @Override
     public void decodeBitmapRegion(Rect rect, int targetWidth, int targetHeight,
             boolean shouldAdjustForRtl, BitmapReceiver receiver) {
         receiver.onBitmapDecoded(null);
@@ -114,7 +160,25 @@ public class LiveWallpaperThumbAsset extends Asset {
 
     @Override
     public void decodeRawDimensions(Activity unused, DimensionsReceiver receiver) {
-        receiver.onDimensionsDecoded(null);
+        // TODO(b/277166654): Reuse the logic for all thumb asset decoding
+        sExecutorService.execute(() -> {
+            Bitmap result = null;
+            Drawable thumb = mInfo.loadThumbnail(mContext.getPackageManager());
+            if (thumb instanceof BitmapDrawable) {
+                result = ((BitmapDrawable) thumb).getBitmap();
+            } else if (thumb instanceof LayerDrawable) {
+                Drawable layer = mLayerResolver.resolveLayer((LayerDrawable) thumb);
+                if (layer instanceof BitmapDrawable) {
+                    result = ((BitmapDrawable) layer).getBitmap();
+                }
+            }
+            final Bitmap lr = result;
+            new Handler(Looper.getMainLooper()).post(
+                    () ->
+                            receiver.onDimensionsDecoded(
+                                    lr == null ? null : new Point(lr.getWidth(), lr.getHeight()))
+            );
+        });
     }
 
     @Override
@@ -204,25 +268,44 @@ public class LiveWallpaperThumbAsset extends Asset {
     /**
      * Returns the thumbnail drawable for the live wallpaper synchronously. Should not be called on
      * the main UI thread.
+     *
+     * <p>Cache the thumbnail if {@code mShouldCacheThumbnail} is true.
      */
+    @WorkerThread
     protected Drawable getThumbnailDrawable() {
-        if (mThumbnailDrawable != null) {
-            return mThumbnailDrawable;
+        if (!mShouldCacheThumbnail) {
+            return loadThumbnailFromUri();
         }
+
+        if (mCachedThumbnail != null) {
+            return mCachedThumbnail;
+        }
+
+        mCachedThumbnail = loadThumbnailFromUri();
+        if (mCachedThumbnail == null) {
+            mCachedThumbnail = loadThumbnailFromInfo();
+        }
+
+        return mCachedThumbnail;
+    }
+
+    private Drawable loadThumbnailFromUri() {
         if (mUri != null) {
             try (AssetFileDescriptor assetFileDescriptor =
                          mContext.getContentResolver().openAssetFileDescriptor(mUri, "r")) {
                 if (assetFileDescriptor != null) {
-                    mThumbnailDrawable = new BitmapDrawable(mContext.getResources(),
+                    return new BitmapDrawable(mContext.getResources(),
                             BitmapFactory.decodeStream(assetFileDescriptor.createInputStream()));
-                    return mThumbnailDrawable;
                 }
             } catch (IOException e) {
                 Log.w(TAG, "Not found thumbnail from URI.");
             }
         }
-        mThumbnailDrawable = mInfo.loadThumbnail(mContext.getPackageManager());
-        return mThumbnailDrawable;
+        return null;
+    }
+
+    private Drawable loadThumbnailFromInfo() {
+        return mInfo.loadThumbnail(mContext.getPackageManager());
     }
 
     /**

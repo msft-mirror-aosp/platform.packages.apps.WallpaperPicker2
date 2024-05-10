@@ -17,7 +17,21 @@
 // Build rule for WallpaperPicker2 tests
 //
 package {
+    default_team: "trendy_team_customization_picker",
     default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+filegroup {
+    name: "WallpaperPicker2Tests_srcs",
+
+    visibility: [
+        "//visibility:public",
+    ],
+
+    srcs: [
+        "src/**/*.java",
+        "src/**/*.kt",
+    ],
 }
 
 android_test {
@@ -25,20 +39,26 @@ android_test {
 
     defaults: ["WallpaperPicker2_defaults"],
     srcs: [
-        "src/**/*.java",
-        "src/**/*.kt",
+        ":WallpaperPicker2Tests_srcs",
+        "module/src/com/android/wallpaper/TestModule.kt",
     ],
+    exclude_srcs: [":WallpaperPicker2_src_prod"],
     static_libs: [
-        "androidx.annotation_annotation",
+        "WallpaperPicker2TestLib",
+        "WallpaperPicker2TestRunner",
         "androidx.test.espresso.core",
         "androidx.test.espresso.contrib",
         "androidx.test.espresso.intents",
+        "androidx.test.ext.junit",
         "androidx.test.rules",
         "hamcrest-library",
         "hamcrest",
+        "hilt_android",
+        "hilt_android_testing",
         "mockito-target-minus-junit4",
-        "ub-uiautomator",
         "junit",
+        "kotlinx_coroutines_test",
+        "truth",
     ],
     libs: [
         "android.test.runner",

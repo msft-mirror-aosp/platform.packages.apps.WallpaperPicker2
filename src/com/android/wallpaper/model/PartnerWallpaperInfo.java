@@ -34,7 +34,7 @@ import java.util.List;
 /**
  * Represents a wallpaper from the "partner customization" APK installed on the system.
  */
-public class PartnerWallpaperInfo extends WallpaperInfo {
+public class PartnerWallpaperInfo extends DefaultWallpaperInfo {
     public static final Creator<PartnerWallpaperInfo> CREATOR =
             new Creator<PartnerWallpaperInfo>() {
                 @Override
@@ -80,7 +80,7 @@ public class PartnerWallpaperInfo extends WallpaperInfo {
             return wallpaperInfos;
         }
 
-        final int resId = partnerRes.getIdentifier(PartnerProvider.WALLPAPER_RES_ID, "array",
+        final int resId = partnerRes.getIdentifier(PartnerProvider.LEGACY_WALLPAPER_RES_ID, "array",
                 packageName);
         // Certain partner configurations don't have wallpapers provided, so need to check; return
         // early if they are missing.
@@ -146,9 +146,15 @@ public class PartnerWallpaperInfo extends WallpaperInfo {
     }
 
     @Override
+    public String getWallpaperId() {
+        return "" + mFullRes;
+    }
+
+    @Override
     public void showPreview(Activity srcActivity, InlinePreviewIntentFactory factory,
-                            int requestCode) {
-        srcActivity.startActivityForResult(factory.newIntent(srcActivity, this), requestCode);
+                            int requestCode, boolean isAssetIdPresent) {
+        srcActivity.startActivityForResult(factory.newIntent(srcActivity, this,
+                isAssetIdPresent), requestCode);
     }
 
     @Override

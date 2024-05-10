@@ -25,8 +25,6 @@ public class WallpaperPreferenceKeys {
     public static final String KEY_HOME_WALLPAPER_ATTRIB_2 = "home_wallpaper_attribution_line_2";
     public static final String KEY_HOME_WALLPAPER_ATTRIB_3 = "home_wallpaper_attribution_line_3";
     public static final String KEY_HOME_WALLPAPER_ACTION_URL = "home_wallpaper_action_url";
-    public static final String KEY_HOME_WALLPAPER_ACTION_LABEL_RES = "home_wallpaper_action_label";
-    public static final String KEY_HOME_WALLPAPER_ACTION_ICON_RES = "home_wallpaper_action_icon";
     public static final String KEY_HOME_WALLPAPER_COLLECTION_ID = "home_wallpaper_collection_id";
     public static final String KEY_HOME_WALLPAPER_HASH_CODE = "home_wallpaper_hash_code";
 
@@ -34,8 +32,6 @@ public class WallpaperPreferenceKeys {
     public static final String KEY_LOCK_WALLPAPER_ATTRIB_2 = "lock_wallpaper_attribution_line_2";
     public static final String KEY_LOCK_WALLPAPER_ATTRIB_3 = "lock_wallpaper_attribution_line_3";
     public static final String KEY_LOCK_WALLPAPER_ACTION_URL = "lock_wallpaper_action_url";
-    public static final String KEY_LOCK_WALLPAPER_ACTION_LABEL_RES = "lock_wallpaper_action_label";
-    public static final String KEY_LOCK_WALLPAPER_ACTION_ICON_RES = "lock_wallpaper_action_icon";
     public static final String KEY_LOCK_WALLPAPER_HASH_CODE = "lock_wallpaper_hash_code";
     public static final String KEY_LOCK_WALLPAPER_COLLECTION_ID = "lock_wallpaper_collection_id";
 
@@ -51,9 +47,11 @@ public class WallpaperPreferenceKeys {
         String KEY_HOME_WALLPAPER_BASE_IMAGE_URL =
                 "home_wallpaper_base_image_url";
         String KEY_HOME_WALLPAPER_MANAGER_ID = "home_wallpaper_id";
+        String KEY_HOME_WALLPAPER_RECENTS_KEY = "home_wallpaper_recents_key";
         String KEY_HOME_WALLPAPER_REMOTE_ID = "home_wallpaper_remote_id";
         String KEY_HOME_WALLPAPER_BACKING_FILE = "home_wallpaper_backing_file";
         String KEY_LOCK_WALLPAPER_MANAGER_ID = "lock_wallpaper_id";
+        String KEY_LOCK_WALLPAPER_RECENTS_KEY = "lock_wallpaper_recents_key";
         String KEY_LOCK_WALLPAPER_REMOTE_ID = "lock_wallpaper_remote_id";
         String KEY_LOCK_WALLPAPER_BACKING_FILE = "lock_wallpaper_backing_file";
         String KEY_DAILY_ROTATION_TIMESTAMPS = "daily_rotation_timestamps";
@@ -73,9 +71,14 @@ public class WallpaperPreferenceKeys {
                 "num_days_daily_rotation_failed";
         String KEY_NUM_DAYS_DAILY_ROTATION_NOT_ATTEMPTED =
                 "num_days_daily_rotation_not_attempted";
-        String KEY_HOME_WALLPAPER_PACKAGE_NAME = "home_wallpaper_package_name";
         String KEY_HOME_WALLPAPER_SERVICE_NAME = "home_wallpaper_service_name";
+        String KEY_LOCK_WALLPAPER_SERVICE_NAME = "lock_wallpaper_service_name";
         String KEY_PREVIEW_WALLPAPER_COLOR_ID = "preview_wallpaper_color_id";
-        String KEY_WALLPAPER_EFFECTS = "wallpaper_effects";
+        String KEY_HOME_WALLPAPER_EFFECTS = "home_wallpaper_effects";
+        String KEY_LOCK_WALLPAPER_EFFECTS = "lock_wallpaper_effects";
+        String KEY_CROP_HINT_PORTRAIT = "crop_hint_portrait";
+        String KEY_CROP_HINT_LANDSCAPE = "crop_hint_landscape";
+        String KEY_CROP_HINT_UNFOLDED_PORTRAIT = "crop_hint_unfolded_portrait";
+        String KEY_CROP_HINT_UNFOLDED_LANDSCAPE = "crop_hint_unfolded_landscape";
     }
 }

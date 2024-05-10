@@ -24,7 +24,6 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Parcel;
 import android.service.wallpaper.WallpaperService;
 import android.text.TextUtils;
@@ -139,9 +138,26 @@ public class LiveWallpaperInfo extends WallpaperInfo {
         return new LiveWallpaperInfo(wallpaperInfo, false, categoryId);
     }
 
+    public android.app.WallpaperInfo getInfo() {
+        return mInfo;
+    }
+
+    public LiveWallpaperThumbAsset getThumbAsset() {
+        return mThumbAsset;
+    }
+
+    public boolean isVisibleTitle() {
+        return mVisibleTitle;
+    }
+
+    @Nullable
+    public String getCollectionId() {
+        return mCollectionId;
+    }
+
     protected android.app.WallpaperInfo mInfo;
     protected LiveWallpaperThumbAsset mThumbAsset;
-    private boolean mVisibleTitle;
+    protected boolean mVisibleTitle;
     @Nullable private final String mCollectionId;
 
     /**
@@ -329,6 +345,10 @@ public class LiveWallpaperInfo extends WallpaperInfo {
                 | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0;
     }
 
+    public void setVisibleTitle(boolean visibleTitle) {
+        mVisibleTitle = visibleTitle;
+    }
+
     @Override
     public String getTitle(Context context) {
         if (mVisibleTitle) {
@@ -370,18 +390,12 @@ public class LiveWallpaperInfo extends WallpaperInfo {
 
     @Override
     public String getActionUrl(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-            try {
-                Uri wallpaperContextUri = mInfo.loadContextUri(context.getPackageManager());
-                if (wallpaperContextUri != null) {
-                    return wallpaperContextUri.toString();
-                }
-            } catch (Resources.NotFoundException e) {
-                return null;
-            }
+        try {
+            Uri wallpaperContextUri = mInfo.loadContextUri(context.getPackageManager());
+            return wallpaperContextUri != null ? wallpaperContextUri.toString() : null;
+        } catch (Resources.NotFoundException e) {
+            return null;
         }
-
-        return null;
     }
 
     /**
@@ -411,10 +425,11 @@ public class LiveWallpaperInfo extends WallpaperInfo {
 
     @Override
     public void showPreview(Activity srcActivity, InlinePreviewIntentFactory factory,
-                            int requestCode) {
+                            int requestCode, boolean isAssetIdPresent) {
         //Only use internal live picker if available, otherwise, default to the Framework one
         if (factory.shouldUseInternalLivePicker(srcActivity)) {
-            srcActivity.startActivityForResult(factory.newIntent(srcActivity, this), requestCode);
+            srcActivity.startActivityForResult(factory.newIntent(srcActivity, this,
+                    isAssetIdPresent), requestCode);
         } else {
             Intent preview = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
             preview.putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, mInfo.getComponent());
@@ -445,5 +460,35 @@ public class LiveWallpaperInfo extends WallpaperInfo {
     @Override
     public String getWallpaperId() {
         return mInfo.getServiceName();
+    }
+
+    /**
+     * Returns true if this wallpaper is currently applied to either home or lock screen.
+     */
+    public boolean isApplied(@Nullable android.app.WallpaperInfo currentHomeWallpaper,
+            @Nullable android.app.WallpaperInfo currentLockWallpaper) {
+        android.app.WallpaperInfo component = getWallpaperComponent();
+        if (component == null) {
+            return false;
+        }
+        String serviceName = component.getServiceName();
+        boolean isAppliedToHome = currentHomeWallpaper != null
+                && TextUtils.equals(currentHomeWallpaper.getServiceName(), serviceName);
+        boolean isAppliedToLock = currentLockWallpaper != null
+                && TextUtils.equals(currentLockWallpaper.getServiceName(), serviceName);
+        return isAppliedToHome || isAppliedToLock;
+    }
+
+    /**
+     * Saves a wallpaper of type LiveWallpaperInfo at a particular destination.
+     * The default implementation simply returns the current wallpaper, but this can be overridden
+     * as per requirement.
+     *
+     * @param context context of the calling activity
+     * @param destination destination of the wallpaper being saved
+     * @return saved LiveWallpaperInfo object
+     */
+    public LiveWallpaperInfo saveWallpaper(Context context, int destination) {
+        return this;
     }
 }

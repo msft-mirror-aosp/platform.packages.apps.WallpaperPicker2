@@ -10,11 +10,15 @@
        android:protectionLevel="signature"/>
 
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+  <uses-permission android:name="android.permission.CUSTOMIZE_SYSTEM_UI" />
   <uses-permission android:name="android.permission.LAUNCH_MULTI_PANE_SETTINGS_DEEP_LINK" />
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+  <uses-permission android:name="android.permission.READ_WALLPAPER_INTERNAL" />
   <uses-permission android:name="android.permission.SET_WALLPAPER"/>
+  <uses-permission android:name="android.permission.SET_WALLPAPER_COMPONENT" />
+  <uses-permission android:name="android.permission.BIND_WALLPAPER" />
   <uses-permission android:name="android.permission.WAKE_LOCK"/>
   <uses-permission android:name="com.android.wallpaper.NOTIFY_ROTATING_WALLPAPER_CHANGED"/>
 
@@ -41,6 +45,11 @@
       <intent>
           <action android:name="com.android.launcher3.action.PARTNER_CUSTOMIZATION" />
       </intent>
+      <!-- Intent filter used to query the launcher Activity for grid preview metadata -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
   </queries>
 
   <application
@@ -119,6 +128,14 @@
          android:resizeableActivity="false"
          android:theme="@style/WallpaperTheme.Preview">
     </activity>
+
+      <activity
+          android:name="com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity"
+          android:excludeFromRecents="true"
+          android:taskAffinity="@string/multi_crop_task_affinity"
+          android:resizeableActivity="false"
+          android:theme="@style/WallpaperTheme.Preview">
+      </activity>
 
     <activity android:name="com.android.wallpaper.picker.StandalonePreviewActivity"
          android:resizeableActivity="false"

@@ -37,11 +37,13 @@ import androidx.annotation.WorkerThread;
 
 import com.android.wallpaper.module.BitmapCropper;
 import com.android.wallpaper.module.InjectorProvider;
+import com.android.wallpaper.util.RtlUtils;
 import com.android.wallpaper.util.ScreenSizeCalculator;
 import com.android.wallpaper.util.WallpaperCropUtils;
 
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation;
 
+import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -83,7 +85,39 @@ public abstract class Asset {
      * @param receiver     Called with the decoded bitmap or null if there was an error decoding the
      *                     bitmap.
      */
-    public abstract void decodeBitmap(int targetWidth, int targetHeight, BitmapReceiver receiver);
+    public final void decodeBitmap(int targetWidth, int targetHeight, BitmapReceiver receiver) {
+        decodeBitmap(targetWidth, targetHeight, true, receiver);
+    }
+
+
+    /**
+     * Decodes a bitmap sized for the destination view's dimensions off the main UI thread.
+     *
+     * @param targetWidth  Width of target view in physical pixels.
+     * @param targetHeight Height of target view in physical pixels.
+     * @param hardwareBitmapAllowed if true and it's possible, we'll try to decode into a HARDWARE
+     *                              bitmap
+     * @param receiver     Called with the decoded bitmap or null if there was an error decoding the
+     *                     bitmap.
+     */
+    public abstract void decodeBitmap(int targetWidth, int targetHeight,
+            boolean hardwareBitmapAllowed, BitmapReceiver receiver);
+
+    /**
+     * Copies the asset file to another place.
+     * @param dest  The destination file.
+     */
+    public void copy(File dest) {
+        // no op
+    }
+
+    /**
+     * Decodes a full bitmap.
+     *
+     * @param receiver     Called with the decoded bitmap or null if there was an error decoding the
+     *                     bitmap.
+     */
+    public abstract void decodeBitmap(BitmapReceiver receiver);
 
     /**
      * For {@link #decodeBitmap(int, int, BitmapReceiver)} to use when it is done. It then call
@@ -288,8 +322,11 @@ public abstract class Asset {
      * @param imageView        ImageView which is the target view of this asset.
      * @param placeholderColor Color of placeholder set to ImageView while waiting for image to
      *                         load.
+     * @param offsetToStart    true to let the preview show from the start of the image, false to
+     *                         center-aligned to the image.
      */
-    public void loadPreviewImage(Activity activity, ImageView imageView, int placeholderColor) {
+    public void loadPreviewImage(Activity activity, ImageView imageView, int placeholderColor,
+            boolean offsetToStart) {
         boolean needsTransition = imageView.getDrawable() == null;
         Drawable placeholderDrawable = new ColorDrawable(placeholderColor);
         if (needsTransition) {
@@ -297,6 +334,11 @@ public abstract class Asset {
         }
 
         decodeRawDimensions(activity, dimensions -> {
+            // TODO (b/286404249): A proper fix here would be to find out why the
+            //  leak happens in first place
+            if (activity.isDestroyed()) {
+                return;
+            }
             if (dimensions == null) {
                 loadDrawable(activity, imageView, placeholderColor);
                 return;
@@ -306,40 +348,47 @@ public abstract class Asset {
             Point screenSize = ScreenSizeCalculator.getInstance().getScreenSize(defaultDisplay);
             Rect visibleRawWallpaperRect =
                     WallpaperCropUtils.calculateVisibleRect(dimensions, screenSize);
-            adjustCropRect(activity, dimensions, visibleRawWallpaperRect);
+
+            // TODO(b/264234793): Make offsetToStart general support or for the specific asset.
+            adjustCropRect(activity, dimensions, visibleRawWallpaperRect, offsetToStart);
 
             BitmapCropper bitmapCropper = InjectorProvider.getInjector().getBitmapCropper();
             bitmapCropper.cropAndScaleBitmap(this, /* scale= */ 1f, visibleRawWallpaperRect,
-                    WallpaperCropUtils.isRtl(activity),
+                    RtlUtils.isRtl(activity),
                     new BitmapCropper.Callback() {
                         @Override
                         public void onBitmapCropped(Bitmap croppedBitmap) {
                             // Since the size of the cropped bitmap may not exactly the same with
                             // image view(maybe has 1px or 2px difference),
                             // so set CENTER_CROP to let the bitmap to fit the image view.
-                            imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                            if (!needsTransition) {
-                                imageView.setImageBitmap(croppedBitmap);
-                                return;
+                            if (!activity.isDestroyed()) {
+                                imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                                if (!needsTransition) {
+                                    imageView.setImageBitmap(croppedBitmap);
+                                    return;
+                                }
+
+                                Resources resources = activity.getResources();
+
+                                Drawable[] layers = new Drawable[2];
+                                layers[0] = placeholderDrawable;
+                                layers[1] = new BitmapDrawable(resources, croppedBitmap);
+
+                                TransitionDrawable transitionDrawable = new
+                                        TransitionDrawable(layers);
+                                transitionDrawable.setCrossFadeEnabled(true);
+
+                                imageView.setImageDrawable(transitionDrawable);
+                                transitionDrawable.startTransition(resources.getInteger(
+                                        android.R.integer.config_shortAnimTime));
                             }
-
-                            Resources resources = activity.getResources();
-
-                            Drawable[] layers = new Drawable[2];
-                            layers[0] = placeholderDrawable;
-                            layers[1] = new BitmapDrawable(resources, croppedBitmap);
-
-                            TransitionDrawable transitionDrawable = new TransitionDrawable(layers);
-                            transitionDrawable.setCrossFadeEnabled(true);
-
-                            imageView.setImageDrawable(transitionDrawable);
-                            transitionDrawable.startTransition(resources.getInteger(
-                                    android.R.integer.config_shortAnimTime));
                         }
 
                         @Override
                         public void onError(@Nullable Throwable e) {
-
+                            if (!activity.isDestroyed()) {
+                                loadDrawable(activity, imageView, placeholderColor);
+                            }
                         }
                     });
         });
@@ -378,7 +427,8 @@ public abstract class Asset {
         void onDrawableLoaded();
     }
 
-    protected void adjustCropRect(Context context, Point assetDimensions, Rect cropRect) {
+    protected void adjustCropRect(Context context, Point assetDimensions, Rect cropRect,
+            boolean offsetToStart) {
         WallpaperCropUtils.adjustCropRect(context, cropRect, true /* zoomIn */);
     }
 

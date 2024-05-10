@@ -25,15 +25,21 @@ android_library {
     name: "wallpaper-common-deps",
 
     static_libs: [
+        "androidx.activity_activity-ktx",
         "androidx.appcompat_appcompat",
         "androidx.cardview_cardview",
         "androidx-constraintlayout_constraintlayout",
         "androidx.exifinterface_exifinterface",
+        "androidx.lifecycle_lifecycle-livedata-ktx",
         "androidx.lifecycle_lifecycle-runtime-ktx",
         "androidx.recyclerview_recyclerview",
         "androidx.slice_slice-view",
+        "androidx.transition_transition-ktx",
         "androidx.viewpager2_viewpager2",
+        "androidx.navigation_navigation-ui-ktx",
+        "androidx.navigation_navigation-fragment-ktx",
         "com.google.android.material_material",
+        "com_android_wallpaper_flags_lib",
         "glide-prebuilt",
         "glide-gifdecoder-prebuilt",
         "glide-disklrucache-prebuilt",
@@ -43,6 +49,7 @@ android_library {
         "SettingsLibCollapsingToolbarBaseActivity",
         "subsampling-scale-image-view",
         "SystemUISharedLib",
+        "SystemUICustomizationLib",
         "volley",
         "SettingsLibActivityEmbedding",
     ],
@@ -53,7 +60,7 @@ android_library {
         enabled: false,
     },
 
-    kotlincflags: ["-Xjvm-default=enable"],
+    kotlincflags: ["-Xjvm-default=all"],
 
     sdk_version: "current",
 
@@ -61,7 +68,7 @@ android_library {
 
     visibility: [
         ":__subpackages__",
-        "//packages/apps/ThemePicker",
+        "//packages/apps/ThemePicker:__subpackages__",
         "//vendor:__subpackages__",
     ],
 }
@@ -84,6 +91,13 @@ filegroup {
     ],
 }
 
+// Production-only files that should be excluded in tests.
+filegroup {
+    name: "WallpaperPicker2_src_prod",
+    visibility: [":__subpackages__"],
+    srcs: ["src_override/com/android/wallpaper/picker/WallpapersApplication.java"],
+}
+
 genrule {
    name: "WallpaperPicker2_res",
    tools: ["soong_zip"],
@@ -103,21 +117,18 @@ filegroup {
     ],
 }
 
+// Common defaults that doesn't have WallpaperPicker2 specifics.
 java_defaults {
-    name: "WallpaperPicker2_defaults",
+    name: "WallpaperPicker2_common_defaults",
 
     static_libs: [
-        "renderscript_toolkit",
         "wallpaper-common-deps",
-    ],
-
-    jni_libs: [
-        "librenderscript-toolkit",
+        "monet",
+        "hilt_android",
     ],
 
     srcs: [
         ":WallpaperPicker2_srcs",
-        ":WallpaperPicker2_src_overrides",
     ],
     resource_zips: [":WallpaperPicker2_res"],
 
@@ -127,11 +138,20 @@ java_defaults {
         enabled: false,
     },
 
-    kotlincflags: ["-Xjvm-default=enable"],
+    kotlincflags: ["-Xjvm-default=all"],
     privileged: true,
     system_ext_specific: true,
 
     use_embedded_native_libs: true,
+}
+
+java_defaults {
+    name: "WallpaperPicker2_defaults",
+    defaults: ["WallpaperPicker2_common_defaults"],
+
+    srcs: [
+        ":WallpaperPicker2_src_overrides",
+    ],
 }
 
 //
@@ -144,4 +164,5 @@ android_app {
     manifest: ":WallpaperPicker2_Manifest",
 
     platform_apis: true,
+    overrides: ["WallpaperPicker"],
 }

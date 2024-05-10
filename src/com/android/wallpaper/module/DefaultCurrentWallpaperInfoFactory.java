@@ -15,12 +15,15 @@
  */
 package com.android.wallpaper.module;
 
+import android.app.WallpaperManager;
+import android.content.ComponentName;
 import android.content.Context;
 
 import androidx.annotation.Nullable;
 
-import com.android.wallpaper.compat.WallpaperManagerCompat;
-import com.android.wallpaper.model.CurrentWallpaperInfoVN;
+import com.android.wallpaper.config.BaseFlags;
+import com.android.wallpaper.model.CurrentWallpaperInfo;
+import com.android.wallpaper.model.LiveWallpaperMetadata;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.WallpaperPreferences.PresentationMode;
 
@@ -30,7 +33,6 @@ import com.android.wallpaper.module.WallpaperPreferences.PresentationMode;
  */
 public class DefaultCurrentWallpaperInfoFactory implements CurrentWallpaperInfoFactory {
 
-    private final Context mAppContext;
     private final WallpaperRefresher mWallpaperRefresher;
     private final LiveWallpaperInfoFactory mLiveWallpaperInfoFactory;
 
@@ -41,17 +43,18 @@ public class DefaultCurrentWallpaperInfoFactory implements CurrentWallpaperInfoF
     @PresentationMode
     private int mPresentationMode;
 
-    public DefaultCurrentWallpaperInfoFactory(Context context) {
-        mAppContext = context.getApplicationContext();
-        Injector injector = InjectorProvider.getInjector();
-        mWallpaperRefresher = injector.getWallpaperRefresher(mAppContext);
-        mLiveWallpaperInfoFactory = injector.getLiveWallpaperInfoFactory(mAppContext);
+    public DefaultCurrentWallpaperInfoFactory(WallpaperRefresher wallpaperRefresher,
+            LiveWallpaperInfoFactory liveWallpaperInfoFactory) {
+        mWallpaperRefresher = wallpaperRefresher;
+        mLiveWallpaperInfoFactory = liveWallpaperInfoFactory;
     }
 
     @Override
-    public synchronized void createCurrentWallpaperInfos(final WallpaperInfoCallback callback,
-                                                         boolean forceRefresh) {
-        if (!forceRefresh && mHomeWallpaper != null
+    public synchronized void createCurrentWallpaperInfos(Context context, boolean forceRefresh,
+            WallpaperInfoCallback callback) {
+        boolean isHomeWallpaperSynced  = homeWallpaperSynced(context);
+        boolean isLockWallpaperSynced  = lockWallpaperSynced(context);
+        if (!forceRefresh && isHomeWallpaperSynced && isLockWallpaperSynced
                 && mPresentationMode != WallpaperPreferences.PRESENTATION_MODE_ROTATING) {
             callback.onWallpaperInfoCreated(mHomeWallpaper, mLockWallpaper, mPresentationMode);
             return;
@@ -61,36 +64,49 @@ public class DefaultCurrentWallpaperInfoFactory implements CurrentWallpaperInfoF
         // Refresher so that multiple calls to this method after a call with forceRefresh=true don't
         // provide old cached copies.
         if (forceRefresh) {
-            mHomeWallpaper = null;
-            mLockWallpaper = null;
+            clearCurrentWallpaperInfos();
         }
 
         mWallpaperRefresher.refresh(
                 (homeWallpaperMetadata, lockWallpaperMetadata, presentationMode) -> {
+                    BaseFlags flags = InjectorProvider.getInjector().getFlags();
+                    final boolean multiCropEnabled =
+                            flags.isMultiCropEnabled() && flags.isMultiCropPreviewUiEnabled();
                     WallpaperInfo homeWallpaper;
-                    if (homeWallpaperMetadata.getWallpaperComponent() == null) {
-                        homeWallpaper = new CurrentWallpaperInfoVN(
-                                homeWallpaperMetadata.getAttributions(),
-                                homeWallpaperMetadata.getActionUrl(),
-                                homeWallpaperMetadata.getActionLabelRes(),
-                                homeWallpaperMetadata.getActionIconRes(),
-                                homeWallpaperMetadata.getCollectionId(),
-                                WallpaperManagerCompat.FLAG_SYSTEM);
-                    } else {
+                    if (homeWallpaperMetadata instanceof LiveWallpaperMetadata) {
                         homeWallpaper = mLiveWallpaperInfoFactory.getLiveWallpaperInfo(
                                 homeWallpaperMetadata.getWallpaperComponent());
+                    } else {
+                        homeWallpaper = new CurrentWallpaperInfo(
+                                homeWallpaperMetadata.getAttributions(),
+                                homeWallpaperMetadata.getActionUrl(),
+                                homeWallpaperMetadata.getCollectionId(),
+                                WallpaperManager.FLAG_SYSTEM);
+                        if (multiCropEnabled) {
+                            homeWallpaper.setWallpaperCropHints(
+                                    homeWallpaperMetadata.getWallpaperCropHints());
+                        }
                     }
 
                     WallpaperInfo lockWallpaper = null;
 
                     if (lockWallpaperMetadata != null) {
-                        lockWallpaper = new CurrentWallpaperInfoVN(
-                                lockWallpaperMetadata.getAttributions(),
-                                lockWallpaperMetadata.getActionUrl(),
-                                lockWallpaperMetadata.getActionLabelRes(),
-                                lockWallpaperMetadata.getActionIconRes(),
-                                lockWallpaperMetadata.getCollectionId(),
-                                WallpaperManagerCompat.FLAG_LOCK);
+
+                        if (lockWallpaperMetadata instanceof LiveWallpaperMetadata) {
+                            lockWallpaper = mLiveWallpaperInfoFactory.getLiveWallpaperInfo(
+                                    lockWallpaperMetadata.getWallpaperComponent());
+                        } else {
+                            lockWallpaper = new CurrentWallpaperInfo(
+                                    lockWallpaperMetadata.getAttributions(),
+                                    lockWallpaperMetadata.getActionUrl(),
+                                    lockWallpaperMetadata.getCollectionId(),
+                                    WallpaperManager.FLAG_LOCK);
+
+                            if (multiCropEnabled) {
+                                lockWallpaper.setWallpaperCropHints(
+                                        lockWallpaperMetadata.getWallpaperCropHints());
+                            }
+                        }
                     }
 
                     mHomeWallpaper = homeWallpaper;
@@ -99,5 +115,62 @@ public class DefaultCurrentWallpaperInfoFactory implements CurrentWallpaperInfoF
 
                     callback.onWallpaperInfoCreated(homeWallpaper, lockWallpaper, presentationMode);
                 });
+    }
+
+    /**
+     * We check 2 things in this function:
+     * 1. If mHomeWallpaper is null, the wallpaper is not initialized. Return false.
+     * 2. In the case when mHomeWallpaper is not null, we check if mHomeWallpaper is synced with the
+     *    one from the wallpaper manager.
+     */
+    private boolean homeWallpaperSynced(Context context) {
+        if (mHomeWallpaper == null) {
+            return false;
+        }
+        return wallpaperSynced(context, mHomeWallpaper, WallpaperManager.FLAG_SYSTEM);
+    }
+
+    /**
+     * mLockWallpaper can be null even after initialization. We only check the case if the
+     * lockscreen wallpaper is synced.
+     */
+    private boolean lockWallpaperSynced(Context context) {
+        return wallpaperSynced(context, mLockWallpaper, WallpaperManager.FLAG_LOCK);
+    }
+
+    /**
+     * Check if the given wallpaper info is synced with the one from the wallpaper manager. We only
+     * try to get the underlying ComponentName from both sides.
+     * If both are null, it means both are static image wallpapers, or both are not set,
+     * which we consider synced and return true.
+     * If only of the them is null, it means one is static image wallpaper and another is live
+     * wallpaper. We should return false.
+     * If both are not null, we check if the two ComponentName(s) are equal.
+     */
+    private boolean wallpaperSynced(Context context, @Nullable WallpaperInfo wallpaperInfo,
+            int which) {
+        android.app.WallpaperInfo currentWallpaperInfo = WallpaperManager.getInstance(context)
+                .getWallpaperInfo(which);
+        ComponentName currentComponentName = currentWallpaperInfo != null
+                ? currentWallpaperInfo.getComponent() : null;
+        android.app.WallpaperInfo info = wallpaperInfo != null
+                ? wallpaperInfo.getWallpaperComponent() : null;
+        ComponentName homeComponentName = info != null
+                ? info.getComponent() : null;
+        if (currentComponentName == null) {
+            // If both are null, it's synced.
+            return homeComponentName == null;
+        } else if (homeComponentName == null) {
+            // currentComponentName not null and homeComponentName null. It's not synced.
+            return false;
+        } else {
+            return currentComponentName.equals(homeComponentName);
+        }
+    }
+
+    @Override
+    public void clearCurrentWallpaperInfos() {
+        mHomeWallpaper = null;
+        mLockWallpaper = null;
     }
 }

@@ -17,20 +17,21 @@ package com.android.wallpaper.picker;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.transition.Slide;
-import android.view.View;
 import android.view.Window;
+import android.widget.Toast;
 
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
 import com.android.wallpaper.R;
-import com.android.wallpaper.model.InlinePreviewIntentFactory;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.InjectorProvider;
 import com.android.wallpaper.picker.AppbarFragment.AppbarFragmentHost;
 import com.android.wallpaper.util.ActivityUtils;
+import com.android.wallpaper.util.DisplayUtils;
 
 /**
  * Activity that displays a full preview of a specific wallpaper and provides the ability to set the
@@ -43,7 +44,7 @@ public class FullPreviewActivity extends BasePreviewActivity implements AppbarFr
      */
     public static Intent newIntent(Context packageContext, WallpaperInfo wallpaperInfo) {
         Intent intent = new Intent(packageContext, FullPreviewActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         intent.putExtra(EXTRA_WALLPAPER_INFO, wallpaperInfo);
         return intent;
     }
@@ -53,8 +54,9 @@ public class FullPreviewActivity extends BasePreviewActivity implements AppbarFr
      * put as an extra.
      */
     public static Intent newIntent(Context packageContext, WallpaperInfo wallpaperInfo,
-            boolean viewAsHome) {
-        return newIntent(packageContext, wallpaperInfo).putExtra(EXTRA_VIEW_AS_HOME, viewAsHome);
+            boolean viewAsHome, boolean isAssetIdPresent) {
+        return newIntent(packageContext, wallpaperInfo).putExtra(EXTRA_VIEW_AS_HOME, viewAsHome)
+                .putExtra(IS_ASSET_ID_PRESENT, isAssetIdPresent);
     }
 
     @Override
@@ -74,15 +76,14 @@ public class FullPreviewActivity extends BasePreviewActivity implements AppbarFr
         if (fragment == null) {
             Intent intent = getIntent();
             WallpaperInfo wallpaper = intent.getParcelableExtra(EXTRA_WALLPAPER_INFO);
-            boolean viewAsHome = intent.getBooleanExtra(EXTRA_VIEW_AS_HOME, true);
-            boolean testingModeEnabled = intent.getBooleanExtra(EXTRA_TESTING_MODE_ENABLED, false);
+            boolean viewAsHome = intent.getBooleanExtra(EXTRA_VIEW_AS_HOME, false);
+            boolean isAssetIDPresent = intent.getBooleanExtra(IS_ASSET_ID_PRESENT, false);
             fragment = InjectorProvider.getInjector().getPreviewFragment(
                     /* context= */ this,
                     wallpaper,
-                    PreviewFragment.MODE_CROP_AND_SET_WALLPAPER,
                     viewAsHome,
-                    /* viewFullScreen= */ true,
-                    testingModeEnabled);
+                    isAssetIDPresent,
+                    /* isNewTask= */ true);
             fm.beginTransaction()
                     .add(R.id.fragment_container, fragment)
                     .commit();
@@ -99,26 +100,21 @@ public class FullPreviewActivity extends BasePreviewActivity implements AppbarFr
         return !ActivityUtils.isSUWMode(getBaseContext());
     }
 
-    /**
-     * Implementation that provides an intent to start a PreviewActivity.
-     */
-    public static class PreviewActivityIntentFactory implements InlinePreviewIntentFactory {
-        @Override
-        public Intent newIntent(Context context, WallpaperInfo wallpaper) {
-            return FullPreviewActivity.newIntent(context, wallpaper);
-        }
-    }
-
     @Override
     protected void onResume() {
         super.onResume();
+        DisplayUtils displayUtils = InjectorProvider.getInjector().getDisplayUtils(this);
+        int orientation = displayUtils.isOnWallpaperDisplay(this)
+                ? ActivityInfo.SCREEN_ORIENTATION_USER : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+        setRequestedOrientation(orientation);
         if (isInMultiWindowMode()) {
+            Toast.makeText(
+                            this,
+                            R.string.wallpaper_exit_split_screen,
+                            Toast.LENGTH_SHORT
+                    )
+                    .show();
             onBackPressed();
         }
-        // Hide the navigation bar
-        View decorView = getWindow().getDecorView();
-        int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_FULLSCREEN;
-        decorView.setSystemUiVisibility(uiOptions);
     }
 }
