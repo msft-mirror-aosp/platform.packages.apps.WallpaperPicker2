@@ -96,6 +96,8 @@
     <string name="bottom_action_bar_back" msgid="2620581414970740784">"Navegar hacia arriba"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Editar"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Descargar"</string>
+    <!-- no translation found for download_effects (2772742927165716701) -->
+    <skip />
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Fondo de diapositivas"</string>
     <string name="bottom_action_bar_apply" msgid="2983308349819178932">"Aplicar"</string>
     <string name="accessibility_preview_pager" msgid="1839869637405028575">"Página <xliff:g id="ID_1">%1$d</xliff:g> de <xliff:g id="ID_2">%2$d</xliff:g>"</string>
@@ -136,6 +138,6 @@
     <string name="more_wallpapers" msgid="8116268433411881705">"Más fondos de pantalla"</string>
     <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
     <string name="default_wallpaper_title" msgid="2541071182656978180">"Fondo de pantalla"</string>
-    <string name="small_preview_tooltip" msgid="1920430079013352071">"Presionar para editar tu foto"</string>
+    <string name="small_preview_tooltip" msgid="1920430079013352071">"Presiona para editar tu foto"</string>
     <string name="full_preview_tooltip" msgid="4648994028015322759">"Ajustar la posición, la escala y el ángulo de tus fotos"</string>
 </resources>

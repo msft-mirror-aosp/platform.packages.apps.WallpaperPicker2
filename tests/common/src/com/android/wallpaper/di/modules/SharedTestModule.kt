@@ -18,6 +18,9 @@ package com.android.wallpaper.di.modules
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.pm.PackageManager
+import com.android.wallpaper.module.LargeScreenMultiPanesChecker
+import com.android.wallpaper.module.MultiPanesChecker
+import com.android.wallpaper.module.NetworkStatusNotifier
 import com.android.wallpaper.picker.customization.data.content.WallpaperClient
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.DispatchersModule
@@ -27,8 +30,9 @@ import com.android.wallpaper.system.UiModeManagerWrapper
 import com.android.wallpaper.testing.FakeDefaultCategoryFactory
 import com.android.wallpaper.testing.FakeUiModeManager
 import com.android.wallpaper.testing.FakeWallpaperClient
-import com.android.wallpaper.testing.FakeWallpaperXMLParser
-import com.android.wallpaper.util.WallpaperXMLParserInterface
+import com.android.wallpaper.testing.FakeWallpaperParser
+import com.android.wallpaper.testing.TestNetworkStatusNotifier
+import com.android.wallpaper.util.WallpaperParser
 import com.android.wallpaper.util.converter.category.CategoryFactory
 import dagger.Binds
 import dagger.Module
@@ -40,6 +44,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 
 @Module
@@ -52,7 +57,11 @@ internal abstract class SharedTestModule {
 
     @Binds
     @Singleton
-    abstract fun bindWallpaperXMLParser(impl: FakeWallpaperXMLParser): WallpaperXMLParserInterface
+    abstract fun bindNetworkStatusNotifier(impl: TestNetworkStatusNotifier): NetworkStatusNotifier
+
+    @Binds
+    @Singleton
+    abstract fun bindWallpaperXMLParser(impl: FakeWallpaperParser): WallpaperParser
 
     @Binds
     @Singleton
@@ -60,14 +69,54 @@ internal abstract class SharedTestModule {
 
     @Binds @Singleton abstract fun bindWallpaperClient(impl: FakeWallpaperClient): WallpaperClient
 
+    // Dispatcher and Scope injection choices are based on documentation at
+    // http://go/android-dev/kotlin/coroutines/test. Most tests will not need to inject anything
+    // other than the TestDispatcher, for use in Dispatchers.setMain().
+
+    // Use the test dispatcher for work intended for the main thread
+    @Binds
+    @Singleton
+    @MainDispatcher
+    abstract fun bindMainDispatcher(impl: TestDispatcher): CoroutineDispatcher
+
+    // Use the test scope as the main scope to match the test dispatcher
+    @Binds @Singleton @MainDispatcher abstract fun bindMainScope(impl: TestScope): CoroutineScope
+
+    // Also use the test dispatcher for work intended for the background thread. This makes tests
+    // single-threaded and more deterministic.
     @Binds
     @Singleton
     @BackgroundDispatcher
-    abstract fun bindBackgroundDispatcher(
-        @MainDispatcher impl: CoroutineDispatcher
-    ): CoroutineDispatcher
+    abstract fun bindBackgroundDispatcher(impl: TestDispatcher): CoroutineDispatcher
 
     companion object {
+        // This is the most general test dispatcher for use in tests. UnconfinedTestDispatcher
+        // is the other choice. The difference is that the unconfined dispatcher starts new
+        // coroutines eagerly, which could be easier but could also make tests non-deterministic in
+        // some cases.
+        @Provides
+        @Singleton
+        fun provideTestDispatcher(): TestDispatcher {
+            return StandardTestDispatcher()
+        }
+
+        // Scope corresponding to the test dispatcher and main test thread. Tests will fail if work
+        // is still running in this scope after the test completes.
+        @Provides
+        @Singleton
+        fun provideTestScope(testDispatcher: TestDispatcher): TestScope {
+            return TestScope(testDispatcher)
+        }
+
+        // Scope for background work that does not need to finish before a test completes, like
+        // continuously reading values from a flow.
+        @Provides
+        @Singleton
+        @BackgroundDispatcher
+        fun provideBackgroundScope(impl: TestScope): CoroutineScope {
+            return impl.backgroundScope
+        }
+
         @Provides
         @Singleton
         fun provideWallpaperManager(@ApplicationContext appContext: Context): WallpaperManager {
@@ -82,23 +131,8 @@ internal abstract class SharedTestModule {
 
         @Provides
         @Singleton
-        @MainDispatcher
-        fun providesMainDispatcher(): CoroutineDispatcher {
-            return StandardTestDispatcher()
-        }
-
-        @Provides
-        @Singleton
-        @MainDispatcher
-        fun providesMainScope(@MainDispatcher mainDispatcher: CoroutineDispatcher): CoroutineScope {
-            return TestScope(mainDispatcher)
-        }
-
-        @Provides
-        @Singleton
-        @BackgroundDispatcher
-        fun provideBackgroupdScope(@MainDispatcher impl: CoroutineScope): CoroutineScope {
-            return (impl as TestScope).backgroundScope
+        fun provideMultiPanesChecker(): MultiPanesChecker {
+            return LargeScreenMultiPanesChecker()
         }
     }
 }

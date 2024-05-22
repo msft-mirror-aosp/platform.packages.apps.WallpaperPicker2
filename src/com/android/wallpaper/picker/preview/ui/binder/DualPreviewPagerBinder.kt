@@ -27,10 +27,10 @@ import androidx.transition.TransitionListenerAdapter
 import com.android.wallpaper.R
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.model.wallpaper.PreviewPagerPage
-import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.DualPreviewViewPager
-import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.adapters.DualPreviewPagerAdapter
 import com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout
 import com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout.Companion.getViewId
+import com.android.wallpaper.picker.preview.ui.view.DualPreviewViewPager
+import com.android.wallpaper.picker.preview.ui.view.adapters.DualPreviewPagerAdapter
 import com.android.wallpaper.picker.preview.ui.viewmodel.FullPreviewConfigViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import kotlinx.coroutines.DisposableHandle
@@ -47,6 +47,7 @@ object DualPreviewPagerBinder {
         currentNavDestId: Int,
         transition: Transition?,
         transitionConfig: FullPreviewConfigViewModel?,
+        isFirstBinding: Boolean,
         navigate: (View) -> Unit,
     ) {
         var transitionDisposableHandle: DisposableHandle? = null
@@ -117,6 +118,7 @@ object DualPreviewPagerBinder {
                         currentNavDestId = currentNavDestId,
                         transition = transition,
                         transitionConfig = transitionConfig,
+                        isFirstBinding = isFirstBinding,
                         navigate = navigate,
                     )
                 }

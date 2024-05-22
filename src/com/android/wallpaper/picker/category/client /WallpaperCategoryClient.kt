@@ -14,11 +14,16 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.util
+package com.android.wallpaper.picker.category.client
 
-import android.content.res.XmlResourceParser
-import com.android.wallpaper.model.Category
+import com.android.wallpaper.picker.data.category.CategoryModel
 
-interface WallpaperXMLParserInterface {
-    fun parseSystemCategories(parser: XmlResourceParser): List<Category>
+/** This class is responsible for fetching categories and wallpaper info. from external sources. */
+interface WallpaperCategoryClient {
+
+    /**
+     * Every client using this interface can use this method to get the specific categories they
+     * need.
+     */
+    suspend fun getCategories(): List<CategoryModel>
 }

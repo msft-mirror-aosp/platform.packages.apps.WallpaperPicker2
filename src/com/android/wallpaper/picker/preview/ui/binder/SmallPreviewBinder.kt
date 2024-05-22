@@ -51,8 +51,27 @@ object SmallPreviewBinder {
         navigate: ((View) -> Unit)? = null,
         transition: Transition? = null,
         transitionConfig: FullPreviewConfigViewModel? = null,
+        isFirstBinding: Boolean,
     ) {
+
         val previewCard: CardView = view.requireViewById(R.id.preview_card)
+        val descriptionString = previewCard.contentDescription
+
+        val updatedDescription =
+            when (deviceDisplayType) {
+                DeviceDisplayType.FOLDED -> {
+                    val foldedStateDescription =
+                        view.context.getString(R.string.folded_device_state_description)
+                    "$descriptionString $foldedStateDescription"
+                }
+                DeviceDisplayType.UNFOLDED -> {
+                    val unfoldedStateDescription =
+                        view.context.getString(R.string.unfolded_device_state_description)
+                    "$descriptionString $unfoldedStateDescription"
+                }
+                else -> descriptionString
+            }
+        previewCard.contentDescription = updatedDescription
         val wallpaperSurface: SurfaceView = view.requireViewById(R.id.wallpaper_surface)
         val workspaceSurface: SurfaceView = view.requireViewById(R.id.workspace_surface)
         var transitionDisposableHandle: DisposableHandle? = null
@@ -173,6 +192,7 @@ object SmallPreviewBinder {
             applicationContext = applicationContext,
             viewLifecycleOwner = viewLifecycleOwner,
             deviceDisplayType = deviceDisplayType,
+            isFirstBinding = isFirstBinding,
         )
     }
 }

@@ -37,7 +37,6 @@ import com.android.wallpaper.model.WallpaperInfo
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.monitor.PerformanceMonitor
 import com.android.wallpaper.network.Requester
-import com.android.wallpaper.network.WallpaperRequester
 import com.android.wallpaper.picker.CustomizationPickerActivity
 import com.android.wallpaper.picker.ImagePreviewFragment
 import com.android.wallpaper.picker.LivePreviewFragment
@@ -79,10 +78,8 @@ constructor(
     private var drawableLayerResolver: DrawableLayerResolver? = null
     private var exploreIntentChecker: ExploreIntentChecker? = null
     private var liveWallpaperInfoFactory: LiveWallpaperInfoFactory? = null
-    private var networkStatusNotifier: NetworkStatusNotifier? = null
     private var packageStatusNotifier: PackageStatusNotifier? = null
     private var performanceMonitor: PerformanceMonitor? = null
-    private var requester: Requester? = null
     private var systemFeatureChecker: SystemFeatureChecker? = null
     private var wallpaperPersister: WallpaperPersister? = null
     private var wallpaperRefresher: WallpaperRefresher? = null
@@ -99,6 +96,8 @@ constructor(
 
     // Injected objects, sorted by alphabetical order on the type of object
     @Inject lateinit var displayUtils: Lazy<DisplayUtils>
+    @Inject lateinit var requester: Lazy<Requester>
+    @Inject lateinit var networkStatusNotifier: Lazy<NetworkStatusNotifier>
     @Inject lateinit var partnerProvider: Lazy<PartnerProvider>
     @Inject lateinit var uiModeManager: Lazy<UiModeManagerWrapper>
     @Inject lateinit var userEventLogger: Lazy<UserEventLogger>
@@ -189,10 +188,7 @@ constructor(
 
     @Synchronized
     override fun getNetworkStatusNotifier(context: Context): NetworkStatusNotifier {
-        return networkStatusNotifier
-            ?: DefaultNetworkStatusNotifier(context.applicationContext).also {
-                networkStatusNotifier = it
-            }
+        return networkStatusNotifier.get()
     }
 
     @Synchronized
@@ -239,7 +235,7 @@ constructor(
 
     @Synchronized
     override fun getRequester(context: Context): Requester {
-        return requester ?: WallpaperRequester(context.applicationContext).also { requester = it }
+        return requester.get()
     }
 
     @Synchronized

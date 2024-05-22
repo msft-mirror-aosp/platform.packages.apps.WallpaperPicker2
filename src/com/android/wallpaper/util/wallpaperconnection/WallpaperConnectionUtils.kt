@@ -22,7 +22,7 @@ import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.util.WallpaperConnection
 import com.android.wallpaper.util.WallpaperConnection.WhichPreview
-import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.getKey
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -37,7 +37,7 @@ object WallpaperConnectionUtils {
 
     // engineMap and surfaceControlMap are used for disconnecting wallpaper services.
     private val engineMap =
-        mutableMapOf<String, Deferred<Pair<ServiceConnection, WallpaperEngineConnection>>>()
+        ConcurrentHashMap<String, Deferred<Pair<ServiceConnection, WallpaperEngineConnection>>>()
     // Note that when one wallpaper engine's render is mirrored to a new surface view, we call
     // engine.mirrorSurfaceControl() and will have a new surface control instance.
     private val surfaceControlMap = mutableMapOf<String, MutableList<SurfaceControl>>()
@@ -55,6 +55,7 @@ object WallpaperConnectionUtils {
         destinationFlag: Int,
         surfaceView: SurfaceView,
         engineRenderingConfig: EngineRenderingConfig,
+        isFirstBinding: Boolean,
         listener: WallpaperEngineConnection.WallpaperEngineConnectionListener? = null,
     ) {
         val wallpaperInfo = wallpaperModel.liveWallpaperData.systemWallpaperInfo
@@ -68,7 +69,10 @@ object WallpaperConnectionUtils {
                 if (!creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
                     mutex.withLock {
                         if (!creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
-                            context.contentResolver.update(it, ContentValues(), null)
+                            // First time binding wallpaper should initialize wallpaper preview.
+                            if (isFirstBinding) {
+                                context.contentResolver.update(it, ContentValues(), null)
+                            }
                             creativeWallpaperConfigPreviewUriMap[uriKey] = it
                         }
                     }
