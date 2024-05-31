@@ -22,19 +22,20 @@ import androidx.activity.viewModels
 import androidx.test.core.app.ActivityScenario
 import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.picker.category.ui.viewmodel.CategoriesViewModel
-import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.PreviewTestActivity
 import com.android.wallpaper.testing.TestInjector
+import com.google.common.truth.Truth.assertThat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import javax.inject.Inject
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.setMain
 import org.junit.Before
 import org.junit.Rule
+import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
@@ -48,7 +49,7 @@ class CategoriesViewModelTest {
     private lateinit var scenario: ActivityScenario<PreviewTestActivity>
     private lateinit var categoriesViewModel: CategoriesViewModel
 
-    @Inject @MainDispatcher lateinit var testDispatcher: CoroutineDispatcher
+    @Inject lateinit var testDispatcher: TestDispatcher
     @Inject @ApplicationContext lateinit var appContext: Context
 
     @Inject lateinit var testInjector: TestInjector
@@ -74,5 +75,11 @@ class CategoriesViewModelTest {
         categoriesViewModel = activity.viewModels<CategoriesViewModel>().value
     }
 
-    // TODO: add test cases when [CategoriesViewModel] is ready
+    // Studio requires at least one test or else it will report a failure
+    @Test
+    fun generateTiles_succeeds() {
+        assertThat(categoriesViewModel.generateTiles()).isNotEmpty()
+    }
+
+    // TODO (b/343476732): add test cases when [CategoriesViewModel] is ready
 }
