@@ -28,7 +28,6 @@ import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -43,6 +42,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.AccessibilityDelegateCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -79,6 +81,7 @@ public class CategorySelectorFragment extends AppbarFragment {
     private static final int SETTINGS_APP_INFO_REQUEST_CODE = 1;
     private static final String TAG = "CategorySelectorFragment";
     private static final String IMAGE_WALLPAPER_COLLECTION_ID = "image_wallpapers";
+    private static final int CREATIVE_CATEGORY_ROW_INDEX = 0;
 
     /**
      * Interface to be implemented by an Fragment hosting a {@link CategorySelectorFragment}
@@ -415,17 +418,6 @@ public class CategorySelectorFragment extends AppbarFragment {
             mCategory = category;
             mTitleView.setText(category.getTitle());
             drawThumbnailAndOverlayIcon();
-            // We do this since itemView here refers to the broader LinearLayout defined in
-            // xml layout file of myPhotos block. Doing this allows us to make sure that the
-            // onClickListener is configured only on the CardView of MyPhotos and nowhere else
-            if (mIsCreativeWallpaperEnabled && mCategory != null
-                    && TextUtils.equals(mCategory.getCollectionId(),
-                    getActivity().getApplicationContext().getString(
-                            R.string.image_wallpaper_collection_id))) {
-                itemView.setOnClickListener(null);
-                CardView categoryView = itemView.findViewById(R.id.category);
-                categoryView.setOnClickListener(this);
-            }
         }
 
         /**
@@ -528,6 +520,14 @@ public class CategorySelectorFragment extends AppbarFragment {
             // Use the height as the card corner radius for the "My photos" category
             // for a stadium border.
             categoryView.setRadius(height);
+            // We do this since itemView here refers to the broader LinearLayout defined in
+            // the My Photos xml, which includes the section title. Doing this allows us to make
+            // sure that the onClickListener is configured only on the My Photos grid item.
+            if (mIsCreativeWallpaperEnabled) {
+                itemView.setOnClickListener(null);
+                itemView.setClickable(false);
+                itemView.findViewById(R.id.tile).setOnClickListener(this);
+            }
         }
     }
 
@@ -555,6 +555,27 @@ public class CategorySelectorFragment extends AppbarFragment {
                     gridItemCategory.setOnClickListener(view -> {
                         onClickListenerForCreativeCategory(position);
                     });
+                    // Make sure the column number is announced when there is more than 1 creative
+                    // category.
+                    if (mCreativeCategoriesSize > 1) {
+                        ViewCompat.setAccessibilityDelegate(gridItemCategory,
+                                new AccessibilityDelegateCompat() {
+                                    @Override
+                                    public void onInitializeAccessibilityNodeInfo(View host,
+                                            AccessibilityNodeInfoCompat info) {
+                                        super.onInitializeAccessibilityNodeInfo(host, info);
+                                        info.setCollectionItemInfo(
+                                                AccessibilityNodeInfoCompat.CollectionItemInfoCompat
+                                                        .obtain(
+                                                            /* rowIndex= */
+                                                                CREATIVE_CATEGORY_ROW_INDEX,
+                                                            /* rowSpan= */ 1,
+                                                            /* columnIndex= */ position,
+                                                            /* columnSpan= */ 1,
+                                                            /* heading= */ false));
+                                    }
+                                });
+                    }
                 }
             }
         }
@@ -785,7 +806,7 @@ public class CategorySelectorFragment extends AppbarFragment {
         @Override
         public int getItemViewType(int position) {
             if (mCategories.stream().anyMatch(Category::supportsUserCreatedWallpapers)) {
-                if (position == 0) {
+                if (position == CREATIVE_CATEGORY_ROW_INDEX) {
                     return ITEM_VIEW_TYPE_CREATIVE_CATEGORY;
                 }
                 if (position == 1) {
@@ -962,7 +983,7 @@ public class CategorySelectorFragment extends AppbarFragment {
      * RecyclerView and all other items only take up a single span.
      */
     private class GroupedCategorySpanSizeLookup extends GridLayoutManager.SpanSizeLookup {
-        private static final int DEFAULT_CATEGORY_SPAN_SIZE = 2;
+        private static final int DEFAULT_CATEGORY_SPAN_SIZE = 1;
 
         GroupedCategoryAdapter mAdapter;
 
@@ -983,11 +1004,6 @@ public class CategorySelectorFragment extends AppbarFragment {
             }
             return DEFAULT_CATEGORY_SPAN_SIZE;
         }
-    }
-
-    @Override
-    protected int getToolbarColorId() {
-        return android.R.color.transparent;
     }
 
     @Override

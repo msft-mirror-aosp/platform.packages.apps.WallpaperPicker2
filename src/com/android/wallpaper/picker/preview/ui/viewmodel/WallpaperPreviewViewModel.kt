@@ -18,11 +18,14 @@ package com.android.wallpaper.picker.preview.ui.viewmodel
 import android.graphics.Point
 import android.graphics.Rect
 import android.stats.style.StyleEnums
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
+import com.android.wallpaper.model.wallpaper.PreviewPagerPage
 import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.module.CustomizationSections.Screen
+import com.android.wallpaper.picker.BasePreviewActivity.EXTRA_VIEW_AS_HOME
 import com.android.wallpaper.picker.customization.shared.model.WallpaperColorsModel
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.data.WallpaperModel
@@ -30,6 +33,7 @@ import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.HomeScreenPreviewUtils
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.LockScreenPreviewUtils
+import com.android.wallpaper.picker.preview.data.repository.ImageEffectsRepository
 import com.android.wallpaper.picker.preview.domain.interactor.PreviewActionsInteractor
 import com.android.wallpaper.picker.preview.domain.interactor.WallpaperPreviewInteractor
 import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
@@ -66,6 +70,7 @@ constructor(
     private val displayUtils: DisplayUtils,
     @HomeScreenPreviewUtils private val homePreviewUtils: PreviewUtils,
     @LockScreenPreviewUtils private val lockPreviewUtils: PreviewUtils,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     // Don't update smaller display since we always use portrait, always use wallpaper display on
@@ -77,13 +82,40 @@ constructor(
 
     val staticWallpaperPreviewViewModel =
         staticWallpaperPreviewViewModelFactory.create(viewModelScope)
-    var isViewAsHome = false
+
     var isNewTask = false
+
+    val isViewAsHome = savedStateHandle.get<Boolean>(EXTRA_VIEW_AS_HOME) ?: false
+
+    fun getWallpaperPreviewSource(): Screen =
+        if (isViewAsHome) Screen.HOME_SCREEN else Screen.LOCK_SCREEN
 
     val wallpaper: StateFlow<WallpaperModel?> = interactor.wallpaperModel
 
     // Used to display loading indication on the preview.
-    val effectStatus = actionsInteractor.effectsStatus
+    val imageEffectsModel = actionsInteractor.imageEffectsModel
+
+    // This flag prevents launching the creative edit activity again when orientation change.
+    // On orientation change, the fragment's onCreateView will be called again.
+    var isCurrentlyEditingCreativeWallpaper = false
+
+    val smallPreviewTabs = PreviewPagerPage.entries.map { it.screen }
+
+    private val _smallPreviewSelectedTab = MutableStateFlow(getWallpaperPreviewSource())
+    val smallPreviewSelectedTab = _smallPreviewSelectedTab.asStateFlow()
+    val smallPreviewSelectedTabIndex = smallPreviewSelectedTab.map { smallPreviewTabs.indexOf(it) }
+
+    fun getSmallPreviewTabIndex(): Int {
+        return smallPreviewTabs.indexOf(smallPreviewSelectedTab.value)
+    }
+
+    fun setSmallPreviewSelectedTab(screen: Screen) {
+        _smallPreviewSelectedTab.value = screen
+    }
+
+    fun setSmallPreviewSelectedTabIndex(index: Int) {
+        _smallPreviewSelectedTab.value = smallPreviewTabs[index]
+    }
 
     fun updateDisplayConfiguration() {
         _wallpaperDisplaySize.value = displayUtils.getRealSize(displayUtils.getWallpaperDisplay())
@@ -144,6 +176,12 @@ constructor(
         }
     }
 
+    private val _isWallpaperColorPreviewEnabled = MutableStateFlow(false)
+    val isWallpaperColorPreviewEnabled = _isWallpaperColorPreviewEnabled.asStateFlow()
+    fun setIsWallpaperColorPreviewEnabled(isWallpaperColorPreviewEnabled: Boolean) {
+        _isWallpaperColorPreviewEnabled.value = isWallpaperColorPreviewEnabled
+    }
+
     private val _wallpaperConnectionColors: MutableStateFlow<WallpaperColorsModel> =
         MutableStateFlow(WallpaperColorsModel.Loading as WallpaperColorsModel).apply {
             viewModelScope.launch {
@@ -160,12 +198,16 @@ constructor(
                 wallpaperConnectionColors
             }
     val wallpaperColorsModel: Flow<WallpaperColorsModel> =
-        merge(liveWallpaperColors, staticWallpaperPreviewViewModel.wallpaperColors)
+        merge(liveWallpaperColors, staticWallpaperPreviewViewModel.wallpaperColors).combine(
+            isWallpaperColorPreviewEnabled
+        ) { colors, isEnabled ->
+            if (isEnabled) colors else WallpaperColorsModel.Loaded(null)
+        }
 
-    // This is only used for the full screen wallpaper preview.
-    private val fullWallpaperPreviewConfigViewModel:
-        MutableStateFlow<WallpaperPreviewConfigViewModel?> =
+    // This is only used for the full screen preview.
+    private val _fullPreviewConfigViewModel: MutableStateFlow<FullPreviewConfigViewModel?> =
         MutableStateFlow(null)
+    val fullPreviewConfigViewModel = _fullPreviewConfigViewModel.asStateFlow()
 
     // This is only used for the small screen wallpaper preview.
     val smallWallpaper: Flow<Pair<WallpaperModel, WhichPreview>> =
@@ -177,45 +219,47 @@ constructor(
     val fullWallpaper: Flow<FullWallpaperPreviewViewModel> =
         combine(
             wallpaper.filterNotNull(),
-            fullWallpaperPreviewConfigViewModel.filterNotNull(),
+            fullPreviewConfigViewModel.filterNotNull(),
             whichPreview,
             wallpaperDisplaySize,
         ) { wallpaper, config, whichPreview, wallpaperDisplaySize ->
             val displaySize =
                 when (config.deviceDisplayType) {
-                    DeviceDisplayType.SINGLE -> config.displaySize
+                    DeviceDisplayType.SINGLE -> wallpaperDisplaySize
                     DeviceDisplayType.FOLDED -> smallerDisplaySize
                     DeviceDisplayType.UNFOLDED -> wallpaperDisplaySize
                 }
             FullWallpaperPreviewViewModel(
                 wallpaper = wallpaper,
                 config =
-                    WallpaperPreviewConfigViewModel(
+                    FullPreviewConfigViewModel(
                         config.screen,
                         config.deviceDisplayType,
-                        displaySize
                     ),
+                displaySize = displaySize,
                 allowUserCropping =
                     wallpaper is StaticWallpaperModel && !wallpaper.isDownloadableWallpaper(),
                 whichPreview = whichPreview,
             )
         }
 
-    // This is only used for the full screen wallpaper preview.
-    private val _fullWorkspacePreviewConfigViewModel:
-        MutableStateFlow<WorkspacePreviewConfigViewModel?> =
-        MutableStateFlow(null)
-
-    // This is only used for the full screen wallpaper preview.
+    // This is only used for the full screen workspace preview.
     val fullWorkspacePreviewConfigViewModel: Flow<WorkspacePreviewConfigViewModel> =
-        _fullWorkspacePreviewConfigViewModel.filterNotNull()
+        fullPreviewConfigViewModel.filterNotNull().map {
+            getWorkspacePreviewConfig(it.screen, it.deviceDisplayType)
+        }
 
     val onCropButtonClick: Flow<(() -> Unit)?> =
-        combine(wallpaper, fullWallpaperPreviewConfigViewModel.filterNotNull()) { wallpaper, _ ->
+        combine(wallpaper, fullPreviewConfigViewModel.filterNotNull(), fullWallpaper) {
+            wallpaper,
+            _,
+            fullWallpaper ->
             if (wallpaper is StaticWallpaperModel && !wallpaper.isDownloadableWallpaper()) {
                 {
                     staticWallpaperPreviewViewModel.run {
-                        updateCropHintsInfo(fullPreviewCropModels)
+                        updateCropHintsInfo(
+                            fullPreviewCropModels.filterKeys { it == fullWallpaper.displaySize }
+                        )
                     }
                 }
             } else {
@@ -225,17 +269,26 @@ constructor(
 
     // Set wallpaper button and set wallpaper dialog
     val isSetWallpaperButtonVisible: Flow<Boolean> =
+        wallpaper.map { it != null && !it.isDownloadableWallpaper() }
+
+    val isSetWallpaperButtonEnabled: Flow<Boolean> =
         combine(
+            isSetWallpaperButtonVisible,
             wallpaper,
             staticWallpaperPreviewViewModel.fullResWallpaperViewModel,
-        ) { wallpaper, fullResWallpaperViewModel ->
-            wallpaper != null &&
-                !wallpaper.isDownloadableWallpaper() &&
-                !(wallpaper is StaticWallpaperModel && fullResWallpaperViewModel == null)
+            actionsInteractor.imageEffectsModel,
+        ) { isSetWallpaperButtonVisible, wallpaper, fullResWallpaperViewModel, imageEffectsModel ->
+            isSetWallpaperButtonVisible &&
+                !(wallpaper is StaticWallpaperModel && fullResWallpaperViewModel == null) &&
+                imageEffectsModel.status !=
+                    ImageEffectsRepository.EffectStatus.EFFECT_APPLY_IN_PROGRESS
         }
+
     val onSetWallpaperButtonClicked: Flow<(() -> Unit)?> =
-        isSetWallpaperButtonVisible.map { visible ->
-            if (visible) {
+        combine(isSetWallpaperButtonVisible, isSetWallpaperButtonEnabled) {
+            isSetWallpaperButtonVisible,
+            isSetWallpaperButtonEnabled ->
+            if (isSetWallpaperButtonVisible && isSetWallpaperButtonEnabled) {
                 { _showSetWallpaperDialog.value = true }
             } else null
         }
@@ -283,7 +336,12 @@ constructor(
                                 bitmap = it.rawWallpaperBitmap,
                                 wallpaperSize = it.rawWallpaperSize,
                                 asset = it.asset,
-                                fullPreviewCropModels = it.fullPreviewCropModels,
+                                fullPreviewCropModels =
+                                    if (it.fullPreviewCropModels.isNullOrEmpty()) {
+                                        staticWallpaperPreviewViewModel.fullPreviewCropModels
+                                    } else {
+                                        it.fullPreviewCropModels
+                                    },
                             )
                         }
                     is LiveWallpaperModel -> {
@@ -354,50 +412,47 @@ constructor(
         }
     }
 
+    val isSmallPreviewClickable =
+        actionsInteractor.imageEffectsModel.map {
+            it.status != ImageEffectsRepository.EffectStatus.EFFECT_APPLY_IN_PROGRESS
+        }
+
     fun onSmallPreviewClicked(
         screen: Screen,
         deviceDisplayType: DeviceDisplayType,
-    ) {
-        smallTooltipViewModel.dismissTooltip()
-        fullWallpaperPreviewConfigViewModel.value =
-            getWallpaperPreviewConfig(screen, deviceDisplayType)
-        _fullWorkspacePreviewConfigViewModel.value =
-            getWorkspacePreviewConfig(screen, deviceDisplayType)
-    }
+        navigate: () -> Unit,
+    ): Flow<(() -> Unit)?> =
+        combine(isSmallPreviewClickable, smallPreviewSelectedTab) { isClickable, selectedTab ->
+            if (isClickable) {
+                if (selectedTab == screen) {
+                    // If the selected preview matches the selected tab, navigate to full preview.
+                    {
+                        smallTooltipViewModel.dismissTooltip()
+                        _fullPreviewConfigViewModel.value =
+                            FullPreviewConfigViewModel(screen, deviceDisplayType)
+                        navigate()
+                    }
+                } else {
+                    // If the selected preview doesn't match the selected tab, switch tab to match.
+                    { setSmallPreviewSelectedTab(screen) }
+                }
+            } else {
+                null
+            }
+        }
 
-    fun setDefaultWallpaperPreviewConfigViewModel(
+    fun setDefaultFullPreviewConfigViewModel(
         deviceDisplayType: DeviceDisplayType,
-        displaySize: Point
     ) {
-        fullWallpaperPreviewConfigViewModel.value =
-            WallpaperPreviewConfigViewModel(
+        _fullPreviewConfigViewModel.value =
+            FullPreviewConfigViewModel(
                 Screen.HOME_SCREEN,
                 deviceDisplayType,
-                displaySize,
             )
     }
 
-    private fun getWallpaperPreviewConfig(
-        screen: Screen,
-        deviceDisplayType: DeviceDisplayType,
-    ): WallpaperPreviewConfigViewModel {
-        val displaySize =
-            when (deviceDisplayType) {
-                DeviceDisplayType.SINGLE -> {
-                    wallpaperDisplaySize.value
-                }
-                DeviceDisplayType.FOLDED -> {
-                    smallerDisplaySize
-                }
-                DeviceDisplayType.UNFOLDED -> {
-                    wallpaperDisplaySize.value
-                }
-            }
-        return WallpaperPreviewConfigViewModel(
-            screen = screen,
-            deviceDisplayType = deviceDisplayType,
-            displaySize = displaySize,
-        )
+    fun resetFullPreviewConfigViewModel() {
+        _fullPreviewConfigViewModel.value = null
     }
 
     companion object {

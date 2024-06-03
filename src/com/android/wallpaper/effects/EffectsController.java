@@ -15,9 +15,12 @@
  */
 package com.android.wallpaper.effects;
 
+import android.app.WallpaperInfo;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
+
+import androidx.annotation.NonNull;
 
 /**
  * Utility class to provide methods to generate effects for the wallpaper.
@@ -53,6 +56,7 @@ public abstract class EffectsController {
 
     public enum Effect implements EffectEnumInterface {
         NONE,
+        UNKNOWN,
     }
 
     protected boolean mBound = false;
@@ -70,6 +74,21 @@ public abstract class EffectsController {
      * Binds the Effects Service.
      */
     public void bindEffectsService() {
+    }
+
+    /**
+     * Returns true if an effects component is available on the current device
+     */
+    public boolean areEffectsAvailable() {
+        return false;
+    }
+
+    /**
+     * Returns true if the given {@link WallpaperInfo} corresponds to a wallpaper matching the
+     * "Effects" wallpaper.
+     */
+    public boolean isEffectsWallpaper(@NonNull WallpaperInfo info) {
+        return false;
     }
 
     /**
@@ -163,10 +182,20 @@ public abstract class EffectsController {
         return Uri.EMPTY;
     }
 
+    /** */
+    public void interruptGenerate(com.android.wallpaper.effects.Effect effect) {}
+
     /**
      * This initiates the downloading of the ML models for a given effect
      *
      * @param effect The Effect for which we want to download the ML model
      */
     public void startForegroundDownload(com.android.wallpaper.effects.Effect effect){}
+
+    /**
+     * Sends the interrupt foreground downloading to effect.
+     *
+     * @param effect The effect that is being downloaded.
+     */
+    public void interruptForegroundDownload(com.android.wallpaper.effects.Effect effect) {}
 }

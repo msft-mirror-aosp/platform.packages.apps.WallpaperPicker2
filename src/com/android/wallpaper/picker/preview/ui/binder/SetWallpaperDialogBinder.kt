@@ -52,6 +52,7 @@ object SetWallpaperDialogBinder {
         currentNavDestId: Int,
         onFinishActivity: () -> Unit,
         onDismissDialog: () -> Unit,
+        isFirstBinding: Boolean,
         navigate: ((View) -> Unit)?,
     ) {
         val previewLayout: View =
@@ -63,6 +64,7 @@ object SetWallpaperDialogBinder {
                 wallpaperPreviewViewModel,
                 lifecycleOwner,
                 currentNavDestId,
+                isFirstBinding,
                 navigate,
             )
         else
@@ -72,6 +74,7 @@ object SetWallpaperDialogBinder {
                 handheldDisplaySize,
                 lifecycleOwner,
                 currentNavDestId,
+                isFirstBinding,
                 navigate,
             )
 
@@ -124,6 +127,7 @@ object SetWallpaperDialogBinder {
         wallpaperPreviewViewModel: WallpaperPreviewViewModel,
         lifecycleOwner: LifecycleOwner,
         currentNavDestId: Int,
+        isFirstBinding: Boolean,
         navigate: ((View) -> Unit)?,
     ) {
         previewLayout.isVisible = true
@@ -142,16 +146,18 @@ object SetWallpaperDialogBinder {
             )
             DeviceDisplayType.FOLDABLE_DISPLAY_TYPES.forEach { display ->
                 val previewDisplaySize = dualDisplayAspectRatioLayout.getPreviewDisplaySize(display)
+                val view: View = dualDisplayAspectRatioLayout.requireViewById(display.getViewId())
                 previewDisplaySize?.let {
                     SmallPreviewBinder.bind(
                         applicationContext = previewLayout.context.applicationContext,
-                        view = dualDisplayAspectRatioLayout.requireViewById(display.getViewId()),
+                        view = view,
                         viewModel = wallpaperPreviewViewModel,
                         viewLifecycleOwner = lifecycleOwner,
                         screen = screenId.key,
                         displaySize = it,
                         deviceDisplayType = display,
                         currentNavDestId = currentNavDestId,
+                        isFirstBinding = isFirstBinding,
                         navigate = navigate,
                     )
                 }
@@ -165,22 +171,25 @@ object SetWallpaperDialogBinder {
         displaySize: Point,
         lifecycleOwner: LifecycleOwner,
         currentNavDestId: Int,
+        isFirstBinding: Boolean,
         navigate: ((View) -> Unit)?,
     ) {
         previewLayout.isVisible = true
         PreviewScreenIds.forEach { screenId ->
+            val view: View =
+                previewLayout
+                    .requireViewById<FrameLayout>(screenId.value)
+                    .requireViewById(R.id.preview)
             SmallPreviewBinder.bind(
                 applicationContext = previewLayout.context.applicationContext,
-                view =
-                    previewLayout
-                        .requireViewById<FrameLayout>(screenId.value)
-                        .requireViewById(R.id.preview),
+                view = view,
                 viewModel = wallpaperPreviewViewModel,
                 screen = screenId.key,
                 displaySize = displaySize,
                 deviceDisplayType = DeviceDisplayType.SINGLE,
                 viewLifecycleOwner = lifecycleOwner,
                 currentNavDestId = currentNavDestId,
+                isFirstBinding = isFirstBinding,
                 navigate = navigate,
             )
         }
@@ -193,6 +202,7 @@ object SetWallpaperDialogBinder {
         dialogViewModel: WallpaperPreviewViewModel,
     ) {
         selector.isActivated = selectedScreens.contains(screen)
+        selector.isSelected = selector.isActivated
         selector.setOnClickListener { dialogViewModel.onSetWallpaperDialogScreenSelected(screen) }
     }
 }

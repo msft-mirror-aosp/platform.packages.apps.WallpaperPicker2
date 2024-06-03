@@ -30,7 +30,7 @@
     <string name="rotating_wallpaper_presentation_mode_message" msgid="3361676041605733288">"Denná tapeta"</string>
     <string name="wallpaper_destination_both" msgid="1124197176741944063">"Plocha a uzamknutá obrazovka"</string>
     <string name="choose_a_wallpaper_section_title" msgid="1009823506890453891">"Vyberte tapetu"</string>
-    <string name="creative_wallpaper_title" msgid="3581650238648981372">"Vytvoriť tapetu"</string>
+    <string name="creative_wallpaper_title" msgid="3581650238648981372">"Vytvorte tapetu"</string>
     <string name="home_screen_message" msgid="106444102822522813">"Plocha"</string>
     <string name="lock_screen_message" msgid="1534506081955058013">"Uzamknutá obrazovka"</string>
     <string name="home_and_lock_short_label" msgid="2937922943541927983">"Plocha a uzamknutá obrazovka"</string>
@@ -67,6 +67,10 @@
     <string name="refresh_daily_wallpaper_home_content_description" msgid="2770445044556164259">"Obnoviť dennú tapetu na ploche"</string>
     <string name="refresh_daily_wallpaper_content_description" msgid="4362142658237147583">"Obnoviť dennú tapetu"</string>
     <string name="preview_screen_description" msgid="3386387053327775919">"Obrazovka ukážky tapety"</string>
+    <string name="preview_screen_description_editable" msgid="506875963019888699">"Obrazovka s ukážkou tapety %1$s. Dvoma prstami posúvajte a približujte alebo odďaľujte zobrazenie."</string>
+    <string name="folded_device_state_description" msgid="4972608448265616264">"Zložené"</string>
+    <string name="unfolded_device_state_description" msgid="3071975681472460627">"Rozložené"</string>
+    <string name="full_preview_check_button_description" msgid="700484353763952975">"Úprava tapety bola dokončená"</string>
     <string name="refreshing_daily_wallpaper_dialog_message" msgid="1975910873362855761">"Obnovuje sa denná tapeta…"</string>
     <string name="refresh_daily_wallpaper_failed_message" msgid="4749879993812557166">"Dennú tapetu sa nepodarilo obnoviť. Skontrolujte pripojenie k sieti a skúste to znova."</string>
     <string name="on_device_wallpapers_category_title" msgid="805819102071369004">"Tapety v zariadení"</string>
@@ -93,6 +97,7 @@
     <string name="bottom_action_bar_back" msgid="2620581414970740784">"Prejsť hore"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Upraviť"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Stiahnuť"</string>
+    <string name="download_effects" msgid="2772742927165716701">"Stiahnuť efekty"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Spustiť prezentáciu tapiet"</string>
     <string name="bottom_action_bar_apply" msgid="2983308349819178932">"Použiť"</string>
     <string name="accessibility_preview_pager" msgid="1839869637405028575">"<xliff:g id="ID_1">%1$d</xliff:g>. strana z <xliff:g id="ID_2">%2$d</xliff:g>"</string>
@@ -100,6 +105,7 @@
     <string name="previous_page_content_description" msgid="1138597031571078429">"Späť"</string>
     <string name="wallpaper_title" msgid="6754214682228331092">"Tapeta"</string>
     <string name="wallpaper_preview_card_content_description" msgid="6049261033541034584">"Ukážka tapety"</string>
+    <string name="wallpaper_preview_card_content_description_editable" msgid="3111763100515242340">"Ukážka tapety %1$s, klepnutím upravíte fotku"</string>
     <string name="lock_wallpaper_preview_card_content_description" msgid="5236839857695985498">"Ukážka tapety na uzamknutej obrazovke"</string>
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Ukážka tapety na ploche"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Zbierka neexistuje"</string>
@@ -134,5 +140,5 @@
     <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
     <string name="default_wallpaper_title" msgid="2541071182656978180">"Tapeta"</string>
     <string name="small_preview_tooltip" msgid="1920430079013352071">"Fotku upravíte klepnutím"</string>
-    <string name="full_preview_tooltip" msgid="4648994028015322759">"Upravte pozíciu, rozmery a uhol svojich fotiek"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"Upravte pozíciu, mierku a naklonenie svojich fotiek"</string>
 </resources>

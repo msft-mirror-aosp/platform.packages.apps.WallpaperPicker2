@@ -18,10 +18,9 @@ package com.android.wallpaper.picker.preview.ui.viewmodel
 import android.app.WallpaperColors
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.ColorSpace
 import android.graphics.Point
 import android.graphics.Rect
+import androidx.annotation.VisibleForTesting
 import com.android.wallpaper.asset.Asset
 import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.picker.customization.shared.model.WallpaperColorsModel
@@ -32,7 +31,6 @@ import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ViewModelScoped
-import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineDispatcher
@@ -68,14 +66,22 @@ constructor(
     val fullPreviewCropModels: MutableMap<Point, FullPreviewCropModel> = mutableMapOf()
 
     /**
+     * The default crops for the current wallpaper, which is center aligned on the preview.
+     *
+     * Always update default through [updateDefaultPreviewCropModel] to make sure multiple updates
+     * of the same preview only counts the first time it appears.
+     */
+    private val defaultPreviewCropModels: MutableMap<Point, FullPreviewCropModel> = mutableMapOf()
+
+    /**
      * The info picker needs to post process crops for setting static wallpaper.
      *
      * It will be filled with current cropHints when previewing current wallpaper, and null when
      * previewing a new wallpaper, and gets updated through [updateCropHintsInfo] when user picks a
      * new crop.
      */
-    private val cropHintsInfo: MutableStateFlow<Map<Point, FullPreviewCropModel>?> =
-        MutableStateFlow(null)
+    @get:VisibleForTesting
+    val cropHintsInfo: MutableStateFlow<Map<Point, FullPreviewCropModel>?> = MutableStateFlow(null)
 
     private val cropHints: Flow<Map<Point, Rect>?> =
         cropHintsInfo.map { cropHintsInfoMap ->
@@ -93,14 +99,8 @@ constructor(
     private val assetDetail: Flow<Triple<Point, Bitmap?, Asset>?> =
         interactor.wallpaperModel
             .map { (it as? StaticWallpaperModel)?.staticWallpaperData?.asset }
-            .map {
-                if (it == null) {
-                    null
-                } else {
-                    val dimensions = it.decodeRawDimensions()
-                    val bitmap = it.decodeBitmap(dimensions)
-                    Triple(dimensions, bitmap, it)
-                }
+            .map { asset ->
+                asset?.decodeRawDimensions()?.let { Triple(it, asset.decodeBitmap(it), asset) }
             }
             .flowOn(bgDispatcher)
             // We only want to decode bitmap every time when wallpaper model is updated, instead of
@@ -150,22 +150,47 @@ constructor(
         }
 
     /**
-     * Updates new cropHints per displaySize that's been confirmed by the user.
+     * Updates new cropHints per displaySize that's been confirmed by the user or from a new default
+     * crop.
      *
      * That's when picker gets current cropHints from [WallpaperManager] or when user crops and
-     * confirms a crop.
+     * confirms a crop, or when a small preview for a new display size has been discovered the first
+     * time.
      */
-    fun updateCropHintsInfo(cropHintsInfo: Map<Point, FullPreviewCropModel>) {
-        val newInfo = this.cropHintsInfo.value?.plus(cropHintsInfo) ?: cropHintsInfo
+    fun updateCropHintsInfo(
+        cropHintsInfo: Map<Point, FullPreviewCropModel>,
+        updateDefaultCrop: Boolean = false
+    ) {
+        val newInfo =
+            this.cropHintsInfo.value?.let { currentCropHintsInfo ->
+                currentCropHintsInfo.plus(
+                    if (updateDefaultCrop)
+                        cropHintsInfo.filterKeys { !currentCropHintsInfo.keys.contains(it) }
+                    else cropHintsInfo
+                )
+            }
+                ?: cropHintsInfo
         this.cropHintsInfo.value = newInfo
         fullPreviewCropModels.putAll(newInfo)
     }
 
+    /** Updates default cropHint for [displaySize] if it's not already exist. */
+    fun updateDefaultPreviewCropModel(displaySize: Point, cropModel: FullPreviewCropModel) {
+        defaultPreviewCropModels.let { cropModels ->
+            if (!cropModels.contains(displaySize)) {
+                cropModels[displaySize] = cropModel
+                updateCropHintsInfo(
+                    cropModels.filterKeys { it == displaySize },
+                    updateDefaultCrop = true,
+                )
+            }
+        }
+    }
+
     // TODO b/296288298 Create a util class for Bitmap and Asset
-    private suspend fun Asset.decodeRawDimensions(): Point =
-        suspendCancellableCoroutine { k: CancellableContinuation<Point> ->
-            val callback =
-                Asset.DimensionsReceiver { it?.let { k.resumeWith(Result.success(Point(it))) } }
+    private suspend fun Asset.decodeRawDimensions(): Point? =
+        suspendCancellableCoroutine { k: CancellableContinuation<Point?> ->
+            val callback = Asset.DimensionsReceiver { k.resumeWith(Result.success(it)) }
             decodeRawDimensions(null, callback)
         }
 
@@ -175,28 +200,6 @@ constructor(
             val callback = Asset.BitmapReceiver { k.resumeWith(Result.success(it)) }
             decodeBitmap(dimensions.x, dimensions.y, /* hardwareBitmapAllowed= */ false, callback)
         }
-
-    // TODO b/296288298 Create a util class functions for Bitmap and Asset
-    private fun Bitmap.extractColors(): WallpaperColors? {
-        val tmpOut = ByteArrayOutputStream()
-        var shouldRecycle = false
-        var cropped = this
-        if (cropped.compress(Bitmap.CompressFormat.PNG, 100, tmpOut)) {
-            val outByteArray = tmpOut.toByteArray()
-            val options = BitmapFactory.Options()
-            options.inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
-            cropped = BitmapFactory.decodeByteArray(outByteArray, 0, outByteArray.size)
-        }
-        if (cropped.config == Bitmap.Config.HARDWARE) {
-            cropped = cropped.copy(Bitmap.Config.ARGB_8888, false)
-            shouldRecycle = true
-        }
-        val colors = WallpaperColors.fromBitmap(cropped)
-        if (shouldRecycle) {
-            cropped.recycle()
-        }
-        return colors
-    }
 
     class Factory
     @Inject

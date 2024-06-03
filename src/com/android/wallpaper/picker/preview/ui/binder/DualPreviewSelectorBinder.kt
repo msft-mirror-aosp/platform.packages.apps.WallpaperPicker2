@@ -18,9 +18,10 @@ package com.android.wallpaper.picker.preview.ui.binder
 import android.content.Context
 import android.view.View
 import androidx.lifecycle.LifecycleOwner
-import androidx.viewpager.widget.ViewPager
-import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.DualPreviewViewPager
-import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.adapters.TabTextPagerAdapter
+import androidx.transition.Transition
+import com.android.wallpaper.picker.preview.ui.view.DualPreviewViewPager
+import com.android.wallpaper.picker.preview.ui.view.PreviewTabs
+import com.android.wallpaper.picker.preview.ui.viewmodel.FullPreviewConfigViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 
 /**
@@ -30,70 +31,29 @@ import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewMod
 object DualPreviewSelectorBinder {
 
     fun bind(
-        tabsViewPager: ViewPager,
+        tabs: PreviewTabs,
         dualPreviewView: DualPreviewViewPager,
         wallpaperPreviewViewModel: WallpaperPreviewViewModel,
         applicationContext: Context,
         viewLifecycleOwner: LifecycleOwner,
         currentNavDestId: Int,
+        transition: Transition?,
+        transitionConfig: FullPreviewConfigViewModel?,
+        isFirstBinding: Boolean,
         navigate: (View) -> Unit,
     ) {
-        // set up tabs view pager
-        TabPagerBinder.bind(tabsViewPager)
-
-        // synchronize both view and tabs pager
-        synchronizePreviewAndTabsPager(tabsViewPager, dualPreviewView)
-
         DualPreviewPagerBinder.bind(
             dualPreviewView,
             wallpaperPreviewViewModel,
             applicationContext,
             viewLifecycleOwner,
             currentNavDestId,
+            transition,
+            transitionConfig,
+            isFirstBinding,
             navigate,
         )
-        tabsViewPager.currentItem =
-            (tabsViewPager.adapter as TabTextPagerAdapter).getPageNumber(
-                wallpaperPreviewViewModel.isViewAsHome
-            )
-    }
 
-    private fun synchronizePreviewAndTabsPager(
-        tabsViewPager: ViewPager,
-        previewsViewPager: ViewPager,
-    ) {
-        val onPageChangeListenerTabs =
-            object : ViewPager.OnPageChangeListener {
-                override fun onPageSelected(position: Int) {
-                    previewsViewPager.setCurrentItem(position, true)
-                }
-
-                override fun onPageScrolled(
-                    position: Int,
-                    positionOffset: Float,
-                    positionOffsetPixels: Int
-                ) {}
-
-                override fun onPageScrollStateChanged(state: Int) {}
-            }
-
-        tabsViewPager.addOnPageChangeListener(onPageChangeListenerTabs)
-
-        val onPageChangeListenerPreviews =
-            object : ViewPager.OnPageChangeListener {
-                override fun onPageSelected(position: Int) {
-                    tabsViewPager.setCurrentItem(position, true)
-                }
-
-                override fun onPageScrolled(
-                    position: Int,
-                    positionOffset: Float,
-                    positionOffsetPixels: Int
-                ) {}
-
-                override fun onPageScrollStateChanged(state: Int) {}
-            }
-
-        previewsViewPager.addOnPageChangeListener(onPageChangeListenerPreviews)
+        TabsBinder.bind(tabs, wallpaperPreviewViewModel, viewLifecycleOwner)
     }
 }

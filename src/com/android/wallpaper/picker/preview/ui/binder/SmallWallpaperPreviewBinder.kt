@@ -27,7 +27,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.android.wallpaper.R
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
-import com.android.wallpaper.module.CustomizationSections.Screen
 import com.android.wallpaper.picker.customization.shared.model.WallpaperColorsModel
 import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.preview.ui.util.SurfaceViewUtil
@@ -52,11 +51,11 @@ object SmallWallpaperPreviewBinder {
     fun bind(
         surface: SurfaceView,
         viewModel: WallpaperPreviewViewModel,
-        screen: Screen,
         displaySize: Point,
         applicationContext: Context,
         viewLifecycleOwner: LifecycleOwner,
         deviceDisplayType: DeviceDisplayType,
+        isFirstBinding: Boolean,
     ) {
         var surfaceCallback: SurfaceViewUtil.SurfaceCallback? = null
         viewLifecycleOwner.lifecycleScope.launch {
@@ -66,10 +65,10 @@ object SmallWallpaperPreviewBinder {
                         applicationContext = applicationContext,
                         surface = surface,
                         viewModel = viewModel,
-                        screen = screen,
                         deviceDisplayType = deviceDisplayType,
                         displaySize = displaySize,
                         lifecycleOwner = viewLifecycleOwner,
+                        isFirstBinding
                     )
                 surface.setZOrderMediaOverlay(true)
                 surfaceCallback?.let { surface.holder.addCallback(it) }
@@ -91,10 +90,10 @@ object SmallWallpaperPreviewBinder {
         applicationContext: Context,
         surface: SurfaceView,
         viewModel: WallpaperPreviewViewModel,
-        screen: Screen,
         deviceDisplayType: DeviceDisplayType,
         displaySize: Point,
         lifecycleOwner: LifecycleOwner,
+        isFirstBinding: Boolean,
     ): SurfaceViewUtil.SurfaceCallback {
 
         return object : SurfaceViewUtil.SurfaceCallback {
@@ -111,7 +110,7 @@ object SmallWallpaperPreviewBinder {
                                     applicationContext,
                                     wallpaper,
                                     whichPreview,
-                                    screen.toFlag(),
+                                    viewModel.getWallpaperPreviewSource().toFlag(),
                                     surface,
                                     WallpaperConnectionUtils.EngineRenderingConfig(
                                         wallpaper.shouldEnforceSingleEngine(),
@@ -119,6 +118,7 @@ object SmallWallpaperPreviewBinder {
                                         viewModel.smallerDisplaySize,
                                         viewModel.wallpaperDisplaySize.value,
                                     ),
+                                    isFirstBinding,
                                     object : WallpaperEngineConnectionListener {
                                         override fun onWallpaperColorsChanged(
                                             colors: WallpaperColors?,
@@ -143,7 +143,7 @@ object SmallWallpaperPreviewBinder {
                                         staticPreviewView.requireViewById(R.id.full_res_image),
                                     viewModel = viewModel.staticWallpaperPreviewViewModel,
                                     displaySize = displaySize,
-                                    viewLifecycleOwner = lifecycleOwner,
+                                    parentCoroutineScope = this,
                                 )
                                 // This is to possibly shut down all live wallpaper services
                                 // if they exist; otherwise static wallpaper can not show up.

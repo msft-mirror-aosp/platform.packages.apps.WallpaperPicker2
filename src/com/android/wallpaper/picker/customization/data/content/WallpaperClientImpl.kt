@@ -35,12 +35,13 @@ import android.graphics.Rect
 import android.net.Uri
 import android.os.Looper
 import android.util.Log
-import androidx.collection.ArrayMap
+import com.android.app.tracing.TraceUtils.traceAsync
 import com.android.wallpaper.asset.Asset
 import com.android.wallpaper.asset.BitmapUtils
 import com.android.wallpaper.asset.CurrentWallpaperAsset
 import com.android.wallpaper.asset.StreamableAsset
 import com.android.wallpaper.model.CreativeCategory
+import com.android.wallpaper.model.CreativeWallpaperInfo
 import com.android.wallpaper.model.LiveWallpaperPrefMetadata
 import com.android.wallpaper.model.StaticWallpaperPrefMetadata
 import com.android.wallpaper.model.WallpaperInfo
@@ -57,9 +58,14 @@ import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 import com.android.wallpaper.util.WallpaperCropUtils
+import com.android.wallpaper.util.converter.WallpaperModelFactory.Companion.getCommonWallpaperData
+import com.android.wallpaper.util.converter.WallpaperModelFactory.Companion.getCreativeWallpaperData
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
 import java.io.InputStream
 import java.util.EnumMap
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -67,8 +73,11 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 
-class WallpaperClientImpl(
-    private val context: Context,
+@Singleton
+class WallpaperClientImpl
+@Inject
+constructor(
+    @ApplicationContext private val context: Context,
     private val wallpaperManager: WallpaperManager,
     private val wallpaperPreferences: WallpaperPreferences,
 ) : WallpaperClient {
@@ -141,39 +150,42 @@ class WallpaperClientImpl(
         fullPreviewCropModels: Map<Point, FullPreviewCropModel>?,
     ) {
         if (destination == HOME || destination == BOTH) {
-            // Disable rotation wallpaper when setting to home screen. Daily rotation rotates both
-            // home and lock screen wallpaper when lock screen is not set; otherwise daily rotation
-            // only rotates home screen while lock screen wallpaper stays as what it's set to.
+            // Disable rotation wallpaper when setting to home screen. Daily rotation rotates
+            // both home and lock screen wallpaper when lock screen is not set; otherwise daily
+            // rotation only rotates home screen while lock screen wallpaper stays as what it's
+            // set to.
             stopWallpaperRotation()
         }
 
-        val cropHintsWithParallax =
-            fullPreviewCropModels?.let { cropModels ->
-                cropModels.mapValues { it.value.adjustCropForParallax(wallpaperSize) }
-            }
-                ?: emptyMap()
-        val managerId =
-            wallpaperManager.setStaticWallpaperToSystem(
-                asset.getStream(),
-                bitmap,
-                cropHintsWithParallax,
-                destination,
-                asset,
+        traceAsync(TAG, "setStaticWallpaper") {
+            val cropHintsWithParallax =
+                fullPreviewCropModels?.let { cropModels ->
+                    cropModels.mapValues { it.value.adjustCropForParallax(wallpaperSize) }
+                }
+                    ?: emptyMap()
+            val managerId =
+                wallpaperManager.setStaticWallpaperToSystem(
+                    asset.getStream(),
+                    bitmap,
+                    cropHintsWithParallax,
+                    destination,
+                    asset,
+                )
+
+            wallpaperPreferences.setStaticWallpaperMetadata(
+                metadata = wallpaperModel.getMetadata(bitmap, managerId),
+                destination = destination,
             )
 
-        wallpaperPreferences.setStaticWallpaperMetadata(
-            metadata = wallpaperModel.getMetadata(bitmap, managerId),
-            destination = destination,
-        )
-
-        // Save the static wallpaper to recent wallpapers
-        // TODO(b/309138446): check if we can update recent with all cropHints from WM later
-        wallpaperPreferences.addStaticWallpaperToRecentWallpapers(
-            destination,
-            wallpaperModel,
-            bitmap,
-            cropHintsWithParallax,
-        )
+            // Save the static wallpaper to recent wallpapers
+            // TODO(b/309138446): check if we can update recent with all cropHints from WM later
+            wallpaperPreferences.addStaticWallpaperToRecentWallpapers(
+                destination,
+                wallpaperModel,
+                bitmap,
+                cropHintsWithParallax,
+            )
+        }
     }
 
     private fun stopWallpaperRotation() {
@@ -262,46 +274,73 @@ class WallpaperClientImpl(
         wallpaperModel: LiveWallpaperModel,
     ) {
         if (destination == HOME || destination == BOTH) {
-            // Disable rotation wallpaper when setting to home screen. Daily rotation rotates both
-            // home and lock screen wallpaper when lock screen is not set; otherwise daily rotation
-            // only rotates home screen while lock screen wallpaper stays as what it's set to.
+            // Disable rotation wallpaper when setting to home screen. Daily rotation rotates
+            // both home and lock screen wallpaper when lock screen is not set; otherwise daily
+            // rotation only rotates home screen while lock screen wallpaper stays as what it's
+            // set to.
             stopWallpaperRotation()
         }
 
-        if (wallpaperModel.creativeWallpaperData != null) {
-            saveCreativeWallpaperAtExternal(wallpaperModel, destination)
+        traceAsync(TAG, "setLiveWallpaper") {
+            val updatedWallpaperModel =
+                wallpaperModel.creativeWallpaperData?.let {
+                    saveCreativeWallpaperAtExternal(wallpaperModel, destination)
+                }
+                    ?: wallpaperModel
+
+            val managerId =
+                wallpaperManager.setLiveWallpaperToSystem(updatedWallpaperModel, destination)
+
+            wallpaperPreferences.setLiveWallpaperMetadata(
+                metadata = updatedWallpaperModel.getMetadata(managerId),
+                destination = destination,
+            )
+
+            wallpaperPreferences.addLiveWallpaperToRecentWallpapers(
+                destination,
+                updatedWallpaperModel
+            )
         }
-
-        val managerId = wallpaperManager.setLiveWallpaperToSystem(wallpaperModel, destination)
-
-        wallpaperPreferences.setLiveWallpaperMetadata(
-            metadata = wallpaperModel.getMetadata(managerId),
-            destination = destination,
-        )
-
-        wallpaperPreferences.addLiveWallpaperToRecentWallpapers(destination, wallpaperModel)
     }
 
-    /** Call the external app to save the creative wallpaper. */
+    /**
+     * Call the external app to save the creative wallpaper, and return an updated model based on
+     * the response.
+     */
     private fun saveCreativeWallpaperAtExternal(
         wallpaperModel: LiveWallpaperModel,
         destination: WallpaperDestination,
-    ) {
+    ): LiveWallpaperModel? {
         wallpaperModel.getSaveWallpaperUriAndAuthority(destination)?.let { (uri, authority) ->
             try {
                 context.contentResolver.acquireContentProviderClient(authority).use { client ->
-                    client?.query(
-                        /* url= */ uri,
-                        /* projection= */ null,
-                        /* selection= */ null,
-                        /* selectionArgs= */ null,
-                        /* sortOrder= */ null,
+                    val cursor =
+                        client?.query(
+                            /* url= */ uri,
+                            /* projection= */ null,
+                            /* selection= */ null,
+                            /* selectionArgs= */ null,
+                            /* sortOrder= */ null,
+                        )
+                    if (cursor == null || !cursor.moveToFirst()) return null
+                    val info =
+                        CreativeWallpaperInfo.buildFromCursor(
+                            wallpaperModel.liveWallpaperData.systemWallpaperInfo,
+                            cursor
+                        )
+                    // NB: need to regenerate common data to update the thumbnail asset
+                    return LiveWallpaperModel(
+                        info.getCommonWallpaperData(context),
+                        wallpaperModel.liveWallpaperData,
+                        info.getCreativeWallpaperData(),
+                        wallpaperModel.internalLiveWallpaperData
                     )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed updating creative live wallpaper at external.")
             }
         }
+        return null
     }
 
     /**
@@ -400,11 +439,14 @@ class WallpaperClientImpl(
         updateValues.put(KEY_ID, wallpaperId)
         updateValues.put(KEY_SCREEN, destination.asString())
         updateValues.put(KEY_SET_WALLPAPER_ENTRY_POINT, setWallpaperEntryPoint)
-        val updatedRowCount = context.contentResolver.update(SET_WALLPAPER_URI, updateValues, null)
-        if (updatedRowCount == 0) {
-            Log.e(TAG, "Error setting wallpaper: $wallpaperId")
+        traceAsync(TAG, "setRecentWallpaper") {
+            val updatedRowCount =
+                context.contentResolver.update(SET_WALLPAPER_URI, updateValues, null)
+            if (updatedRowCount == 0) {
+                Log.e(TAG, "Error setting wallpaper: $wallpaperId")
+            }
+            onDone.invoke()
         }
-        onDone.invoke()
     }
 
     private suspend fun queryRecentWallpapers(
@@ -564,19 +606,13 @@ class WallpaperClientImpl(
         @SetWallpaperFlags which: Int
     ): Map<Point, Rect>? {
         val flags = InjectorProvider.getInjector().getFlags()
-        val isMultiCropEnabled = flags.isMultiCropPreviewUiEnabled() && flags.isMultiCropEnabled()
-        if (!isMultiCropEnabled) {
+        if (!flags.isMultiCropEnabled()) {
             return null
         }
         val cropHints: List<Rect>? =
             wallpaperManager.getBitmapCrops(displaySizes, which, /* originalBitmap= */ true)
-        val cropHintsMap: MutableMap<Point, Rect> = ArrayMap()
-        if (cropHints != null) {
-            for (i in cropHints.indices) {
-                cropHintsMap[displaySizes[i]] = cropHints[i]
-            }
-        }
-        return cropHintsMap
+
+        return cropHints?.indices?.associate { displaySizes[it] to cropHints[it] }
     }
 
     override suspend fun getWallpaperColors(

@@ -1,6 +1,7 @@
 package com.android.wallpaper.util.wallpaperconnection
 
 import android.app.WallpaperInfo
+import android.app.WallpaperManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -13,12 +14,15 @@ import android.service.wallpaper.IWallpaperEngine
 import android.service.wallpaper.IWallpaperService
 import android.service.wallpaper.WallpaperService
 import android.util.Log
+import android.view.MotionEvent
 import android.view.SurfaceControl
 import android.view.SurfaceView
+import com.android.app.tracing.TraceUtils.traceAsync
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.util.WallpaperConnection
 import com.android.wallpaper.util.WallpaperConnection.WhichPreview
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -33,7 +37,7 @@ object WallpaperConnectionUtils {
 
     // engineMap and surfaceControlMap are used for disconnecting wallpaper services.
     private val engineMap =
-        mutableMapOf<String, Deferred<Pair<ServiceConnection, WallpaperEngineConnection>>>()
+        ConcurrentHashMap<String, Deferred<Pair<ServiceConnection, WallpaperEngineConnection>>>()
     // Note that when one wallpaper engine's render is mirrored to a new surface view, we call
     // engine.mirrorSurfaceControl() and will have a new surface control instance.
     private val surfaceControlMap = mutableMapOf<String, MutableList<SurfaceControl>>()
@@ -51,61 +55,61 @@ object WallpaperConnectionUtils {
         destinationFlag: Int,
         surfaceView: SurfaceView,
         engineRenderingConfig: EngineRenderingConfig,
+        isFirstBinding: Boolean,
         listener: WallpaperEngineConnection.WallpaperEngineConnectionListener? = null,
     ) {
         val wallpaperInfo = wallpaperModel.liveWallpaperData.systemWallpaperInfo
         val engineDisplaySize = engineRenderingConfig.getEngineDisplaySize()
         val engineKey = wallpaperInfo.getKey(engineDisplaySize)
 
-        // Update the creative wallpaper uri before starting the service.
-        wallpaperModel.creativeWallpaperData?.configPreviewUri?.let {
-            val uriKey = wallpaperInfo.getKey()
-            if (!creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
-                mutex.withLock {
-                    if (!creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
-                        context.contentResolver.update(it, ContentValues(), null)
-                        creativeWallpaperConfigPreviewUriMap[uriKey] = it
-                    }
-                }
-            }
-        }
-
-        if (!engineMap.containsKey(engineKey)) {
-            mutex.withLock {
-                if (!engineMap.containsKey(engineKey)) {
-                    engineMap[engineKey] = coroutineScope {
-                        async {
-                            initEngine(
-                                context,
-                                wallpaperModel.getWallpaperServiceIntent(),
-                                engineDisplaySize,
-                                destinationFlag,
-                                whichPreview,
-                                surfaceView,
-                                listener,
-                            )
+        traceAsync(TAG, "connect") {
+            // Update the creative wallpaper uri before starting the service.
+            wallpaperModel.creativeWallpaperData?.configPreviewUri?.let {
+                val uriKey = wallpaperInfo.getKey()
+                if (!creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
+                    mutex.withLock {
+                        if (!creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
+                            // First time binding wallpaper should initialize wallpaper preview.
+                            if (isFirstBinding) {
+                                context.contentResolver.update(it, ContentValues(), null)
+                            }
+                            creativeWallpaperConfigPreviewUriMap[uriKey] = it
                         }
                     }
                 }
             }
-        }
 
-        engineMap[engineKey]?.await()?.let { (_, engineConnection) ->
-            engineConnection.engine?.let {
-                mirrorAndReparent(
-                    engineKey,
-                    it,
-                    surfaceView,
-                    engineRenderingConfig.getEngineDisplaySize(),
-                    engineRenderingConfig.enforceSingleEngine,
-                )
+            if (!engineMap.containsKey(engineKey)) {
+                mutex.withLock {
+                    if (!engineMap.containsKey(engineKey)) {
+                        engineMap[engineKey] = coroutineScope {
+                            async {
+                                initEngine(
+                                    context,
+                                    wallpaperModel.getWallpaperServiceIntent(),
+                                    engineDisplaySize,
+                                    destinationFlag,
+                                    whichPreview,
+                                    surfaceView,
+                                    listener,
+                                )
+                            }
+                        }
+                    }
+                }
             }
-        }
-    }
 
-    private fun LiveWallpaperModel.getWallpaperServiceIntent(): Intent {
-        return liveWallpaperData.systemWallpaperInfo.let {
-            Intent(WallpaperService.SERVICE_INTERFACE).setClassName(it.packageName, it.serviceName)
+            engineMap[engineKey]?.await()?.let { (_, engineConnection) ->
+                engineConnection.engine?.let {
+                    mirrorAndReparent(
+                        engineKey,
+                        it,
+                        surfaceView,
+                        engineRenderingConfig.getEngineDisplaySize(),
+                        engineRenderingConfig.enforceSingleEngine,
+                    )
+                }
+            }
         }
     }
 
@@ -116,30 +120,33 @@ object WallpaperConnectionUtils {
     ) {
         val engineKey = wallpaperModel.liveWallpaperData.systemWallpaperInfo.getKey(displaySize)
 
-        if (engineMap.containsKey(engineKey)) {
-            mutex.withLock {
-                engineMap.remove(engineKey)?.await()?.let { (serviceConnection, engineConnection) ->
-                    engineConnection.engine?.destroy()
-                    engineConnection.removeListener()
-                    context.unbindService(serviceConnection)
+        traceAsync(TAG, "disconnect") {
+            if (engineMap.containsKey(engineKey)) {
+                mutex.withLock {
+                    engineMap.remove(engineKey)?.await()?.let {
+                        (serviceConnection, engineConnection) ->
+                        engineConnection.engine?.destroy()
+                        engineConnection.removeListener()
+                        context.unbindService(serviceConnection)
+                    }
                 }
             }
-        }
 
-        if (surfaceControlMap.containsKey(engineKey)) {
-            mutex.withLock {
-                surfaceControlMap.remove(engineKey)?.let { surfaceControls ->
-                    surfaceControls.forEach { it.release() }
-                    surfaceControls.clear()
+            if (surfaceControlMap.containsKey(engineKey)) {
+                mutex.withLock {
+                    surfaceControlMap.remove(engineKey)?.let { surfaceControls ->
+                        surfaceControls.forEach { it.release() }
+                        surfaceControls.clear()
+                    }
                 }
             }
-        }
 
-        val uriKey = wallpaperModel.liveWallpaperData.systemWallpaperInfo.getKey()
-        if (creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
-            mutex.withLock {
-                if (creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
-                    creativeWallpaperConfigPreviewUriMap.remove(uriKey)
+            val uriKey = wallpaperModel.liveWallpaperData.systemWallpaperInfo.getKey()
+            if (creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
+                mutex.withLock {
+                    if (creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
+                        creativeWallpaperConfigPreviewUriMap.remove(uriKey)
+                    }
                 }
             }
         }
@@ -165,6 +172,51 @@ object WallpaperConnectionUtils {
         }
 
         creativeWallpaperConfigPreviewUriMap.clear()
+    }
+
+    suspend fun dispatchTouchEvent(
+        wallpaperModel: LiveWallpaperModel,
+        engineRenderingConfig: EngineRenderingConfig,
+        event: MotionEvent,
+    ) {
+        val engine =
+            wallpaperModel.liveWallpaperData.systemWallpaperInfo
+                .getKey(engineRenderingConfig.getEngineDisplaySize())
+                .let { engineKey -> engineMap[engineKey]?.await()?.second?.engine }
+
+        if (engine != null) {
+            val action: Int = event.actionMasked
+            val dup = MotionEvent.obtainNoHistory(event).also { it.setLocation(event.x, event.y) }
+            val pointerIndex = event.actionIndex
+            try {
+                engine.dispatchPointer(dup)
+                if (action == MotionEvent.ACTION_UP) {
+                    engine.dispatchWallpaperCommand(
+                        WallpaperManager.COMMAND_TAP,
+                        event.x.toInt(),
+                        event.y.toInt(),
+                        0,
+                        null
+                    )
+                } else if (action == MotionEvent.ACTION_POINTER_UP) {
+                    engine.dispatchWallpaperCommand(
+                        WallpaperManager.COMMAND_SECONDARY_TAP,
+                        event.getX(pointerIndex).toInt(),
+                        event.getY(pointerIndex).toInt(),
+                        0,
+                        null
+                    )
+                }
+            } catch (e: RemoteException) {
+                Log.e(TAG, "Remote exception of wallpaper connection", e)
+            }
+        }
+    }
+
+    private fun LiveWallpaperModel.getWallpaperServiceIntent(): Intent {
+        return liveWallpaperData.systemWallpaperInfo.let {
+            Intent(WallpaperService.SERVICE_INTERFACE).setClassName(it.packageName, it.serviceName)
+        }
     }
 
     private suspend fun initEngine(
@@ -317,7 +369,7 @@ object WallpaperConnectionUtils {
     fun LiveWallpaperModel.shouldEnforceSingleEngine(): Boolean {
         return when {
             creativeWallpaperData != null -> false
-            liveWallpaperData.effectNames != null -> false
+            liveWallpaperData.isEffectWallpaper -> false
             else -> true // Only fallback to single engine rendering for legacy live wallpapers
         }
     }
