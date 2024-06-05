@@ -16,6 +16,8 @@
 
 package com.android.wallpaper.picker.preview.ui.viewmodel
 
+import android.app.WallpaperInfo
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -23,7 +25,6 @@ import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.content.pm.ServiceInfo
 import android.graphics.Rect
-import android.net.Uri
 import android.service.wallpaper.WallpaperService
 import androidx.activity.viewModels
 import androidx.test.core.app.ActivityScenario
@@ -31,6 +32,10 @@ import com.android.wallpaper.effects.FakeEffectsController
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.module.InjectorProvider
+import com.android.wallpaper.picker.BasePreviewActivity.EXTRA_VIEW_AS_HOME
+import com.android.wallpaper.picker.BasePreviewActivity.EXTRA_WALLPAPER_INFO
+import com.android.wallpaper.picker.BasePreviewActivity.IS_ASSET_ID_PRESENT
+import com.android.wallpaper.picker.BasePreviewActivity.IS_NEW_TASK
 import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.HomeScreenPreviewUtils
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.LockScreenPreviewUtils
@@ -81,17 +86,11 @@ import org.robolectric.shadows.ShadowContentResolver
 class WallpaperPreviewViewModelTest {
     @get:Rule var hiltRule = HiltAndroidRule(this)
 
-    private val staticWallpaperModel =
-        WallpaperModelUtils.getStaticWallpaperModel(
-            wallpaperId = "testWallpaperId",
-            collectionId = "testCollection",
-            imageWallpaperUri = Uri.parse("content://com.test/image")
-        )
-
     private lateinit var scenario: ActivityScenario<PreviewTestActivity>
     private lateinit var wallpaperPreviewViewModel: WallpaperPreviewViewModel
     private lateinit var staticWallpapaperPreviewViewModel: StaticWallpaperPreviewViewModel
     private lateinit var wallpaperPreviewRepository: WallpaperPreviewRepository
+    private lateinit var startActivityIntent: Intent
     @HomeScreenPreviewUtils private lateinit var homePreviewUtils: PreviewUtils
     @LockScreenPreviewUtils private lateinit var lockPreviewUtils: PreviewUtils
 
@@ -142,9 +141,9 @@ class WallpaperPreviewViewModelTest {
         val intent = Intent(WallpaperService.SERVICE_INTERFACE).setClassName(packageName, className)
         pm.addResolveInfoForIntent(intent, resolveInfo)
 
-        // Launch the test activity to set remaining test objects
-        scenario = ActivityScenario.launch(PreviewTestActivity::class.java)
-        scenario.onActivity { setEverything(it) }
+        startActivityIntent =
+            Intent.makeMainActivity(ComponentName(appContext, PreviewTestActivity::class.java))
+        startActivityForTesting()
     }
 
     @EntryPoint
@@ -168,6 +167,13 @@ class WallpaperPreviewViewModelTest {
     }
 
     @Test
+    fun startActivity_withViewAsHome_setsToViewModel() {
+        startActivityForTesting(isViewAsHome = true)
+
+        assertThat(wallpaperPreviewViewModel.isViewAsHome).isTrue()
+    }
+
+    @Test
     fun smallPreviewClickable_byDefault() =
         testScope.runTest {
             val isClickable = collectLastValue(wallpaperPreviewViewModel.isSmallPreviewClickable)()
@@ -187,22 +193,29 @@ class WallpaperPreviewViewModelTest {
         }
 
     @Test
-    fun clickSmallPreview_updatesFullWorkspacePreviewConfig() =
+    fun clickSmallPreview_isSelectedPreview_updatesFullWorkspacePreviewConfig() =
         testScope.runTest {
-            wallpaperPreviewViewModel.onSmallPreviewClicked(
-                CustomizationSections.Screen.HOME_SCREEN,
-                DeviceDisplayType.UNFOLDED
+            wallpaperPreviewViewModel.setSmallPreviewSelectedTab(
+                CustomizationSections.Screen.HOME_SCREEN
             )
+            val onHomePreviewClicked =
+                collectLastValue(
+                    wallpaperPreviewViewModel.onSmallPreviewClicked(
+                        CustomizationSections.Screen.HOME_SCREEN,
+                        DeviceDisplayType.UNFOLDED,
+                    ) {}
+                )
+
+            onHomePreviewClicked()?.invoke()
 
             val config =
                 collectLastValue(wallpaperPreviewViewModel.fullWorkspacePreviewConfigViewModel)()
-
             assertThat(config?.deviceDisplayType).isEqualTo(DeviceDisplayType.UNFOLDED)
             assertThat(config?.previewUtils).isEqualTo(homePreviewUtils)
         }
 
     @Test
-    fun clickSmallPreview_updatesFullWallpaperPreviewConfig() =
+    fun clickSmallPreview_isSelectedPreview_updatesFullWallpaperPreviewConfig() =
         testScope.runTest {
             val model = WallpaperModelUtils.getStaticWallpaperModel("testId", "testCollection")
             updateFullWallpaperFlow(
@@ -210,11 +223,18 @@ class WallpaperPreviewViewModelTest {
                 WhichPreview.PREVIEW_CURRENT,
                 listOf(HANDHELD),
             )
-
-            wallpaperPreviewViewModel.onSmallPreviewClicked(
-                CustomizationSections.Screen.LOCK_SCREEN,
-                DeviceDisplayType.SINGLE
+            wallpaperPreviewViewModel.setSmallPreviewSelectedTab(
+                CustomizationSections.Screen.LOCK_SCREEN
             )
+            val onLockPreviewClicked =
+                collectLastValue(
+                    wallpaperPreviewViewModel.onSmallPreviewClicked(
+                        CustomizationSections.Screen.LOCK_SCREEN,
+                        DeviceDisplayType.SINGLE
+                    ) {}
+                )
+
+            onLockPreviewClicked()?.invoke()
 
             val fullWallpaper = collectLastValue(wallpaperPreviewViewModel.fullWallpaper)()
             assertThat(fullWallpaper).isNotNull()
@@ -226,6 +246,28 @@ class WallpaperPreviewViewModelTest {
                 assertThat(allowUserCropping).isTrue()
                 assertThat(whichPreview).isEqualTo(WhichPreview.PREVIEW_CURRENT)
             }
+        }
+
+    @Test
+    fun clickSmallPreview_isNotSelectedPreview_doesNotUpdateFullWorkspacePreviewConfig() =
+        testScope.runTest {
+            wallpaperPreviewViewModel.setSmallPreviewSelectedTab(
+                CustomizationSections.Screen.LOCK_SCREEN
+            )
+            val onHomePreviewClicked =
+                collectLastValue(
+                    wallpaperPreviewViewModel.onSmallPreviewClicked(
+                        CustomizationSections.Screen.HOME_SCREEN,
+                        DeviceDisplayType.UNFOLDED,
+                    ) {}
+                )
+
+            onHomePreviewClicked()?.invoke()
+
+            val config =
+                collectLastValue(wallpaperPreviewViewModel.fullWorkspacePreviewConfigViewModel)()
+            // Make sure flow does not emit.
+            assertThat(config).isNull()
         }
 
     @Test
@@ -279,5 +321,24 @@ class WallpaperPreviewViewModelTest {
         scenario.onActivity { setEverything(it) }
         wallpaperPreviewRepository.setWallpaperModel(model)
         wallpaperPreviewViewModel.setWhichPreview(whichPreview)
+    }
+
+    /** Launches the test activity to set remaining test objects */
+    private fun startActivityForTesting(
+        wallpaperInfo: WallpaperInfo? = null,
+        isViewAsHome: Boolean? = null,
+        isAssetIdPresent: Boolean? = null,
+        isNewTask: Boolean? = null,
+    ) {
+        scenario =
+            ActivityScenario.launch(
+                startActivityIntent.apply {
+                    wallpaperInfo?.let { putExtra(EXTRA_WALLPAPER_INFO, it) }
+                    isViewAsHome?.let { putExtra(EXTRA_VIEW_AS_HOME, it) }
+                    isAssetIdPresent?.let { putExtra(IS_ASSET_ID_PRESENT, it) }
+                    isNewTask?.let { putExtra(IS_NEW_TASK, it) }
+                }
+            )
+        scenario.onActivity { setEverything(it) }
     }
 }
