@@ -15,8 +15,6 @@
  */
 package com.android.wallpaper.picker;
 
-import static com.android.wallpaper.util.ActivityUtils.startActivityForResultSafely;
-
 import android.Manifest.permission;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -32,14 +30,11 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
 import com.android.wallpaper.R;
+import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.model.ImageWallpaperInfo;
-import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.InjectorProvider;
-import com.android.wallpaper.module.LargeScreenMultiPanesChecker;
-import com.android.wallpaper.module.MultiPanesChecker;
-import com.android.wallpaper.module.UserEventLogger;
 import com.android.wallpaper.picker.AppbarFragment.AppbarFragmentHost;
-import com.android.wallpaper.util.ActivityUtils;
+import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity;
 
 /**
  * Activity that displays a preview of a specific wallpaper and provides the ability to set the
@@ -51,21 +46,12 @@ public class StandalonePreviewActivity extends BasePreviewActivity implements Ap
     private static final String KEY_UP_ARROW = "up_arrow";
     private static final int READ_EXTERNAL_STORAGE_PERMISSION_REQUEST_CODE = 1;
 
-    private UserEventLogger mUserEventLogger;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_preview);
 
-        // Trampoline for the multi-pane.
-        launchMultiPanesIfNeeded();
-
         enableFullScreen();
-
-        mUserEventLogger = InjectorProvider.getInjector().getUserEventLogger(
-                getApplicationContext());
-        mUserEventLogger.logStandalonePreviewLaunched();
 
         Intent cropAndSetWallpaperIntent = getIntent();
         Uri imageUri = cropAndSetWallpaperIntent.getData();
@@ -79,8 +65,6 @@ public class StandalonePreviewActivity extends BasePreviewActivity implements Ap
         // Check if READ_MEDIA_IMAGES permission is needed because the app invoking this activity
         // passed a file:// URI or a content:// URI without a flag to grant read permission.
         boolean isReadPermissionGrantedForImageUri = isReadPermissionGrantedForImageUri(imageUri);
-        mUserEventLogger.logStandalonePreviewImageUriHasReadPermission(
-                isReadPermissionGrantedForImageUri);
 
         // Request storage permission if necessary (i.e., on Android M and later if storage
         // permission has not already been granted) and delay loading the PreviewFragment until the
@@ -128,8 +112,6 @@ public class StandalonePreviewActivity extends BasePreviewActivity implements Ap
                     && grantResults.length > 0
                     && grantResults[0] == PackageManager.PERMISSION_GRANTED;
 
-            mUserEventLogger.logStandalonePreviewStorageDialogApproved(isGranted);
-
             // Close the activity because we can't open the image without storage permission.
             if (!isGranted) {
                 finish();
@@ -154,65 +136,26 @@ public class StandalonePreviewActivity extends BasePreviewActivity implements Ap
     }
 
     /**
-     * Launches multi-pane when it is enabled, for non-Settings' trampoline launch case will
-     * retrieve EXTRA_STREAM's image URI and assign back its intent by calling setData().
-     */
-    private void launchMultiPanesIfNeeded() {
-        MultiPanesChecker checker = new LargeScreenMultiPanesChecker();
-        if (checker.isMultiPanesEnabled(/* context= */ this)) {
-            Intent intent = getIntent();
-            if (!ActivityUtils.isLaunchedFromSettingsTrampoline(intent)
-                    && !ActivityUtils.isLaunchedFromSettingsRelated(intent)) {
-                if (!InjectorProvider.getInjector().getFlags().isFullscreenWallpaperPreviewEnabled(
-                        this)) {
-                    launchMultiPanes(checker);
-                }
-            } else {
-                Uri uri = intent.hasExtra(Intent.EXTRA_STREAM) ? intent.getParcelableExtra(
-                        Intent.EXTRA_STREAM) : null;
-                if (uri != null) {
-                    intent.setData(uri);
-                }
-            }
-        }
-    }
-
-    private void launchMultiPanes(MultiPanesChecker checker) {
-        Intent intent = getIntent();
-        Uri uri = intent.getData();
-        if (uri != null) {
-            // Grant URI permission for next launching activity.
-            grantUriPermission(getPackageName(), uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        }
-
-        Intent previewLaunch = checker.getMultiPanesIntent(intent);
-        previewLaunch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                // Put image URI and back arrow condition to separate extras.
-                .putExtra(Intent.EXTRA_STREAM, intent.getData())
-                .putExtra(KEY_UP_ARROW, true);
-
-        startActivityForResultSafely(/* activity= */ this, previewLaunch, /* requestCode= */
-                0);
-        finish();
-    }
-
-    /**
-     * Creates a new instance of {@link PreviewFragment} and loads the fragment into this activity's
-     * fragment container so that it's shown to the user.
+     * Creates a new instance of {@link PreviewFragment} and loads the fragment into this
+     * activity's fragment container so that it's shown to the user.
      */
     private void loadPreviewFragment() {
+        BaseFlags flags = InjectorProvider.getInjector().getFlags();
         Intent intent = getIntent();
-
-        boolean testingModeEnabled = intent.getBooleanExtra(EXTRA_TESTING_MODE_ENABLED, false);
-        WallpaperInfo wallpaper = new ImageWallpaperInfo(intent.getData());
+        if (flags.isMultiCropEnabled()) {
+            Intent wallpaperIntent = WallpaperPreviewActivity.Companion.newIntent(
+                    this.getApplicationContext(), intent, /* isAssetIdPresent= */ false,
+                    /* isViewAsHome= */ true, /* isNewTask= */ false);
+            startActivity(wallpaperIntent);
+            finish();
+            return;
+        }
         Fragment fragment = InjectorProvider.getInjector().getPreviewFragment(
                 /* context */ this,
-                wallpaper,
-                PreviewFragment.MODE_CROP_AND_SET_WALLPAPER,
+                new ImageWallpaperInfo(intent.getData()),
                 /* viewAsHome= */ true,
-                /* viewFullScreen= */ false,
-                testingModeEnabled);
+                /* isAssetIdPresent= */ false,
+                /* isNewTask= */ false);
         getSupportFragmentManager().beginTransaction()
                 .add(R.id.fragment_container, fragment)
                 .commit();

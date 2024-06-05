@@ -94,6 +94,10 @@
         <item name="android:dialogCornerRadius">24dp</item>
     </style>
 
+    <style name="ResetDialogTheme" parent="LightDialogTheme">
+        <item name="android:colorBackground">@color/system_surface_bright</item>
+    </style>
+
     <style name="ProgressDialogThemePreL" parent="@style/Theme.AppCompat.Light.Dialog.Alert">
         <item name="android:windowBackground">@android:color/transparent</item>
     </style>
@@ -111,6 +115,7 @@
     </style>
 
     <style name="CategorySectionTitleTextAppearance" parent="TitleTextAppearance">
+        <item name="android:color">@color/system_on_surface</item>
         <item name="android:textStyle" />
         <item name="textAllCaps">false</item>
         <item name="android:textSize">16sp</item>
@@ -127,7 +132,7 @@
         <item name="android:insetLeft">0dp</item>
         <item name="android:insetRight">0dp</item>
         <item name="android:minWidth">0dp</item>
-        <item name="android:minHeight">22sp</item>
+        <item name="android:minHeight">@dimen/touch_target_min_height</item>
         <item name="android:textSize">16sp</item>
     </style>
 
@@ -244,12 +249,53 @@
     </style>
 
     <style name="DialogButton.Primary">
-        <item name="android:textColor">@color/text_color_on_accent</item>
+        <item name="android:textColor">@color/system_on_primary</item>
         <item name="android:background">@drawable/primary_dialog_button_background</item>
     </style>
 
     <style name="DialogButton.Secondary">
-        <item name="android:textColor">@color/text_color_primary</item>
+        <item name="android:textColor">@color/system_on_surface</item>
         <item name="android:background">@drawable/secondary_dialog_button_background</item>
+    </style>
+
+    <!-- SetWallpaperPreviewDialog -->
+    <style name="SetWallpaperPreviewDialogTheme" parent="@android:style/Theme.DeviceDefault.Dialog.NoActionBar">
+        <item name="android:windowMinWidthMajor">0dp</item>
+        <item name="android:windowMinWidthMinor">0dp</item>
+        <item name="android:buttonBarPositiveButtonStyle">@style/SetWallpaperDialog.Button</item>
+        <item name="android:buttonBarNegativeButtonStyle">@style/SetWallpaperDialog.Button.OutlinedButton</item>
+        <item name="android:buttonBarNeutralButtonStyle">@style/SetWallpaperDialog.Button.TextButton</item>
+    </style>
+
+    <style name="SetWallpaperDialog"/>
+    <style name="SetWallpaperDialog.Button">
+        <item name="android:textColor">@color/system_on_secondary</item>
+        <item name="android:background">@drawable/set_wallpaper_dialog_button</item>
+    </style>
+
+    <style name="SetWallpaperDialog.Button.OutlinedButton">
+        <item name="android:textColor">@color/system_on_surface</item>
+        <item name="android:background">@drawable/set_wallpaper_dialog_outlined_button</item>
+    </style>
+
+    <style name="SetWallpaperDialog.Button.TextButton">
+        <item name="android:textColor">@color/system_secondary</item>
+        <item name="android:background">@drawable/set_wallpaper_dialog_text_button</item>
+    </style>
+
+    <style name="TextAppearance.SetWallpaperDialog.Title" parent="@android:style/TextAppearance.DeviceDefault.Large">
+        <item name="android:textColor">@color/system_on_surface_variant</item>
+        <item name="android:textSize">24sp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:paddingVertical">@dimen/abc_dialog_padding_top_material</item>
+        <item name="android:paddingHorizontal">?attr/dialogPreferredPadding</item>
+    </style>
+
+    <style name="TextAppearance.SetWallpaperDialog.Subtitle" parent="@android:style/TextAppearance.DeviceDefault.Small">
+        <item name="android:textColor">@color/system_on_surface</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:paddingVertical">8dp</item>
     </style>
 </resources>

@@ -19,19 +19,29 @@ import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
 
 import android.annotation.MenuRes;
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.TextView;
 import android.widget.Toolbar;
 import android.widget.Toolbar.OnMenuItemClickListener;
 
+import androidx.annotation.Nullable;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
+
 import com.android.wallpaper.R;
+import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.util.ResourceUtils;
 import com.android.wallpaper.widget.BottomActionBar;
+
+import com.google.android.material.transition.MaterialSharedAxis;
 
 /**
  * Base class for Fragments that own a {@link Toolbar} widget and a {@link BottomActionBar}.
@@ -70,6 +80,17 @@ public abstract class AppbarFragment extends BottomActionBarFragment
     }
 
     @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        if (BaseFlags.get().isPageTransitionsFeatureEnabled(requireContext())) {
+            setEnterTransition(new MaterialSharedAxis(MaterialSharedAxis.X, /* forward */ true));
+            setReturnTransition(new MaterialSharedAxis(MaterialSharedAxis.X, /* forward */ false));
+            setExitTransition(new MaterialSharedAxis(MaterialSharedAxis.X, /* forward */ true));
+            setReenterTransition(new MaterialSharedAxis(MaterialSharedAxis.X, /* forward */ false));
+        }
+    }
+
+    @Override
     public void onAttach(Context context) {
         super.onAttach(context);
         mHost = (AppbarFragmentHost) context;
@@ -95,7 +116,7 @@ public abstract class AppbarFragment extends BottomActionBarFragment
      * Default upArrow value is true.
      */
     public void setUpToolbar(View rootView) {
-        setUpToolbar(rootView, /* upArrow= */ true);
+        setUpToolbar(rootView, /* upArrow= */ true, false);
     }
 
     /**
@@ -104,15 +125,18 @@ public abstract class AppbarFragment extends BottomActionBarFragment
      *
      * @param rootView given root view.
      * @param upArrow  true to enable up arrow feature.
+     * @param transparentToolbar whether the toolbar should be transparent
      */
-    protected void setUpToolbar(View rootView, boolean upArrow) {
+    protected void setUpToolbar(View rootView, boolean upArrow, boolean transparentToolbar) {
         mUpArrowEnabled = upArrow;
         mToolbar = rootView.findViewById(getToolbarId());
 
         mTitleView = mToolbar.findViewById(R.id.custom_toolbar_title);
 
-        // Update toolbar and status bar color.
-        setToolbarColor(getToolbarColorId());
+        if (transparentToolbar) {
+            setToolbarColor(android.R.color.transparent);
+        }
+        setUpStatusBar(isStatusBarLightText());
 
         CharSequence title;
         if (getArguments() != null) {
@@ -148,8 +172,23 @@ public abstract class AppbarFragment extends BottomActionBarFragment
         return R.id.toolbar;
     }
 
-    protected int getToolbarColorId() {
-        return R.color.toolbar_color;
+    protected void setUpStatusBar(boolean shouldUseLightText) {
+        Activity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+        Window window = activity.getWindow();
+        WindowInsetsControllerCompat windowInsetsController =
+                WindowCompat.getInsetsController(window, window.getDecorView());
+        windowInsetsController.setAppearanceLightStatusBars(!shouldUseLightText);
+    }
+
+    protected boolean isStatusBarLightText() {
+        return getResources().getBoolean(R.bool.isFragmentStatusBarLightText);
+    }
+
+    protected int getToolbarTextColor() {
+        return ResourceUtils.getColorAttr(getActivity(), android.R.attr.textColorPrimary);
     }
 
     /**
@@ -166,8 +205,7 @@ public abstract class AppbarFragment extends BottomActionBarFragment
         Drawable backIcon = getResources().getDrawable(R.drawable.material_ic_arrow_back_black_24,
                 null).mutate();
         backIcon.setAutoMirrored(true);
-        backIcon.setTint(
-                ResourceUtils.getColorAttr(getActivity(), android.R.attr.textColorPrimary));
+        backIcon.setTint(getToolbarTextColor());
         mToolbar.setNavigationIcon(backIcon);
         mToolbar.setNavigationContentDescription(R.string.bottom_action_bar_back);
         mToolbar.setNavigationOnClickListener(v -> mHost.onUpArrowPressed());
@@ -186,8 +224,7 @@ public abstract class AppbarFragment extends BottomActionBarFragment
 
     protected void setToolbarColor(int colorId) {
         mToolbar.setBackgroundResource(colorId);
-        getActivity().getWindow().setStatusBarColor(
-                getActivity().getResources().getColor(colorId));
+        ((ViewGroup) mToolbar.getParent()).setBackgroundResource(colorId);
     }
 
     /**
@@ -210,8 +247,10 @@ public abstract class AppbarFragment extends BottomActionBarFragment
         if (mTitleView != null) {
             mToolbar.setTitle(null);
             mTitleView.setText(title);
+            mTitleView.setTextColor(getToolbarTextColor());
         } else {
             mToolbar.setTitle(title);
+            mToolbar.setTitleTextColor(getToolbarTextColor());
         }
 
         // Set Activity title to make TalkBack announce title after updating toolbar title.

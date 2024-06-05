@@ -22,12 +22,11 @@ import android.view.View
 import android.widget.ImageView
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import com.android.wallpaper.R
 import com.android.wallpaper.picker.customization.ui.viewmodel.WallpaperQuickSwitchOptionViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
@@ -46,93 +45,103 @@ object WallpaperQuickSwitchOptionBinder {
         smallOptionWidthPx: Int,
         largeOptionWidthPx: Int,
         isThumbnailFadeAnimationEnabled: Boolean,
+        position: Int,
+        titleMap: MutableMap<String, Int>,
     ) {
         val selectionBorder: View = view.requireViewById(R.id.selection_border)
         val selectionIcon: View = view.requireViewById(R.id.selection_icon)
-        val progressIndicator: View = view.requireViewById(R.id.progress_indicator)
         val thumbnailView: ImageView = view.requireViewById(R.id.thumbnail)
         val placeholder: ImageView = view.requireViewById(R.id.placeholder)
 
         placeholder.setBackgroundColor(viewModel.placeholderColor)
 
+        if (viewModel.title != null) {
+            viewModel.title
+            val latestIndex = titleMap.getOrDefault(viewModel.title, 0) + 1
+
+            view.contentDescription =
+                view.resources.getString(
+                    R.string.recents_wallpaper_label,
+                    viewModel.title,
+                    latestIndex,
+                )
+            titleMap[viewModel.title] = position + 1
+        } else {
+            // if the content description is missing then the default description will be the
+            // default wallpaper title and its position
+            view.contentDescription =
+                view.resources.getString(
+                    R.string.recents_wallpaper_label,
+                    view.resources.getString(R.string.default_wallpaper_title),
+                    position + 1,
+                )
+        }
+
         lifecycleOwner.lifecycleScope.launch {
-            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    viewModel.onSelected.collect { onSelectedOrNull ->
-                        view.setOnClickListener(
-                            if (onSelectedOrNull != null) {
-                                { onSelectedOrNull.invoke() }
-                            } else {
-                                null
-                            }
-                        )
-                    }
-                }
-
-                launch {
-                    // We want to skip animating the first width update.
-                    var isFirstValue = true
-                    viewModel.isLarge.collect { isLarge ->
-                        updateWidth(
-                            view = view,
-                            targetWidthPx = if (isLarge) largeOptionWidthPx else smallOptionWidthPx,
-                            animate = !isFirstValue,
-                        )
-                        isFirstValue = false
-                    }
-                }
-
-                launch {
-                    // We want to skip animating the first update so it doesn't "blink" when the
-                    // activity is recreated.
-                    var isFirstValue = true
-                    viewModel.isSelectionBorderVisible.collect {
-                        if (!isFirstValue) {
-                            selectionBorder.animatedVisibility(isVisible = it)
+            launch {
+                viewModel.onSelected.collect { onSelectedOrNull ->
+                    view.setOnClickListener(
+                        if (onSelectedOrNull != null) {
+                            { onSelectedOrNull.invoke() }
                         } else {
-                            selectionBorder.isVisible = it
+                            null
                         }
-                        isFirstValue = false
-                    }
+                    )
                 }
+            }
 
-                launch {
-                    // We want to skip animating the first update so it doesn't "blink" when the
-                    // activity is recreated.
-                    var isFirstValue = true
-                    viewModel.isSelectionIconVisible.collect {
-                        if (!isFirstValue) {
-                            selectionIcon.animatedVisibility(isVisible = it)
-                        } else {
-                            selectionIcon.isVisible = it
-                        }
-                        isFirstValue = false
+            launch {
+                // We want to skip animating the first width update.
+                var isFirstValue = true
+                viewModel.isLarge.collect { isLarge ->
+                    updateWidth(
+                        view = view,
+                        targetWidthPx = if (isLarge) largeOptionWidthPx else smallOptionWidthPx,
+                        animate = !isFirstValue,
+                    )
+                    isFirstValue = false
+                }
+            }
+
+            launch {
+                viewModel.isSelectionIndicatorVisible.distinctUntilChanged().collect { isSelected ->
+                    // Update the content description to announce the selection status
+                    view.isSelected = isSelected
+                }
+            }
+
+            launch {
+                // We want to skip animating the first update so it doesn't "blink" when the
+                // activity is recreated.
+                var isFirstValue = true
+                viewModel.isSelectionIndicatorVisible.collect {
+                    if (!isFirstValue) {
+                        selectionBorder.animatedVisibility(isVisible = it)
                         selectionIcon.animatedVisibility(isVisible = it)
+                    } else {
+                        selectionBorder.isVisible = it
+                        selectionIcon.isVisible = it
                     }
+                    isFirstValue = false
+                    selectionIcon.animatedVisibility(isVisible = it)
                 }
+            }
 
-                launch {
-                    viewModel.isProgressIndicatorVisible.collect {
-                        progressIndicator.animatedVisibility(isVisible = it)
-                    }
-                }
-
-                launch {
-                    val thumbnail = viewModel.thumbnail()
-                    if (thumbnailView.tag != thumbnail) {
-                        thumbnailView.tag = thumbnail
-                        if (thumbnail != null) {
-                            thumbnailView.setImageBitmap(thumbnail)
-                            if (isThumbnailFadeAnimationEnabled) {
-                                thumbnailView.fadeIn()
-                            } else {
-                                thumbnailView.isVisible = true
-                            }
-                        } else if (isThumbnailFadeAnimationEnabled) {
-                            thumbnailView.fadeOut()
+            launch {
+                val thumbnail = viewModel.thumbnail()
+                if (thumbnailView.tag != thumbnail) {
+                    thumbnailView.tag = thumbnail
+                    if (thumbnail != null) {
+                        thumbnailView.setImageBitmap(thumbnail)
+                        if (isThumbnailFadeAnimationEnabled) {
+                            thumbnailView.fadeIn()
                         } else {
-                            thumbnailView.isVisible = false
+                            thumbnailView.isVisible = true
                         }
+                    } else if (isThumbnailFadeAnimationEnabled) {
+                        thumbnailView.fadeOut()
+                    } else {
+                        thumbnailView.isVisible = false
                     }
                 }
             }

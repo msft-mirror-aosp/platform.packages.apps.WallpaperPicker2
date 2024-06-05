@@ -30,7 +30,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.android.wallpaper.R
 import com.android.wallpaper.picker.common.text.ui.viewbinder.TextViewBinder
 import com.android.wallpaper.picker.customization.ui.viewmodel.WallpaperQuickSwitchViewModel
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 /** Binds between the view and view-model for the wallpaper quick switch section. */
@@ -87,8 +86,10 @@ object WallpaperQuickSwitchSectionBinder {
             // Calculate the sizes that views should have.
             val (largeOptionWidth, smallOptionWidth) = calculateSizes(parent, options.size)
 
+            val titleMap = mutableMapOf<String, Int>()
+
             // Create, add, and bind a view for each option.
-            options.forEach { option ->
+            options.forEachIndexed { index, option ->
                 val optionView =
                     createOptionView(
                         parent = parent,
@@ -101,6 +102,8 @@ object WallpaperQuickSwitchSectionBinder {
                     smallOptionWidthPx = smallOptionWidth,
                     largeOptionWidthPx = largeOptionWidth,
                     isThumbnailFadeAnimationEnabled = isThumbnailFadeAnimationEnabled,
+                    position = index,
+                    titleMap = titleMap,
                 )
             }
         }
@@ -153,7 +156,7 @@ object WallpaperQuickSwitchSectionBinder {
             )
     }
 
-    /** Compose-inspired cnvenience alias for getting a dimension in pixels. */
+    /** Compose-inspired convenience alias for getting a dimension in pixels. */
     private fun View.dimensionResource(
         @DimenRes res: Int,
     ): Int {

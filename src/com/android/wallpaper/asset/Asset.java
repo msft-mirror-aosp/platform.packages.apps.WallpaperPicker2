@@ -37,11 +37,15 @@ import androidx.annotation.WorkerThread;
 
 import com.android.wallpaper.module.BitmapCropper;
 import com.android.wallpaper.module.InjectorProvider;
+import com.android.wallpaper.picker.preview.ui.util.CropSizeUtil;
+import com.android.wallpaper.util.RtlUtils;
 import com.android.wallpaper.util.ScreenSizeCalculator;
 import com.android.wallpaper.util.WallpaperCropUtils;
 
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation;
 
+import java.io.File;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -83,7 +87,39 @@ public abstract class Asset {
      * @param receiver     Called with the decoded bitmap or null if there was an error decoding the
      *                     bitmap.
      */
-    public abstract void decodeBitmap(int targetWidth, int targetHeight, BitmapReceiver receiver);
+    public final void decodeBitmap(int targetWidth, int targetHeight, BitmapReceiver receiver) {
+        decodeBitmap(targetWidth, targetHeight, true, receiver);
+    }
+
+
+    /**
+     * Decodes a bitmap sized for the destination view's dimensions off the main UI thread.
+     *
+     * @param targetWidth  Width of target view in physical pixels.
+     * @param targetHeight Height of target view in physical pixels.
+     * @param hardwareBitmapAllowed if true and it's possible, we'll try to decode into a HARDWARE
+     *                              bitmap
+     * @param receiver     Called with the decoded bitmap or null if there was an error decoding the
+     *                     bitmap.
+     */
+    public abstract void decodeBitmap(int targetWidth, int targetHeight,
+            boolean hardwareBitmapAllowed, BitmapReceiver receiver);
+
+    /**
+     * Copies the asset file to another place.
+     * @param dest  The destination file.
+     */
+    public void copy(File dest) {
+        // no op
+    }
+
+    /**
+     * Decodes a full bitmap.
+     *
+     * @param receiver     Called with the decoded bitmap or null if there was an error decoding the
+     *                     bitmap.
+     */
+    public abstract void decodeBitmap(BitmapReceiver receiver);
 
     /**
      * For {@link #decodeBitmap(int, int, BitmapReceiver)} to use when it is done. It then call
@@ -293,6 +329,24 @@ public abstract class Asset {
      */
     public void loadPreviewImage(Activity activity, ImageView imageView, int placeholderColor,
             boolean offsetToStart) {
+        loadPreviewImage(activity, imageView, placeholderColor, offsetToStart, null);
+    }
+
+    /**
+     * Loads the image for this asset into the provided ImageView which is used for the preview.
+     * While waiting for the image to load, first loads a ColorDrawable based on the provided
+     * placeholder color.
+     *
+     * @param activity         Activity hosting the ImageView.
+     * @param imageView        ImageView which is the target view of this asset.
+     * @param placeholderColor Color of placeholder set to ImageView while waiting for image to
+     *                         load.
+     * @param offsetToStart    true to let the preview show from the start of the image, false to
+     *                         center-aligned to the image.
+     * @param cropHints        A Map of display size to crop rect
+     */
+    public void loadPreviewImage(Activity activity, ImageView imageView, int placeholderColor,
+            boolean offsetToStart, @Nullable Map<Point, Rect> cropHints) {
         boolean needsTransition = imageView.getDrawable() == null;
         Drawable placeholderDrawable = new ColorDrawable(placeholderColor);
         if (needsTransition) {
@@ -310,17 +364,26 @@ public abstract class Asset {
                 return;
             }
 
+            boolean isRtl = RtlUtils.isRtl(activity);
             Display defaultDisplay = activity.getWindowManager().getDefaultDisplay();
             Point screenSize = ScreenSizeCalculator.getInstance().getScreenSize(defaultDisplay);
             Rect visibleRawWallpaperRect =
                     WallpaperCropUtils.calculateVisibleRect(dimensions, screenSize);
+            if (cropHints != null && cropHints.containsKey(screenSize)) {
+                visibleRawWallpaperRect = CropSizeUtil.INSTANCE.fitCropRectToLayoutDirection(
+                        cropHints.get(screenSize), screenSize, RtlUtils.isRtl(activity));
+                // For multi-crop, the visibleRawWallpaperRect above is already the exact size of
+                // the part of wallpaper we should show on the screen, turning off the old RTL
+                // logic by assigning false.
+                isRtl = false;
+            }
 
             // TODO(b/264234793): Make offsetToStart general support or for the specific asset.
             adjustCropRect(activity, dimensions, visibleRawWallpaperRect, offsetToStart);
 
             BitmapCropper bitmapCropper = InjectorProvider.getInjector().getBitmapCropper();
             bitmapCropper.cropAndScaleBitmap(this, /* scale= */ 1f, visibleRawWallpaperRect,
-                    WallpaperCropUtils.isRtl(activity),
+                    isRtl,
                     new BitmapCropper.Callback() {
                         @Override
                         public void onBitmapCropped(Bitmap croppedBitmap) {

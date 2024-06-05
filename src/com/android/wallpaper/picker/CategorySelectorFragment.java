@@ -24,12 +24,10 @@ import android.content.Intent;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.graphics.Point;
-import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -43,6 +41,10 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
+import androidx.core.view.AccessibilityDelegateCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -55,7 +57,6 @@ import com.android.wallpaper.model.CategoryProvider;
 import com.android.wallpaper.model.LiveWallpaperInfo;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.InjectorProvider;
-import com.android.wallpaper.module.UserEventLogger;
 import com.android.wallpaper.util.DeepLinkUtils;
 import com.android.wallpaper.util.DisplayMetricsRetriever;
 import com.android.wallpaper.util.ResourceUtils;
@@ -80,6 +81,7 @@ public class CategorySelectorFragment extends AppbarFragment {
     private static final int SETTINGS_APP_INFO_REQUEST_CODE = 1;
     private static final String TAG = "CategorySelectorFragment";
     private static final String IMAGE_WALLPAPER_COLLECTION_ID = "image_wallpapers";
+    private static final int CREATIVE_CATEGORY_ROW_INDEX = 0;
 
     /**
      * Interface to be implemented by an Fragment hosting a {@link CategorySelectorFragment}
@@ -129,6 +131,7 @@ public class CategorySelectorFragment extends AppbarFragment {
     private ArrayList<Category> mCategories = new ArrayList<>();
     private Point mTileSizePx;
     private boolean mAwaitingCategories;
+    private ProgressBar mLoadingIndicator;
     private ArrayList<Category> mCreativeCategories = new ArrayList<>();
     private boolean mIsFeaturedCollectionAvailable;
     private boolean mIsCreativeCategoryCollectionAvailable;
@@ -156,9 +159,7 @@ public class CategorySelectorFragment extends AppbarFragment {
         mImageGrid = view.findViewById(R.id.category_grid);
         mImageGrid.addItemDecoration(new GridPaddingDecoration(getResources().getDimensionPixelSize(
                 R.dimen.grid_item_category_padding_horizontal)));
-
         mTileSizePx = SizeCalculator.getCategoryTileSize(getActivity());
-
         // In case CreativeWallpapers are enabled, it means we want to show the new view
         // in the picker for which we have made a new adaptor
         if (mIsCreativeWallpaperEnabled) {
@@ -169,6 +170,8 @@ public class CategorySelectorFragment extends AppbarFragment {
             gridLayoutManager.setSpanSizeLookup(new
                     GroupedCategorySpanSizeLookup(mGroupedCategoryAdapter));
             mImageGrid.setLayoutManager(gridLayoutManager);
+            //TODO (b/290267060): To be fixed when re-factoring of loading categories is done
+            mImageGrid.setItemAnimator(null);
         } else {
             mImageGrid.setAdapter(mAdapter);
             GridLayoutManager gridLayoutManager = new GridLayoutManager(getActivity(),
@@ -177,6 +180,9 @@ public class CategorySelectorFragment extends AppbarFragment {
             mImageGrid.setLayoutManager(gridLayoutManager);
         }
 
+        mLoadingIndicator = view.findViewById(R.id.loading_indicator);
+        mLoadingIndicator.setVisibility(View.VISIBLE);
+        mImageGrid.setVisibility(View.INVISIBLE);
         mImageGrid.setAccessibilityDelegateCompat(
                 new WallpaperPickerRecyclerViewAccessibilityDelegate(
                         mImageGrid, (BottomSheetHost) getParentFragment(), getNumColumns()));
@@ -219,8 +225,6 @@ public class CategorySelectorFragment extends AppbarFragment {
         // indicator.
         if (mIsCreativeWallpaperEnabled) {
             if (loading && !mAwaitingCategories) {
-                mGroupedCategoryAdapter.notifyItemChanged(getNumColumns());
-                mGroupedCategoryAdapter.notifyItemInserted(getNumColumns());
                 mAwaitingCategories = true;
             }
             // Not add existing category to category list
@@ -240,12 +244,6 @@ public class CategorySelectorFragment extends AppbarFragment {
             }
 
             mCategories.add(index, category);
-            if (mGroupedCategoryAdapter != null) {
-                // Offset the index because of the static metadata element
-                // at beginning of RecyclerView.
-                mGroupedCategoryAdapter.notifyItemInserted(index
-                        + NUM_NON_CATEGORY_VIEW_HOLDERS);
-            }
         } else {
             if (loading && !mAwaitingCategories) {
                 mAdapter.notifyItemChanged(getNumColumns());
@@ -283,8 +281,6 @@ public class CategorySelectorFragment extends AppbarFragment {
                 if (indexCreativeCategory >= 0) {
                     mCreativeCategories.remove(indexCreativeCategory);
                 }
-                mGroupedCategoryAdapter
-                        .notifyItemRemoved(index + NUM_NON_CATEGORY_VIEW_HOLDERS);
             } else {
                 mAdapter.notifyItemRemoved(index + NUM_NON_CATEGORY_VIEW_HOLDERS);
             }
@@ -294,16 +290,12 @@ public class CategorySelectorFragment extends AppbarFragment {
     void updateCategory(Category category) {
         int index = mCategories.indexOf(category);
         if (index >= 0) {
-            mCategories.remove(index);
-            mCategories.add(index, category);
+            mCategories.set(index, category);
             if (mIsCreativeWallpaperEnabled) {
                 int indexCreativeCategory = mCreativeCategories.indexOf(category);
                 if (indexCreativeCategory >= 0) {
-                    mCreativeCategories.remove(indexCreativeCategory);
-                    mCreativeCategories.add(indexCreativeCategory, category);
+                    mCreativeCategories.set(indexCreativeCategory, category);
                 }
-                mGroupedCategoryAdapter
-                        .notifyItemChanged(index + NUM_NON_CATEGORY_VIEW_HOLDERS);
             } else {
                 mAdapter.notifyItemChanged(index + NUM_NON_CATEGORY_VIEW_HOLDERS);
             }
@@ -321,19 +313,13 @@ public class CategorySelectorFragment extends AppbarFragment {
     }
 
     /**
-     * Notifies that no further categories are expected so it may hide the loading indicator.
+     * Notifies that no further categories are expected.
      */
     void doneFetchingCategories() {
-        if (mAwaitingCategories) {
-            if (mIsCreativeWallpaperEnabled) {
-                mGroupedCategoryAdapter
-                    .notifyItemRemoved(mGroupedCategoryAdapter.getItemCount() - 1);
-            } else {
-                mAdapter.notifyItemRemoved(mAdapter.getItemCount() - 1);
-            }
-            mAwaitingCategories = false;
-        }
-
+        notifyDataSetChanged();
+        mLoadingIndicator.setVisibility(View.INVISIBLE);
+        mImageGrid.setVisibility(View.VISIBLE);
+        mAwaitingCategories = false;
         mIsFeaturedCollectionAvailable = mCategoryProvider.isFeaturedCollectionAvailable();
         mIsCreativeCategoryCollectionAvailable = mCategoryProvider.isCreativeCategoryAvailable();
     }
@@ -386,9 +372,6 @@ public class CategorySelectorFragment extends AppbarFragment {
         @Override
         public void onClick(View view) {
             Activity activity = getActivity();
-            final UserEventLogger eventLogger =
-                    InjectorProvider.getInjector().getUserEventLogger(activity);
-            eventLogger.logCategorySelected(mCategory.getCollectionId());
 
             if (mCategory.supportsCustomPhotos()) {
                 EffectsController effectsController =
@@ -415,15 +398,13 @@ public class CategorySelectorFragment extends AppbarFragment {
 
             if (mCategory.isSingleWallpaperCategory()) {
                 WallpaperInfo wallpaper = mCategory.getSingleWallpaper();
-                // Log click on individual wallpaper
-                eventLogger.logIndividualWallpaperSelected(mCategory.getCollectionId());
 
                 InjectorProvider.getInjector().getWallpaperPersister(activity)
                         .setWallpaperInfoInPreview(wallpaper);
                 wallpaper.showPreview(activity,
-                        new PreviewActivity.PreviewActivityIntentFactory(),
+                        InjectorProvider.getInjector().getPreviewActivityIntentFactory(),
                         wallpaper instanceof LiveWallpaperInfo ? PREVIEW_LIVE_WALLPAPER_REQUEST_CODE
-                                : PREVIEW_WALLPAPER_REQUEST_CODE);
+                                : PREVIEW_WALLPAPER_REQUEST_CODE, true);
                 return;
             }
 
@@ -437,17 +418,6 @@ public class CategorySelectorFragment extends AppbarFragment {
             mCategory = category;
             mTitleView.setText(category.getTitle());
             drawThumbnailAndOverlayIcon();
-            // We do this since itemView here refers to the broader LinearLayout defined in
-            // xml layout file of myPhotos block. Doing this allows us to make sure that the
-            // onClickListener is configured only on the CardView of MyPhotos and nowhere else
-            if (mIsCreativeWallpaperEnabled && mCategory != null
-                    && TextUtils.equals(mCategory.getCollectionId(),
-                    getActivity().getApplicationContext().getString(
-                            R.string.image_wallpaper_collection_id))) {
-                itemView.setOnClickListener(null);
-                CardView categoryView = itemView.findViewById(R.id.category);
-                categoryView.setOnClickListener(this);
-            }
         }
 
         /**
@@ -490,7 +460,8 @@ public class CategorySelectorFragment extends AppbarFragment {
         Snackbar snackbar = Snackbar.make(getView(), R.string.settings_snackbar_description,
                 Snackbar.LENGTH_LONG);
         Snackbar.SnackbarLayout layout = (Snackbar.SnackbarLayout) snackbar.getView();
-        TextView textView = (TextView) layout.findViewById(R.id.snackbar_text);
+        TextView textView = (TextView) layout.findViewById(
+                com.google.android.material.R.id.snackbar_text);
         layout.setBackgroundResource(R.drawable.snackbar_background);
         TypedArray typedArray = getContext().obtainStyledAttributes(
                 new int[]{android.R.attr.textColorPrimary,
@@ -549,6 +520,14 @@ public class CategorySelectorFragment extends AppbarFragment {
             // Use the height as the card corner radius for the "My photos" category
             // for a stadium border.
             categoryView.setRadius(height);
+            // We do this since itemView here refers to the broader LinearLayout defined in
+            // the My Photos xml, which includes the section title. Doing this allows us to make
+            // sure that the onClickListener is configured only on the My Photos grid item.
+            if (mIsCreativeWallpaperEnabled) {
+                itemView.setOnClickListener(null);
+                itemView.setClickable(false);
+                itemView.findViewById(R.id.tile).setOnClickListener(this);
+            }
         }
     }
 
@@ -576,16 +555,33 @@ public class CategorySelectorFragment extends AppbarFragment {
                     gridItemCategory.setOnClickListener(view -> {
                         onClickListenerForCreativeCategory(position);
                     });
+                    // Make sure the column number is announced when there is more than 1 creative
+                    // category.
+                    if (mCreativeCategoriesSize > 1) {
+                        ViewCompat.setAccessibilityDelegate(gridItemCategory,
+                                new AccessibilityDelegateCompat() {
+                                    @Override
+                                    public void onInitializeAccessibilityNodeInfo(View host,
+                                            AccessibilityNodeInfoCompat info) {
+                                        super.onInitializeAccessibilityNodeInfo(host, info);
+                                        info.setCollectionItemInfo(
+                                                AccessibilityNodeInfoCompat.CollectionItemInfoCompat
+                                                        .obtain(
+                                                            /* rowIndex= */
+                                                                CREATIVE_CATEGORY_ROW_INDEX,
+                                                            /* rowSpan= */ 1,
+                                                            /* columnIndex= */ position,
+                                                            /* columnSpan= */ 1,
+                                                            /* heading= */ false));
+                                    }
+                                });
+                    }
                 }
             }
         }
 
         private void onClickListenerForCreativeCategory(int position) {
             Activity activity = getActivity();
-            final UserEventLogger eventLogger =
-                    InjectorProvider.getInjector().getUserEventLogger(activity);
-            eventLogger.logCategorySelected(mCategories.get(position)
-                    .getCollectionId());
             if (mCategories.get(position).supportsCustomPhotos()) {
                 getCategorySelectorFragmentHost().requestCustomPhotoPicker(
                         new MyPhotosStarter.PermissionChangedListener() {
@@ -610,17 +606,14 @@ public class CategorySelectorFragment extends AppbarFragment {
             if (mCategories.get(position).isSingleWallpaperCategory()) {
                 WallpaperInfo wallpaper = mCategories.get(position)
                         .getSingleWallpaper();
-                // Log click on individual wallpaper
-                eventLogger.logIndividualWallpaperSelected(
-                        mCategories.get(position).getCollectionId());
 
                 InjectorProvider.getInjector().getWallpaperPersister(activity)
                         .setWallpaperInfoInPreview(wallpaper);
                 wallpaper.showPreview(activity,
-                        new PreviewActivity.PreviewActivityIntentFactory(),
+                        InjectorProvider.getInjector().getPreviewActivityIntentFactory(),
                         wallpaper instanceof LiveWallpaperInfo
                                 ? PREVIEW_LIVE_WALLPAPER_REQUEST_CODE
-                                : PREVIEW_WALLPAPER_REQUEST_CODE);
+                                : PREVIEW_WALLPAPER_REQUEST_CODE, true);
                 return;
             }
 
@@ -693,22 +686,6 @@ public class CategorySelectorFragment extends AppbarFragment {
     }
 
     /**
-     * ViewHolder subclass for the loading indicator ("spinner") shown when categories are being
-     * fetched.
-     */
-    private class LoadingIndicatorHolder extends RecyclerView.ViewHolder {
-        private LoadingIndicatorHolder(View view) {
-            super(view);
-            ProgressBar progressBar = view.findViewById(R.id.loading_indicator);
-            progressBar.getIndeterminateDrawable().setColorFilter(
-                    ResourceUtils.getColorAttr(
-                            getActivity(),
-                            android.R.attr.colorAccent
-                    ), PorterDuff.Mode.SRC_IN);
-        }
-    }
-
-    /**
      * RecyclerView Adapter subclass for the category tiles in the RecyclerView. This excludes
      * CreativeCategory and has FeaturedCategory
      */
@@ -717,7 +694,6 @@ public class CategorySelectorFragment extends AppbarFragment {
         private static final int ITEM_VIEW_TYPE_MY_PHOTOS = 1;
         private static final int ITEM_VIEW_TYPE_FEATURED_CATEGORY = 2;
         private static final int ITEM_VIEW_TYPE_CATEGORY = 3;
-        private static final int ITEM_VIEW_TYPE_LOADING_INDICATOR = 4;
         private List<Category> mCategories;
 
         private CategoryAdapter(List<Category> categories) {
@@ -726,10 +702,6 @@ public class CategorySelectorFragment extends AppbarFragment {
 
         @Override
         public int getItemViewType(int position) {
-            if (mAwaitingCategories && position == getItemCount() - 1) {
-                return ITEM_VIEW_TYPE_LOADING_INDICATOR;
-            }
-
             if (position == 0) {
                 return ITEM_VIEW_TYPE_MY_PHOTOS;
             }
@@ -747,10 +719,6 @@ public class CategorySelectorFragment extends AppbarFragment {
             View view;
 
             switch (viewType) {
-                case ITEM_VIEW_TYPE_LOADING_INDICATOR:
-                    view = layoutInflater.inflate(R.layout.grid_item_loading_indicator,
-                            parent, /* attachToRoot= */ false);
-                    return new LoadingIndicatorHolder(view);
                 case ITEM_VIEW_TYPE_MY_PHOTOS:
                     view = layoutInflater.inflate(R.layout.grid_item_category,
                             parent, /* attachToRoot= */ false);
@@ -772,7 +740,6 @@ public class CategorySelectorFragment extends AppbarFragment {
         @Override
         public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
             int viewType = getItemViewType(position);
-
             switch (viewType) {
                 case ITEM_VIEW_TYPE_MY_PHOTOS:
                 case ITEM_VIEW_TYPE_FEATURED_CATEGORY:
@@ -782,9 +749,6 @@ public class CategorySelectorFragment extends AppbarFragment {
                     Category category = mCategories.get(position - NUM_NON_CATEGORY_VIEW_HOLDERS);
                     ((CategoryHolder) holder).bindCategory(category);
                     break;
-                case ITEM_VIEW_TYPE_LOADING_INDICATOR:
-                    // No op.
-                    break;
                 default:
                     Log.e(TAG, "Unsupported viewType " + viewType + " in CategoryAdapter");
             }
@@ -793,11 +757,7 @@ public class CategorySelectorFragment extends AppbarFragment {
         @Override
         public int getItemCount() {
             // Add to size of categories to account for the metadata related views.
-            // Add 1 more for the loading indicator if not yet done loading.
             int size = mCategories.size() + NUM_NON_CATEGORY_VIEW_HOLDERS;
-            if (mAwaitingCategories) {
-                size += 1;
-            }
 
             return size;
         }
@@ -837,7 +797,6 @@ public class CategorySelectorFragment extends AppbarFragment {
         private static final int ITEM_VIEW_TYPE_MY_PHOTOS = 1;
         private static final int ITEM_VIEW_TYPE_CREATIVE_CATEGORY = 2;
         private static final int ITEM_VIEW_TYPE_CATEGORY = 3;
-        private static final int ITEM_VIEW_TYPE_LOADING_INDICATOR = 4;
         private List<Category> mCategories;
 
         private GroupedCategoryAdapter(List<Category> categories) {
@@ -846,11 +805,8 @@ public class CategorySelectorFragment extends AppbarFragment {
 
         @Override
         public int getItemViewType(int position) {
-            if (mAwaitingCategories && position == getItemCount() - 1) {
-                return ITEM_VIEW_TYPE_LOADING_INDICATOR;
-            }
             if (mCategories.stream().anyMatch(Category::supportsUserCreatedWallpapers)) {
-                if (position == 0) {
+                if (position == CREATIVE_CATEGORY_ROW_INDEX) {
                     return ITEM_VIEW_TYPE_CREATIVE_CATEGORY;
                 }
                 if (position == 1) {
@@ -869,12 +825,8 @@ public class CategorySelectorFragment extends AppbarFragment {
             LayoutInflater layoutInflater = LayoutInflater.from(getActivity());
 
             switch (viewType) {
-                case ITEM_VIEW_TYPE_LOADING_INDICATOR:
-                    View view = layoutInflater.inflate(R.layout.grid_item_loading_indicator,
-                            parent, /* attachToRoot= */ false);
-                    return new LoadingIndicatorHolder(view);
                 case ITEM_VIEW_TYPE_MY_PHOTOS:
-                    view = layoutInflater.inflate(R.layout.my_photos,
+                    View view = layoutInflater.inflate(R.layout.my_photos,
                             parent, /* attachToRoot= */ false);
                     return new MyPhotosCategoryHolder(view);
                 case ITEM_VIEW_TYPE_CREATIVE_CATEGORY:
@@ -894,12 +846,12 @@ public class CategorySelectorFragment extends AppbarFragment {
         @Override
         public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
             int viewType = getItemViewType(position);
-
             switch (viewType) {
                 case ITEM_VIEW_TYPE_CREATIVE_CATEGORY:
                     ((GroupCategoryHolder) holder).bindCategory(mCreativeCategories);
                     break;
                 case ITEM_VIEW_TYPE_MY_PHOTOS:
+                    holder.setIsRecyclable(false);
                 case ITEM_VIEW_TYPE_CATEGORY:
                     // Offset position to get category index to account for the non-category view
                     // holders.
@@ -916,9 +868,6 @@ public class CategorySelectorFragment extends AppbarFragment {
                         ((CategoryHolder) holder).bindCategory(category);
                     }
                     break;
-                case ITEM_VIEW_TYPE_LOADING_INDICATOR:
-                    // No op.
-                    break;
                 default:
                     Log.e(TAG, "Unsupported viewType " + viewType + " in CategoryAdapter");
             }
@@ -927,11 +876,7 @@ public class CategorySelectorFragment extends AppbarFragment {
         @Override
         public int getItemCount() {
             // Add to size of categories to account for the metadata related views.
-            // Add 1 more for the loading indicator if not yet done loading.
             int size = mCategories.size() + NUM_NON_CATEGORY_VIEW_HOLDERS;
-            if (mAwaitingCategories) {
-                size += 1;
-            }
             // This is done to make sure all CreativeCategories are accounted for
             // in one single block, therefore subtracted the size of CreativeCategories
             // from total count
@@ -1019,8 +964,7 @@ public class CategorySelectorFragment extends AppbarFragment {
 
         @Override
         public int getSpanSize(int position) {
-            if (position < NUM_NON_CATEGORY_VIEW_HOLDERS || mAdapter.getItemViewType(position)
-                    == CategoryAdapter.ITEM_VIEW_TYPE_LOADING_INDICATOR || mAdapter.getItemViewType(
+            if (position < NUM_NON_CATEGORY_VIEW_HOLDERS || mAdapter.getItemViewType(
                     position) == CategoryAdapter.ITEM_VIEW_TYPE_MY_PHOTOS) {
                 return getNumColumns() * DEFAULT_CATEGORY_SPAN_SIZE;
             }
@@ -1039,7 +983,7 @@ public class CategorySelectorFragment extends AppbarFragment {
      * RecyclerView and all other items only take up a single span.
      */
     private class GroupedCategorySpanSizeLookup extends GridLayoutManager.SpanSizeLookup {
-        private static final int DEFAULT_CATEGORY_SPAN_SIZE = 2;
+        private static final int DEFAULT_CATEGORY_SPAN_SIZE = 1;
 
         GroupedCategoryAdapter mAdapter;
 
@@ -1049,9 +993,7 @@ public class CategorySelectorFragment extends AppbarFragment {
 
         @Override
         public int getSpanSize(int position) {
-            if (position < NUM_NON_CATEGORY_VIEW_HOLDERS || mAdapter.getItemViewType(position)
-                    == GroupedCategoryAdapter.ITEM_VIEW_TYPE_LOADING_INDICATOR
-                    || mAdapter.getItemViewType(
+            if (position < NUM_NON_CATEGORY_VIEW_HOLDERS || mAdapter.getItemViewType(
                     position) == GroupedCategoryAdapter.ITEM_VIEW_TYPE_MY_PHOTOS) {
                 return getNumColumns() * DEFAULT_CATEGORY_SPAN_SIZE;
             }
@@ -1062,5 +1004,10 @@ public class CategorySelectorFragment extends AppbarFragment {
             }
             return DEFAULT_CATEGORY_SPAN_SIZE;
         }
+    }
+
+    @Override
+    protected int getToolbarTextColor() {
+        return ContextCompat.getColor(requireContext(), R.color.system_on_surface);
     }
 }

@@ -15,51 +15,98 @@
  */
 package com.android.wallpaper.config
 
+import android.app.WallpaperManager
 import android.content.Context
+import com.android.settings.accessibility.Flags.enableColorContrastControl
+import com.android.systemui.Flags.clockReactiveVariants
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClient
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClientImpl
 import com.android.systemui.shared.customization.data.content.CustomizationProviderContract as Contract
+import com.android.wallpaper.Flags.magicPortraitFlag
+import com.android.wallpaper.Flags.newPickerUiFlag
+import com.android.wallpaper.Flags.refactorWallpaperCategoryFlag
+import com.android.wallpaper.Flags.wallpaperRestorerFlag
+import com.android.wallpaper.module.InjectorProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
 abstract class BaseFlags {
-    var customizationProviderClient: CustomizationProviderClient? = null
+    private var customizationProviderClient: CustomizationProviderClient? = null
+    private var cachedFlags: List<CustomizationProviderClient.Flag>? = null
     open fun isStagingBackdropContentEnabled() = false
     open fun isWallpaperEffectEnabled() = false
+    open fun isWallpaperEffectModelDownloadEnabled() = true
+    open fun isInterruptModelDownloadEnabled() = false
+    open fun isWallpaperRestorerEnabled() = wallpaperRestorerFlag()
+    open fun isWallpaperCategoryRefactoringEnabled() = refactorWallpaperCategoryFlag()
+    open fun isColorContrastControlEnabled() = enableColorContrastControl()
+    open fun isMagicPortraitEnabled() = magicPortraitFlag()
+    open fun isNewPickerUi() = newPickerUiFlag()
+    open fun isClockReactiveVariantsEnabled() = clockReactiveVariants()
 
-    // TODO(b/285047815): Remove flag after adding wallpaper id for default static wallpaper
-    open fun isWallpaperRestorerEnabled() = false
-    open fun isFullscreenWallpaperPreviewEnabled(context: Context): Boolean {
-        return runBlocking { getCustomizationProviderClient(context).queryFlags() }
+    open fun isMultiCropEnabled() = WallpaperManager.isMultiCropEnabled()
+
+    open fun isKeyguardQuickAffordanceEnabled(context: Context): Boolean {
+        return getCachedFlags(context)
             .firstOrNull { flag ->
-                flag.name == Contract.FlagsTable.FLAG_NAME_WALLPAPER_FULLSCREEN_PREVIEW
+                flag.name ==
+                    Contract.FlagsTable.FLAG_NAME_CUSTOM_LOCK_SCREEN_QUICK_AFFORDANCES_ENABLED
             }
             ?.value == true
     }
-    fun isUseRevampedUiEnabled(context: Context): Boolean {
-        return runBlocking { getCustomizationProviderClient(context).queryFlags() }
-            .firstOrNull { flag ->
-                flag.name == Contract.FlagsTable.FLAG_NAME_REVAMPED_WALLPAPER_UI
-            }
-            ?.value == true
-    }
-    fun isCustomClocksEnabled(context: Context): Boolean {
-        return runBlocking { getCustomizationProviderClient(context).queryFlags() }
+
+    open fun isCustomClocksEnabled(context: Context): Boolean {
+        return getCachedFlags(context)
             .firstOrNull { flag ->
                 flag.name == Contract.FlagsTable.FLAG_NAME_CUSTOM_CLOCKS_ENABLED
             }
             ?.value == true
     }
-    fun isMonochromaticThemeEnabled(context: Context): Boolean {
-        return runBlocking { getCustomizationProviderClient(context).queryFlags() }
+
+    open fun isMonochromaticThemeEnabled(context: Context): Boolean {
+        return getCachedFlags(context)
             .firstOrNull { flag -> flag.name == Contract.FlagsTable.FLAG_NAME_MONOCHROMATIC_THEME }
             ?.value == true
     }
 
-    fun isAIWallpaperEnabled(context: Context): Boolean {
-        return runBlocking { getCustomizationProviderClient(context).queryFlags() }
+    open fun isAIWallpaperEnabled(context: Context): Boolean {
+        return getCachedFlags(context)
             .firstOrNull { flag ->
                 flag.name == Contract.FlagsTable.FLAG_NAME_WALLPAPER_PICKER_UI_FOR_AIWP
+            }
+            ?.value == true
+    }
+
+    open fun isTransitClockEnabled(context: Context): Boolean {
+        return getCachedFlags(context)
+            .firstOrNull { flag -> flag.name == Contract.FlagsTable.FLAG_NAME_TRANSIT_CLOCK }
+            ?.value == true
+    }
+
+    /**
+     * This flag is to for refactoring the process of setting a wallpaper from the Wallpaper Picker,
+     * such as changes in WallpaperSetter, WallpaperPersister and WallpaperPreferences.
+     */
+    fun isRefactorSettingWallpaper(): Boolean {
+        return false
+    }
+
+    open fun isPageTransitionsFeatureEnabled(context: Context): Boolean {
+        return getCachedFlags(context)
+            .firstOrNull { flag -> flag.name == Contract.FlagsTable.FLAG_NAME_PAGE_TRANSITIONS }
+            ?.value == true
+    }
+
+    open fun isGridApplyButtonEnabled(context: Context): Boolean {
+        return getCachedFlags(context)
+            .firstOrNull { flag -> flag.name == Contract.FlagsTable.FLAG_NAME_GRID_APPLY_BUTTON }
+            ?.value == true
+    }
+
+    open fun isPreviewLoadingAnimationEnabled(context: Context): Boolean {
+        return getCachedFlags(context)
+            .firstOrNull { flag ->
+                flag.name == Contract.FlagsTable.FLAG_NAME_WALLPAPER_PICKER_PREVIEW_ANIMATION
             }
             ?.value == true
     }
@@ -69,5 +116,18 @@ abstract class BaseFlags {
             ?: CustomizationProviderClientImpl(context.applicationContext, Dispatchers.IO).also {
                 customizationProviderClient = it
             }
+    }
+
+    open fun getCachedFlags(context: Context): List<CustomizationProviderClient.Flag> {
+        return cachedFlags
+            ?: runBlocking { getCustomizationProviderClient(context).queryFlags() }
+                .also { cachedFlags = it }
+    }
+
+    companion object {
+        @JvmStatic
+        fun get(): BaseFlags {
+            return InjectorProvider.getInjector().getFlags()
+        }
     }
 }

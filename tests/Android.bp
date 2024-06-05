@@ -17,24 +17,21 @@
 // Build rule for WallpaperPicker2 tests
 //
 package {
+    default_team: "trendy_team_customization_picker",
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
-android_library {
-    name: "WallpaperPicker2TestLib",
+filegroup {
+    name: "WallpaperPicker2Tests_srcs",
 
-    defaults: ["WallpaperPicker2_defaults"],
+    visibility: [
+        "//visibility:public",
+    ],
+
     srcs: [
-        "src/com/android/wallpaper/testing/**/*.java",
-        "src/com/android/wallpaper/testing/**/*.kt",
+        "src/**/*.java",
+        "src/**/*.kt",
     ],
-    static_libs: [
-        "androidx.annotation_annotation",
-        "kotlinx_coroutines_test",
-        "truth-prebuilt",
-    ],
-
-    platform_apis: true,
 }
 
 android_test {
@@ -42,26 +39,26 @@ android_test {
 
     defaults: ["WallpaperPicker2_defaults"],
     srcs: [
-        "src/**/*.java",
-        "src/**/*.kt",
-    ],
-    exclude_srcs: [
-        "src/com/android/wallpaper/testing/**/*.java",
-        "src/com/android/wallpaper/testing/**/*.kt",
+        ":WallpaperPicker2Tests_srcs",
     ],
     static_libs: [
         "WallpaperPicker2TestLib",
+        "WallpaperPicker2TestModule",
+        "WallpaperPicker2TestRunner",
         "androidx.test.espresso.core",
         "androidx.test.espresso.contrib",
         "androidx.test.espresso.intents",
+        "androidx.test.ext.junit",
         "androidx.test.rules",
         "hamcrest-library",
         "hamcrest",
+        "hilt_android",
+        "hilt_android_testing",
         "mockito-target-minus-junit4",
-        "ub-uiautomator",
         "junit",
         "kotlinx_coroutines_test",
-        "truth-prebuilt",
+        "truth",
+        "flag-junit",
     ],
     libs: [
         "android.test.runner",

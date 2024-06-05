@@ -35,7 +35,12 @@ import com.android.wallpaper.R;
  * configuration.
  */
 public class SizeCalculator {
-    private static final int COLUMN_COUNT_THRESHOLD_DP = 732;
+
+    /**
+     * This parameter is used for comparing the threshold DP of the screen on whether we want a
+     * "fewer columns" configuration or a "more columns" configuration.
+     */
+    private static final int COLUMN_COUNT_THRESHOLD_DP = 820;
 
     /**
      * The number of columns for a "fewer columns" configuration of the category tiles grid.
@@ -119,8 +124,18 @@ public class SizeCalculator {
                 CATEGORY_MORE_COLUMNS);
     }
 
+    private static int getNumCategoryColumns(Context context, int windowWidthPx) {
+        return getNumColumns(context, windowWidthPx, CATEGORY_FEWER_COLUMNS,
+                CATEGORY_MORE_COLUMNS);
+    }
+
     private static int getNumFeaturedCategoryColumns(Activity activity, int windowWidthPx) {
         return getNumColumns(activity, windowWidthPx, FEATURED_CATEGORY_FEWER_COLUMNS,
+                FEATURED_CATEGORY_MORE_COLUMNS);
+    }
+
+    private static int getNumFeaturedCategoryColumns(Context context, int windowWidthPx) {
+        return getNumColumns(context, windowWidthPx, FEATURED_CATEGORY_FEWER_COLUMNS,
                 FEATURED_CATEGORY_MORE_COLUMNS);
     }
 
@@ -145,7 +160,6 @@ public class SizeCalculator {
 
         // Columns should be based on the size of the window, not the size of the display.
         int windowWidthDp = (int) (windowWidthPx / metrics.density);
-
         if (windowWidthDp < COLUMN_COUNT_THRESHOLD_DP) {
             return fewerCount;
         } else {
@@ -167,6 +181,18 @@ public class SizeCalculator {
     }
 
     /**
+     * Returns the size of a category grid tile in px.
+     */
+    public static Point getCategoryTileSize(Context context, int windowWidthPx) {
+        Resources res = context.getResources();
+
+        int columnCount = getNumCategoryColumns(context, windowWidthPx);
+        return getSquareTileSize(columnCount, windowWidthPx,
+                res.getDimensionPixelSize(R.dimen.grid_item_category_padding_horizontal),
+                res.getDimensionPixelSize(R.dimen.category_grid_edge_space));
+    }
+
+    /**
      * Returns the size of a featured category grid tile in px.
      */
     public static Point getFeaturedCategoryTileSize(@NonNull Activity activity) {
@@ -174,6 +200,18 @@ public class SizeCalculator {
         int windowWidthPx = getActivityWindowWidthPx(activity);
 
         int columnCount = getNumFeaturedCategoryColumns(activity, windowWidthPx);
+        return getSquareTileSize(columnCount, windowWidthPx,
+                res.getDimensionPixelSize(R.dimen.grid_item_category_padding_horizontal),
+                res.getDimensionPixelSize(R.dimen.category_grid_edge_space));
+    }
+
+    /**
+     * Returns the size of a featured category grid tile in px.
+     */
+    public static Point getFeaturedCategoryTileSize(Context context, int windowWidthPx) {
+        Resources res = context.getResources();
+
+        int columnCount = getNumFeaturedCategoryColumns(context, windowWidthPx);
         return getSquareTileSize(columnCount, windowWidthPx,
                 res.getDimensionPixelSize(R.dimen.grid_item_category_padding_horizontal),
                 res.getDimensionPixelSize(R.dimen.category_grid_edge_space));
@@ -277,9 +315,8 @@ public class SizeCalculator {
     /**
      * Returns the available width of the activity window in pixels.
      */
-    private static int getActivityWindowWidthPx(Activity activity) {
+    public static int getActivityWindowWidthPx(Activity activity) {
         Display display = activity.getWindowManager().getDefaultDisplay();
-
         Point outPoint = new Point();
         display.getSize(outPoint);
 

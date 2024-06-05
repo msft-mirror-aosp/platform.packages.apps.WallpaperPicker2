@@ -25,7 +25,7 @@
     <string name="select_wallpaper_label">Wallpaper categories</string>
 
     <!-- Label for a button which lets user set the displayed image as wallpaper. [CHAR LIMIT=30] -->
-    <string name="set_wallpaper_button_text">Set Wallpaper</string>
+    <string name="set_wallpaper_button_text">Set wallpaper</string>
 
     <!-- Message shown in a dialog indicating that the app is setting an image as the device
          wallpaper. [CHAR LIMIT=100] -->
@@ -61,7 +61,7 @@
     <string name="choose_a_wallpaper_section_title">Choose a Wallpaper</string>
 
     <!-- Label indicating the title for Creative Wallpapers block in the WallpaperPicker screen [CHAR LIMIT=100] -->
-    <string name="creative_wallpaper_title">Create a Wallpaper</string>
+    <string name="creative_wallpaper_title">Create wallpaper</string>
 
     <!-- Label referring to the home screen of the device, i.e. shown behind the launcher.
          [CHAR LIMIT=30] -->
@@ -237,6 +237,20 @@
     <!-- Content description for the wallpaper preview screen. [CHAR LIMIT=none] -->
     <string name="preview_screen_description">Wallpaper preview screen</string>
 
+    <!-- Content description for the wallpaper preview screen when preview can be edited, including folded state of preview.
+         Placeholder is replaced by folded/unfolded state of the preview for foldables, empty string for other devices.[CHAR_LIMIT=NONE]-->
+    <string name="preview_screen_description_editable">Wallpaper preview screen %1$s. Use two fingers to pan and zoom.</string>
+
+    <!-- Content description when the device is in a folded state. [CHAR LIMIT=none] -->
+    <string name="folded_device_state_description">Folded</string>
+
+    <!-- Content description when device is in an unfolded state. [CHAR LIMIT=none] -->
+    <string name="unfolded_device_state_description">Unfolded</string>
+
+    <!-- Content description for a button on full preview screen to confirm user's wallpaper
+         edit. [CHAR LIMIT=none] -->
+    <string name="full_preview_check_button_description">Done editing wallpaper</string>
+
     <!-- Message shown to user in a progress dialog when the app is in the process of refreshing the
          daily wallpaper. [CHAR LIMIT=none] -->
     <string name="refreshing_daily_wallpaper_dialog_message">
@@ -333,7 +347,7 @@
     <string name="delete_wallpaper_confirmation">Delete this wallpaper from your device?</string>
 
     <!-- Content description of back button on the bottom action bar. [CHAR LIMIT=30] -->
-    <string name="bottom_action_bar_back">Back</string>
+    <string name="bottom_action_bar_back">Navigate up</string>
 
     <!-- Content description of edit button on the bottom action bar. [CHAR LIMIT=30] -->
     <string name="bottom_action_bar_edit">Edit</string>
@@ -341,6 +355,9 @@
     <!-- TODO(b/154299462): Separate downloadable related actions from WallpaperPicker. -->
     <!-- Content description of download button on the bottom action bar. [CHAR LIMIT=30] -->
     <string name="bottom_action_bar_download">Download</string>
+
+    <!-- Content description of download effects button on the bottom action bar. [CHAR LIMIT=30] -->
+    <string name="download_effects">Download effects</string>
 
     <!-- Content description of "slideshow wallpaper" button on the bottom action bar. [CHAR LIMIT=50] -->
     <string name="bottom_action_bar_slideshow_wallpaper">Slideshow Wallpaper</string>
@@ -366,6 +383,10 @@
     <!-- Content description of wallpaper preview card. [CHAR_LIMIT=40]-->
     <string name="wallpaper_preview_card_content_description">Wallpaper preview</string>
 
+    <!-- Content description of wallpaper preview card when preview can be edited, including folded state of preview.
+         Placeholder is replaced by folded/unfolded state of the preview for foldables, empty string for other devices.[CHAR_LIMIT=NONE]-->
+    <string name="wallpaper_preview_card_content_description_editable">Wallpaper preview %1$s, tap to edit your photo</string>
+
     <!-- Content description of lock screen wallpaper preview card. [CHAR_LIMIT=NONE]-->
     <string name="lock_wallpaper_preview_card_content_description">Lock screen wallpaper preview</string>
 
@@ -377,6 +398,9 @@
 
     <!-- Error message advising user to exit our of split screen in order to see preview. [CHAR_LIMIT=NONE] -->
     <string name="wallpaper_exit_split_screen">Please exit split screen mode and try again</string>
+
+    <!-- Label for set wallpaper dialog positive button to set new wallpaper. [CHAR LIMIT=30] -->
+    <string name="set_wallpaper_dialog_set_button">Set</string>
 
     <!-- Label for a cancel button of a dialog. [CHAR LIMIT=30] -->
     <string name="cancel">Cancel</string>
@@ -416,6 +440,9 @@
 
     <!-- Task affinity name for full screen preview's Activity stack -->
     <string name="full_screen_task_affinity" translatable="false">.fullscreen</string>
+
+    <!-- Task affinity name for multi crop preview's Activity stack -->
+    <string name="multi_crop_task_affinity" translatable="false">.multicrop</string>
 
     <!-- Label for a button / menu item that allows the user to apply the currently selected customization option. [CHAR LIMIT=20] -->
     <string name="apply_btn" msgid="7965877231041987336">Apply</string>
@@ -493,4 +520,35 @@
     [CHAR LIMIT=128].
     -->
     <string name="more_wallpapers">More wallpapers</string>
+
+    <!--
+     Accessibility label for recent wallpaper collection items
+
+    [CHAR LIMIT=128].
+    -->
+    <string name="recents_wallpaper_label">%1$s, %2$d</string>
+
+    <!--
+     Default wallpaper title for wallpapers which do not have an inherent title
+
+    [CHAR LIMIT=128].
+    -->
+    <string name="default_wallpaper_title">Wallpaper</string>
+
+    <!--
+     Tooltip label that appears over the small wallpaper preview, where a user can tap to enter the
+     full screen preview to adjust the wallpaper crop
+
+    [CHAR LIMIT=128].
+    -->
+    <string name="small_preview_tooltip">Tap to edit your photo</string>
+
+    <!--
+     Tooltip label that appears over the full wallpaper preview, where a user can adjust the
+     wallpaper crop
+
+    [CHAR LIMIT=128].
+    -->
+    <string name="full_preview_tooltip">Adjust the position, scale, and angle of your photos</string>
+
 </resources>

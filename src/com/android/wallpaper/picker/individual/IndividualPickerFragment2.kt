@@ -19,6 +19,8 @@ import CreativeCategoryHolder
 import android.app.Activity
 import android.app.ProgressDialog
 import android.app.WallpaperManager
+import android.app.WallpaperManager.FLAG_LOCK
+import android.app.WallpaperManager.FLAG_SYSTEM
 import android.content.DialogInterface
 import android.content.res.Configuration
 import android.content.res.Resources
@@ -42,6 +44,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.cardview.widget.CardView
+import androidx.core.content.ContextCompat
 import androidx.core.widget.ContentLoadingProgressBar
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
@@ -65,10 +68,10 @@ import com.android.wallpaper.picker.RotationStarter
 import com.android.wallpaper.picker.StartRotationDialogFragment
 import com.android.wallpaper.picker.StartRotationErrorDialogFragment
 import com.android.wallpaper.util.ActivityUtils
-import com.android.wallpaper.util.DiskBasedLogger
 import com.android.wallpaper.util.LaunchUtils
 import com.android.wallpaper.util.SizeCalculator
 import com.android.wallpaper.widget.GridPaddingDecoration
+import com.android.wallpaper.widget.GridPaddingDecorationCreativeCategory
 import com.android.wallpaper.widget.WallpaperPickerRecyclerViewAccessibilityDelegate
 import com.android.wallpaper.widget.WallpaperPickerRecyclerViewAccessibilityDelegate.BottomSheetHost
 import com.bumptech.glide.Glide
@@ -102,6 +105,7 @@ class IndividualPickerFragment2 :
         private const val KEY_NIGHT_MODE = "IndividualPickerFragment.NIGHT_MODE"
         private const val MAX_CAPACITY_IN_FEWER_COLUMN_LAYOUT = 8
         private val PROGRESS_DIALOG_NO_TITLE = null
+        private var isCreativeCategory = false
 
         fun newInstance(collectionId: String?): IndividualPickerFragment2 {
             val args = Bundle()
@@ -123,7 +127,6 @@ class IndividualPickerFragment2 :
     private var appStatusListener: PackageStatusNotifier.Listener? = null
     private var progressDialog: ProgressDialog? = null
 
-    private var testingMode = false
     private var loading: ContentLoadingProgressBar? = null
     private var shouldReloadWallpapers = false
     private lateinit var categoryProvider: CategoryProvider
@@ -156,44 +159,11 @@ class IndividualPickerFragment2 :
             Glide.get(requireContext()).clearMemory()
         }
         categoryProvider = injector.getCategoryProvider(appContext)
-        categoryProvider.fetchCategories(
-            object : CategoryReceiver {
-                override fun onCategoryReceived(category: Category) {
-                    // Do nothing.
-                }
-
-                override fun doneFetchingCategories() {
-                    val fetchedCategory =
-                        categoryProvider.getCategory(
-                            arguments?.getString(ARG_CATEGORY_COLLECTION_ID)
-                        )
-                    if (fetchedCategory != null && fetchedCategory !is WallpaperCategory) {
-                        return
-                    }
-
-                    if (fetchedCategory == null) {
-                        DiskBasedLogger.e(TAG, "Failed to find the category.", context)
-
-                        // The absence of this category in the CategoryProvider indicates a broken
-                        // state, see b/38030129. Hence, finish the activity and return.
-                        getIndividualPickerFragmentHost().moveToPreviousFragment()
-                        Toast.makeText(
-                                context,
-                                R.string.collection_not_exist_msg,
-                                Toast.LENGTH_SHORT
-                            )
-                            .show()
-                        return
-                    }
-                    category = fetchedCategory as WallpaperCategory
-                    category?.let { onCategoryLoaded(it) }
-                }
-            },
-            false
-        )
+        fetchCategories(forceRefresh = false, register = true)
     }
 
-    fun onCategoryLoaded(category: Category) {
+    /** This function handles the result of the fetched categories */
+    private fun onCategoryLoaded(category: Category, shouldRegisterPackageListener: Boolean) {
         val fragmentHost = getIndividualPickerFragmentHost()
         if (fragmentHost.isHostToolbarShown) {
             fragmentHost.setToolbarTitle(category.title)
@@ -209,16 +179,18 @@ class IndividualPickerFragment2 :
             shouldForceReload = true
         }
         fetchWallpapers(shouldForceReload)
-        registerPackageListener(category)
+        if (shouldRegisterPackageListener) {
+            registerPackageListener(category)
+        }
     }
 
     private fun fetchWallpapers(forceReload: Boolean) {
+        isCreativeCategory = false
         items.clear()
         isWallpapersReceived = false
         updateLoading()
         val context = requireContext()
         val userCreatedWallpapers = mutableListOf<WallpaperInfo>()
-
         category?.fetchWallpapers(
             context.applicationContext,
             { fetchedWallpapers ->
@@ -230,14 +202,18 @@ class IndividualPickerFragment2 :
                 updateLoading()
                 val supportsUserCreated = category?.supportsUserCreatedWallpapers() == true
                 val byGroup = fetchedWallpapers.groupBy { it.getGroupName(context) }.toMutableMap()
-                val appliedWallpaperIds = getAppliedWallpaperIds()
+                val appliedWallpaperIds =
+                    getAppliedWallpaperIds().also { this.appliedWallpaperIds = it }
                 val firstEntry = byGroup.keys.firstOrNull()
-                val currentWallpaper: android.app.WallpaperInfo? =
-                    WallpaperManager.getInstance(context).wallpaperInfo
+                val currentHomeWallpaper: android.app.WallpaperInfo? =
+                    WallpaperManager.getInstance(context).getWallpaperInfo(FLAG_SYSTEM)
+                val currentLockWallpaper: android.app.WallpaperInfo? =
+                    WallpaperManager.getInstance(context).getWallpaperInfo(FLAG_LOCK)
 
                 // Handle first group (templates/items that allow to create a new wallpaper)
                 if (mIsCreativeWallpaperEnabled && firstEntry != null && supportsUserCreated) {
                     val wallpapers = byGroup.getValue(firstEntry)
+                    isCreativeCategory = true
 
                     if (wallpapers.size > 1 && !TextUtils.isEmpty(firstEntry)) {
                         addItemHeader(firstEntry, items.isEmpty())
@@ -252,7 +228,12 @@ class IndividualPickerFragment2 :
                         if (!TextUtils.isEmpty(groupName)) {
                             addItemHeader(groupName, items.isEmpty())
                         }
-                        addWallpaperItems(wallpapers, currentWallpaper, appliedWallpaperIds)
+                        addWallpaperItems(
+                            wallpapers,
+                            currentHomeWallpaper,
+                            currentLockWallpaper,
+                            appliedWallpaperIds
+                        )
                     }
                 }
                 maybeSetUpImageGrid()
@@ -304,13 +285,15 @@ class IndividualPickerFragment2 :
      */
     private fun addWallpaperItems(
         wallpapers: List<WallpaperInfo>,
-        currentWallpaper: android.app.WallpaperInfo?,
-        appliedWallpaperIds: Set<String>
+        currentHomeWallpaper: android.app.WallpaperInfo?,
+        currentLockWallpaper: android.app.WallpaperInfo?,
+        appliedWallpaperIds: Set<String>,
     ) {
         items.addAll(
             wallpapers.map {
                 val isApplied =
-                    if (it is LiveWallpaperInfo) it.isApplied(currentWallpaper)
+                    if (it is LiveWallpaperInfo)
+                        (it.isApplied(currentHomeWallpaper, currentLockWallpaper))
                     else appliedWallpaperIds.contains(it.wallpaperId)
                 PickerItem.WallpaperItem(it, isApplied)
             }
@@ -318,12 +301,14 @@ class IndividualPickerFragment2 :
     }
 
     private fun registerPackageListener(category: Category) {
-        if (category.supportsThirdParty()) {
+        if (category.supportsThirdParty() || category.isCategoryDownloadable) {
             appStatusListener =
                 PackageStatusNotifier.Listener { pkgName: String?, status: Int ->
-                    if (
-                        status != PackageStatusNotifier.PackageStatus.REMOVED ||
-                            category.containsThirdParty(pkgName)
+                    if (category.isCategoryDownloadable) {
+                        fetchCategories(true, false)
+                    } else if (
+                        (status != PackageStatusNotifier.PackageStatus.REMOVED ||
+                            category.containsThirdParty(pkgName))
                     ) {
                         fetchWallpapers(true)
                     }
@@ -332,7 +317,53 @@ class IndividualPickerFragment2 :
                 appStatusListener,
                 WallpaperService.SERVICE_INTERFACE
             )
+
+            if (category.isCategoryDownloadable) {
+                category.categoryDownloadComponent?.let {
+                    packageStatusNotifier?.addListener(appStatusListener, it)
+                }
+            }
         }
+    }
+
+    /**
+     * @param forceRefresh if true, force refresh the category list
+     * @param register if true, register a package status listener
+     */
+    private fun fetchCategories(forceRefresh: Boolean, register: Boolean) {
+        categoryProvider.fetchCategories(
+            object : CategoryReceiver {
+                override fun onCategoryReceived(category: Category) {
+                    // Do nothing.
+                }
+
+                override fun doneFetchingCategories() {
+                    val fetchedCategory =
+                        categoryProvider.getCategory(
+                            arguments?.getString(ARG_CATEGORY_COLLECTION_ID)
+                        )
+                    if (fetchedCategory != null && fetchedCategory !is WallpaperCategory) {
+                        return
+                    }
+
+                    if (fetchedCategory == null) {
+                        // The absence of this category in the CategoryProvider indicates a broken
+                        // state, see b/38030129. Hence, finish the activity and return.
+                        getIndividualPickerFragmentHost().moveToPreviousFragment()
+                        Toast.makeText(
+                                context,
+                                R.string.collection_not_exist_msg,
+                                Toast.LENGTH_SHORT
+                            )
+                            .show()
+                        return
+                    }
+                    category = fetchedCategory as WallpaperCategory
+                    category?.let { onCategoryLoaded(it, register) }
+                }
+            },
+            forceRefresh
+        )
     }
 
     private fun updateLoading() {
@@ -358,7 +389,7 @@ class IndividualPickerFragment2 :
     ): View {
         val view: View = inflater.inflate(R.layout.fragment_individual_picker, container, false)
         if (getIndividualPickerFragmentHost().isHostToolbarShown) {
-            view.findViewById<View>(R.id.header_bar).visibility = View.GONE
+            view.requireViewById<View>(R.id.header_bar).visibility = View.GONE
             setUpArrowEnabled(/* upArrow= */ true)
             if (isRotationEnabled()) {
                 getIndividualPickerFragmentHost().setToolbarMenu(R.menu.individual_picker_menu)
@@ -370,8 +401,8 @@ class IndividualPickerFragment2 :
             }
             setTitle(category?.title)
         }
-        imageGrid = view.findViewById<View>(R.id.wallpaper_grid) as RecyclerView
-        loading = view.findViewById(R.id.loading_indicator)
+        imageGrid = view.requireViewById<View>(R.id.wallpaper_grid) as RecyclerView
+        loading = view.requireViewById(R.id.loading_indicator)
         updateLoading()
         maybeSetUpImageGrid()
         // For nav bar edge-to-edge effect.
@@ -424,16 +455,28 @@ class IndividualPickerFragment2 :
         for (i in 0 until decorationCount) {
             imageGrid.removeItemDecorationAt(i)
         }
-        imageGrid.addItemDecoration(
-            GridPaddingDecoration(getGridItemPaddingHorizontal(), getGridItemPaddingBottom())
-        )
         val edgePadding = getEdgePadding()
-        imageGrid.setPadding(
-            edgePadding,
-            imageGrid.paddingTop,
-            edgePadding,
-            imageGrid.paddingBottom
-        )
+
+        if (isCreativeCategory) {
+            imageGrid.addItemDecoration(
+                GridPaddingDecorationCreativeCategory(
+                    getGridItemPaddingHorizontal(),
+                    getGridItemPaddingBottom(),
+                    edgePadding
+                )
+            )
+        } else {
+            imageGrid.addItemDecoration(
+                GridPaddingDecoration(getGridItemPaddingHorizontal(), getGridItemPaddingBottom())
+            )
+            imageGrid.setPadding(
+                edgePadding,
+                imageGrid.paddingTop,
+                edgePadding,
+                imageGrid.paddingBottom
+            )
+        }
+
         val tileSizePx =
             if (isFewerColumnLayout()) {
                 SizeCalculator.getFeaturedIndividualTileSize(requireActivity())
@@ -492,9 +535,13 @@ class IndividualPickerFragment2 :
                 requireActivity(),
                 tileSizePx,
                 isRotationEnabled(),
-                isFewerColumnLayout()
+                isFewerColumnLayout(),
+                getEdgePadding(),
+                imageGrid.paddingTop,
+                imageGrid.paddingBottom
             )
         imageGrid.adapter = adapter
+
         val gridLayoutManager = GridLayoutManager(activity, getNumColumns())
         gridLayoutManager.spanSizeLookup =
             object : GridLayoutManager.SpanSizeLookup() {
@@ -525,7 +572,7 @@ class IndividualPickerFragment2 :
     override fun onResume() {
         super.onResume()
         val preferences = InjectorProvider.getInjector().getPreferences(requireActivity())
-        preferences.lastAppActiveTimestamp = Date().time
+        preferences.setLastAppActiveTimestamp(Date().time)
 
         // Reset Glide memory settings to a "normal" level of usage since it may have been lowered
         // in PreviewFragment.
@@ -573,39 +620,25 @@ class IndividualPickerFragment2 :
         startRotation(networkPreference)
     }
 
-    /**
-     * Enable a test mode of operation -- in which certain UI features are disabled to allow for UI
-     * tests to run correctly. Works around issue in ProgressDialog currently where the dialog
-     * constantly keeps the UI thread alive and blocks a test forever.
-     *
-     * @param testingMode
-     */
-    fun setTestingMode(testingMode: Boolean) {
-        this.testingMode = testingMode
-    }
-
     override fun startRotation(@NetworkPreference networkPreference: Int) {
         if (!isRotationEnabled()) {
             Log.e(TAG, "Rotation is not enabled for this category " + category?.title)
             return
         }
 
-        // ProgressDialog endlessly updates the UI thread, keeping it from going idle which
-        // therefore causes Espresso to hang once the dialog is shown.
-        if (!testingMode) {
-            val themeResId =
-                if (Build.VERSION.SDK_INT < VERSION_CODES.LOLLIPOP) {
-                    R.style.ProgressDialogThemePreL
-                } else {
-                    R.style.LightDialogTheme
-                }
-            val progressDialog = ProgressDialog(activity, themeResId)
-            progressDialog.setTitle(PROGRESS_DIALOG_NO_TITLE)
-            progressDialog.setMessage(resources.getString(R.string.start_rotation_progress_message))
-            progressDialog.isIndeterminate = PROGRESS_DIALOG_INDETERMINATE
-            progressDialog.show()
-            this.progressDialog = progressDialog
-        }
+        val themeResId =
+            if (Build.VERSION.SDK_INT < VERSION_CODES.LOLLIPOP) {
+                R.style.ProgressDialogThemePreL
+            } else {
+                R.style.LightDialogTheme
+            }
+        val progressDialog = ProgressDialog(activity, themeResId)
+        progressDialog.setTitle(PROGRESS_DIALOG_NO_TITLE)
+        progressDialog.setMessage(resources.getString(R.string.start_rotation_progress_message))
+        progressDialog.isIndeterminate = PROGRESS_DIALOG_INDETERMINATE
+        progressDialog.show()
+        this.progressDialog = progressDialog
+
         val appContext = requireActivity().applicationContext
         wallpaperRotationInitializer?.setFirstWallpaperInRotation(
             appContext,
@@ -707,15 +740,15 @@ class IndividualPickerFragment2 :
             if (wallpaperInfo != null) {
                 wallpaperInfo.serviceName
             } else {
-                prefs.homeWallpaperRemoteId
+                prefs.getHomeWallpaperRemoteId()
             }
-        if (!TextUtils.isEmpty(homeWallpaperId)) {
+        if (!homeWallpaperId.isNullOrEmpty()) {
             appliedWallpaperIds.add(homeWallpaperId)
         }
         val isLockWallpaperApplied =
             wallpaperManager!!.getWallpaperId(WallpaperManager.FLAG_LOCK) >= 0
-        val lockWallpaperId = prefs.lockWallpaperRemoteId
-        if (isLockWallpaperApplied && !TextUtils.isEmpty(lockWallpaperId)) {
+        val lockWallpaperId = prefs.getLockWallpaperRemoteId()
+        if (isLockWallpaperApplied && !lockWallpaperId.isNullOrEmpty()) {
             appliedWallpaperIds.add(lockWallpaperId)
         }
         return appliedWallpaperIds
@@ -725,7 +758,7 @@ class IndividualPickerFragment2 :
     private fun isAppliedWallpaperChanged(): Boolean {
         // Reload wallpapers if the current wallpapers have changed
         getAppliedWallpaperIds().let {
-            if (appliedWallpaperIds.isEmpty() || appliedWallpaperIds != it) {
+            if (appliedWallpaperIds != it) {
                 return true
             }
         }
@@ -750,7 +783,10 @@ class IndividualPickerFragment2 :
         private val activity: Activity,
         private val tileSizePx: Point,
         private val isRotationEnabled: Boolean,
-        private val isFewerColumnLayout: Boolean
+        private val isFewerColumnLayout: Boolean,
+        private val edgePadding: Int,
+        private val bottomPadding: Int,
+        private val topPadding: Int
     ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         companion object {
             const val ITEM_VIEW_TYPE_INDIVIDUAL_WALLPAPER = 2
@@ -825,6 +861,9 @@ class IndividualPickerFragment2 :
             val layoutInflater = LayoutInflater.from(activity)
             val view: View =
                 layoutInflater.inflate(R.layout.creative_category_holder, parent, false)
+            if (isCreativeCategory) {
+                view.setPadding(edgePadding, topPadding, edgePadding, bottomPadding)
+            }
             return CreativeCategoryHolder(
                 activity,
                 view,
@@ -858,10 +897,21 @@ class IndividualPickerFragment2 :
             val layoutInflater = LayoutInflater.from(activity)
             val view =
                 layoutInflater.inflate(R.layout.grid_item_header, parent, /* attachToRoot= */ false)
+            var startPadding = view.paddingStart
+            if (isCreativeCategory) {
+                startPadding += edgePadding
+            }
             if (removePaddingTop) {
-                view.setPadding(
-                    view.paddingStart,
+                view.setPaddingRelative(
+                    startPadding,
                     /* top= */ 0,
+                    view.paddingEnd,
+                    view.paddingBottom
+                )
+            } else {
+                view.setPaddingRelative(
+                    startPadding,
+                    view.paddingTop,
                     view.paddingEnd,
                     view.paddingBottom
                 )
@@ -875,7 +925,7 @@ class IndividualPickerFragment2 :
             val wallpaper = item.wallpaperInfo
             wallpaper.computeColorInfo(holder.itemView.context)
             (holder as IndividualHolder).bindWallpaper(wallpaper)
-            val container = holder.itemView.findViewById<CardView>(R.id.wallpaper_container)
+            val container = holder.itemView.requireViewById<CardView>(R.id.wallpaper_container)
             val radiusId: Int =
                 if (isFewerColumnLayout) {
                     R.dimen.grid_item_all_radius
@@ -894,7 +944,7 @@ class IndividualPickerFragment2 :
             @DrawableRes icon: Int,
             show: Boolean
         ) {
-            val badge = holder.itemView.findViewById<ImageView>(R.id.indicator_icon)
+            val badge = holder.itemView.requireViewById<ImageView>(R.id.indicator_icon)
             if (show) {
                 val margin =
                     if (isFewerColumnLayout) {
@@ -912,5 +962,9 @@ class IndividualPickerFragment2 :
                 badge.visibility = View.GONE
             }
         }
+    }
+
+    override fun getToolbarTextColor(): Int {
+        return ContextCompat.getColor(requireContext(), R.color.system_on_surface)
     }
 }

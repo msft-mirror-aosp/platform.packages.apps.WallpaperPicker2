@@ -25,7 +25,7 @@ import androidx.core.view.WindowCompat;
 import com.android.wallpaper.R;
 import com.android.wallpaper.module.Injector;
 import com.android.wallpaper.module.InjectorProvider;
-import com.android.wallpaper.module.UserEventLogger;
+import com.android.wallpaper.module.logging.UserEventLogger;
 
 /**
  * Abstract base class for a wallpaper full-screen preview activity.
@@ -35,14 +35,16 @@ public abstract class BasePreviewActivity extends BaseActivity {
             "com.android.wallpaper.picker.wallpaper_info";
     public static final String EXTRA_VIEW_AS_HOME =
             "com.android.wallpaper.picker.view_as_home";
-    public static final String EXTRA_TESTING_MODE_ENABLED =
-            "com.android.wallpaper.picker.testing_mode_enabled";
+    public static final String IS_ASSET_ID_PRESENT =
+            "com.android.wallpaper.picker.asset_id_present";
+    public static final String IS_NEW_TASK =
+            "com.android.wallpaper.picker.new_task";
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Injector injector = InjectorProvider.getInjector();
-        UserEventLogger mUserEventLogger = injector.getUserEventLogger(this);
+        UserEventLogger mUserEventLogger = injector.getUserEventLogger();
         getWindow().setColorMode(ActivityInfo.COLOR_MODE_WIDE_COLOR_GAMUT);
         setTheme(R.style.WallpaperTheme);
         getWindow().setFormat(PixelFormat.TRANSLUCENT);

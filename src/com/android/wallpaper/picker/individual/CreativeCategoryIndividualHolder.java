@@ -22,13 +22,10 @@ import android.app.Activity;
 import android.util.Log;
 import android.view.View;
 
-import com.android.wallpaper.model.InlinePreviewIntentFactory;
 import com.android.wallpaper.model.LiveWallpaperInfo;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.InjectorProvider;
-import com.android.wallpaper.module.UserEventLogger;
 import com.android.wallpaper.module.WallpaperPersister;
-import com.android.wallpaper.picker.PreviewActivity;
 
 /**
  * CreativeCategoryIndividualHolder subclass for a creative category wallpaper tile in the
@@ -38,7 +35,6 @@ class CreativeCategoryIndividualHolder extends IndividualHolder implements View.
     private static final String TAG = "CreativeCategoryIndividualHolder";
 
     private WallpaperPersister mWallpaperPersister;
-    private InlinePreviewIntentFactory mPreviewIntentFactory;
 
     // These scale factors allow us to tie up the height and width
     // of the creative category wallpaper tiles to normal (non-creative)
@@ -54,7 +50,6 @@ class CreativeCategoryIndividualHolder extends IndividualHolder implements View.
         mTileLayout.setOnClickListener(this);
 
         mWallpaperPersister = InjectorProvider.getInjector().getWallpaperPersister(hostActivity);
-        mPreviewIntentFactory = new PreviewActivity.PreviewActivityIntentFactory();
     }
 
     @Override
@@ -63,10 +58,6 @@ class CreativeCategoryIndividualHolder extends IndividualHolder implements View.
             Log.w(TAG, "onClick received on VH on finishing Activity");
             return;
         }
-        UserEventLogger eventLogger =
-                InjectorProvider.getInjector().getUserEventLogger(mActivity);
-        eventLogger.logIndividualWallpaperSelected(mWallpaper.getCollectionId(mActivity));
-
         showPreview(mWallpaper);
     }
 
@@ -75,9 +66,10 @@ class CreativeCategoryIndividualHolder extends IndividualHolder implements View.
      */
     private void showPreview(WallpaperInfo wallpaperInfo) {
         mWallpaperPersister.setWallpaperInfoInPreview(wallpaperInfo);
-        wallpaperInfo.showPreview(mActivity, mPreviewIntentFactory,
+        wallpaperInfo.showPreview(mActivity,
+                InjectorProvider.getInjector().getPreviewActivityIntentFactory(),
                 wallpaperInfo instanceof LiveWallpaperInfo ? PREVIEW_LIVE_WALLPAPER_REQUEST_CODE
-                        : PREVIEW_WALLPAPER_REQUEST_CODE);
+                        : PREVIEW_WALLPAPER_REQUEST_CODE, true);
     }
 
 }

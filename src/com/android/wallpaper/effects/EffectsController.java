@@ -15,9 +15,12 @@
  */
 package com.android.wallpaper.effects;
 
+import android.app.WallpaperInfo;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
+
+import androidx.annotation.NonNull;
 
 /**
  * Utility class to provide methods to generate effects for the wallpaper.
@@ -40,13 +43,20 @@ public abstract class EffectsController {
     public static final int RESULT_PROBE_ERROR = 32;
     public static final int RESULT_SUCCESS_REUSED = 64;
     public static final int RESULT_SUCCESS_WITH_GENERATION_ERROR = 128;
+    public static final int RESULT_ERROR_PROBE_SUPPORT_FOREGROUND = 256;
+    public static final int RESULT_FOREGROUND_DOWNLOAD_SUCCEEDED = 512;
+    public static final int RESULT_FOREGROUND_DOWNLOAD_FAILED = 1024;
+    public static final int RESULT_PROBE_FOREGROUND_DOWNLOADING = 2048;
+
     /**
      * Interface of the Effect enum.
      */
     public interface EffectEnumInterface {
     }
+
     public enum Effect implements EffectEnumInterface {
         NONE,
+        UNKNOWN,
     }
 
     protected boolean mBound = false;
@@ -57,13 +67,28 @@ public abstract class EffectsController {
      * @param effect the effect type we want to generate.
      * @param image  the image that will have the effect applied.
      */
-    public void generateEffect(Effect effect, Uri image) {
+    public void generateEffect(EffectEnumInterface effect, Uri image) {
     }
 
     /**
      * Binds the Effects Service.
      */
     public void bindEffectsService() {
+    }
+
+    /**
+     * Returns true if an effects component is available on the current device
+     */
+    public boolean areEffectsAvailable() {
+        return false;
+    }
+
+    /**
+     * Returns true if the given {@link WallpaperInfo} corresponds to a wallpaper matching the
+     * "Effects" wallpaper.
+     */
+    public boolean isEffectsWallpaper(@NonNull WallpaperInfo info) {
+        return false;
     }
 
     /**
@@ -89,6 +114,19 @@ public abstract class EffectsController {
     public void triggerEffect(Context context) {
     }
 
+    /** Sets the {@link EffectsServiceListener} to receive updates. */
+    public void setListener(EffectsServiceListener listener) {
+    }
+
+    /** Removes the listener set via {@link #setListener(EffectsServiceListener)}. */
+    public void removeListener() {
+    }
+
+    /** Returns true if the effect is expected by this controller. */
+    public boolean isTargetEffect(EffectEnumInterface effect) {
+        return effect == getTargetEffect();
+    }
+
     /**
      * Interface to listen to different key moments of the connection with the Effects Service.
      */
@@ -98,12 +136,17 @@ public abstract class EffectsController {
          *
          * @param effect The effect that was generated.
          * @param bundle The data that the Service might have sent to the picker.
-         * @param error The error code. if there's an error, value is greater than zero.
+         * @param error The error code. if there's an error, value is greater than
+         *              zero.
          * @param originalStatusCode The original status code used for metrics logging.
          * @param errorMessage The error message.
          */
         void onEffectFinished(EffectEnumInterface effect, Bundle bundle, int error,
                 int originalStatusCode, String errorMessage);
+    }
+
+    public EffectEnumInterface getTargetEffect() {
+        return Effect.NONE;
     }
 
     /**
@@ -115,4 +158,44 @@ public abstract class EffectsController {
         return false;
     }
 
+    public String getEffectTitle() {
+        return "";
+    }
+
+    public String getEffectFailedTitle() {
+        return "";
+    }
+
+    public String getEffectSubTitle() {
+        return "";
+    }
+
+    public String getRetryInstruction() {
+        return "";
+    }
+
+    public String getNoEffectInstruction() {
+        return "";
+    }
+
+    public Uri getContentUri() {
+        return Uri.EMPTY;
+    }
+
+    /** */
+    public void interruptGenerate(com.android.wallpaper.effects.Effect effect) {}
+
+    /**
+     * This initiates the downloading of the ML models for a given effect
+     *
+     * @param effect The Effect for which we want to download the ML model
+     */
+    public void startForegroundDownload(com.android.wallpaper.effects.Effect effect){}
+
+    /**
+     * Sends the interrupt foreground downloading to effect.
+     *
+     * @param effect The effect that is being downloaded.
+     */
+    public void interruptForegroundDownload(com.android.wallpaper.effects.Effect effect) {}
 }

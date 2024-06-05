@@ -24,6 +24,7 @@ import android.content.ContentProviderClient;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -38,6 +39,7 @@ import com.android.wallpaper.asset.Asset;
 import com.android.wallpaper.asset.CreativeWallpaperThumbAsset;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Represents a creative live wallpaper component.
@@ -63,6 +65,8 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
     private Uri mThumbnailUri;
     private Uri mShareUri;
     private String mTitle;
+    private String mAuthor;
+    private String mDescription;
     private String mContentDescription;
     private boolean mIsCurrent;
     private String mGroupName;
@@ -76,11 +80,14 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
     private Uri mEffectsUri = null;
     private String mCurrentlyAppliedEffectId = null;
 
-    public CreativeWallpaperInfo(WallpaperInfo info, String title, String contentDescription,
-            Uri configPreviewUri, Uri cleanPreviewUri, Uri deleteUri, Uri thumbnailUri,
-            Uri shareUri, String groupName, boolean isCurrent) {
+    public CreativeWallpaperInfo(WallpaperInfo info, String title, @Nullable String author,
+            @Nullable String description, String contentDescription, Uri configPreviewUri,
+            Uri cleanPreviewUri, Uri deleteUri, Uri thumbnailUri, Uri shareUri, String groupName,
+            boolean isCurrent) {
         this(info, /* visibleTitle= */ false, /* collectionId= */ null);
         mTitle = title;
+        mAuthor = author;
+        mDescription = description;
         mContentDescription = contentDescription;
         mConfigPreviewUri = configPreviewUri;
         mCleanPreviewUri = cleanPreviewUri;
@@ -104,6 +111,8 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
     protected CreativeWallpaperInfo(Parcel in) {
         super(in);
         mTitle = in.readString();
+        mAuthor = in.readString();
+        mDescription = in.readString();
         mContentDescription = in.readString();
         mConfigPreviewUri = in.readParcelable(Uri.class.getClassLoader(), Uri.class);
         mCleanPreviewUri = in.readParcelable(Uri.class.getClassLoader(), Uri.class);
@@ -125,6 +134,8 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
     public void writeToParcel(Parcel parcel, int flags) {
         super.writeToParcel(parcel, flags);
         parcel.writeString(mTitle);
+        parcel.writeString(mAuthor);
+        parcel.writeString(mDescription);
         parcel.writeString(mContentDescription);
         parcel.writeParcelable(mConfigPreviewUri, flags);
         parcel.writeParcelable(mCleanPreviewUri, flags);
@@ -214,6 +225,18 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
     }
 
     @Override
+    public List<String> getAttributions(Context context) {
+        PackageManager packageManager = context.getPackageManager();
+        CharSequence labelCharSeq = mInfo.loadLabel(packageManager);
+        List<String> attributions = new ArrayList<>();
+        attributions.add(labelCharSeq == null ? null : labelCharSeq.toString());
+        attributions.add(mAuthor == null ? "" : mAuthor);
+        attributions.add(mDescription == null ? "" : mDescription);
+
+        return attributions;
+    }
+
+    @Override
     public String getContentDescription(Context context) {
         return mContentDescription;
     }
@@ -253,12 +276,13 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
      * Returns true if this wallpaper can be deleted.
      */
     public boolean canBeDeleted() {
-        return !TextUtils.isEmpty(mDeleteUri.toString());
+        return mDeleteUri != null && !TextUtils.isEmpty(mDeleteUri.toString());
     }
 
     @Override
-    public boolean isApplied(WallpaperInfo currentWallpaper) {
-        return super.isApplied(currentWallpaper) && mIsCurrent;
+    public boolean isApplied(@Nullable WallpaperInfo currentHomeWallpaper,
+            @Nullable WallpaperInfo currentLockWallpaper) {
+        return super.isApplied(currentHomeWallpaper, currentLockWallpaper) && mIsCurrent;
     }
 
     /**
@@ -385,10 +409,20 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
      * @return an object of type CreativeWallpaperInfo
      */
     @NonNull
-    public static CreativeWallpaperInfo buildFromCursor(
-            android.app.WallpaperInfo wallpaperInfo, Cursor cursor) {
+    public static CreativeWallpaperInfo buildFromCursor(WallpaperInfo wallpaperInfo,
+            Cursor cursor) {
         String wallpaperTitle = cursor.getString(
                 cursor.getColumnIndex(WallpaperInfoContract.WALLPAPER_TITLE));
+        String wallpaperAuthor = null;
+        if (cursor.getColumnIndex(WallpaperInfoContract.WALLPAPER_AUTHOR) >= 0) {
+            wallpaperAuthor = cursor.getString(
+                    cursor.getColumnIndex(WallpaperInfoContract.WALLPAPER_AUTHOR));
+        }
+        String wallpaperDescription = null;
+        if (cursor.getColumnIndex(WallpaperInfoContract.WALLPAPER_DESCRIPTION) >= 0) {
+            wallpaperDescription = cursor.getString(
+                    cursor.getColumnIndex(WallpaperInfoContract.WALLPAPER_DESCRIPTION));
+        }
         String wallpaperContentDescription = null;
         int wallpaperContentDescriptionIndex = cursor.getColumnIndex(
                 WallpaperInfoContract.WALLPAPER_CONTENT_DESCRIPTION);
@@ -411,10 +445,10 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
         int isCurrentApplied = cursor.getInt(
                 cursor.getColumnIndex(WallpaperInfoContract.WALLPAPER_IS_APPLIED));
 
-        return new CreativeWallpaperInfo(
-                wallpaperInfo, wallpaperTitle, wallpaperContentDescription,
-                configPreviewUri, cleanPreviewUri, deleteUri, thumbnailUri, shareUri,
-                groupName, /* isCurrent= */(isCurrentApplied == 1));
+        return new CreativeWallpaperInfo(wallpaperInfo, wallpaperTitle, wallpaperAuthor,
+                wallpaperDescription, wallpaperContentDescription, configPreviewUri,
+                cleanPreviewUri, deleteUri, thumbnailUri, shareUri, groupName, /* isCurrent= */
+                (isCurrentApplied == 1));
     }
 
     /**
@@ -438,5 +472,49 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
         }
         return CreativeCategory.saveCreativeCategoryWallpaper(
                 context, this, saveWallpaperUri, destination);
+    }
+
+    public Uri getConfigPreviewUri() {
+        return mConfigPreviewUri;
+    }
+
+    public Uri getCleanPreviewUri() {
+        return mCleanPreviewUri;
+    }
+
+    public Uri getDeleteUri() {
+        return mDeleteUri;
+    }
+
+    public Uri getThumbnailUri() {
+        return mThumbnailUri;
+    }
+
+    public Uri getShareUri() {
+        return mShareUri;
+    }
+
+    public String getTitle() {
+        return mTitle;
+    }
+
+    public String getAuthor() {
+        return mAuthor;
+    }
+
+    public String getDescription() {
+        return mDescription;
+    }
+
+    public String getContentDescription() {
+        return mContentDescription;
+    }
+
+    public boolean isCurrent() {
+        return mIsCurrent;
+    }
+
+    public String getGroupName() {
+        return mGroupName;
     }
 }

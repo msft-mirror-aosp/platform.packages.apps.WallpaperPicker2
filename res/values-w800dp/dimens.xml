@@ -32,7 +32,7 @@
     <dimen name="category_grid_padding_top">48dp</dimen>
 
     <!-- Dimensions for IndividualPickerFragment. -->
-    <dimen name="wallpaper_grid_edge_space">127dp</dimen>
+    <dimen name="wallpaper_grid_edge_space">54dp</dimen>
     <dimen name="grid_item_featured_individual_padding_horizontal">12dp</dimen>
     <dimen name="grid_item_individual_padding_horizontal">8dp</dimen>
     <dimen name="grid_item_individual_padding_bottom">16dp</dimen>
@@ -69,4 +69,13 @@
     display.
     -->
     <dimen name="screen_preview_width">600dp</dimen>
+
+    <!-- Dimensions for wallpaper effects dialog -->
+    <dimen name="set_wallpaper_dialog_handheld_width">900dp</dimen>
+    <dimen name="set_wallpaper_dialog_handheld_content_width">840dp</dimen>
+    <dimen name="set_wallpaper_dialog_handheld_preview_width">416dp</dimen>
+    <dimen name="set_wallpaper_dialog_handheld_preview_height">260dp</dimen>
+    <dimen name="set_wallpaper_dialog_foldable_width">410dp</dimen>
+    <dimen name="set_wallpaper_dialog_foldable_content_width">370dp</dimen>
+    <dimen name="set_wallpaper_dialog_foldable_preview_width">300dp</dimen>
 </resources>
