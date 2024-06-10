@@ -41,6 +41,7 @@ import com.android.wallpaper.picker.preview.ui.binder.PreviewActionsBinder
 import com.android.wallpaper.picker.preview.ui.binder.PreviewSelectorBinder
 import com.android.wallpaper.picker.preview.ui.binder.SetWallpaperButtonBinder
 import com.android.wallpaper.picker.preview.ui.binder.SetWallpaperProgressDialogBinder
+import com.android.wallpaper.picker.preview.ui.util.AnimationUtil
 import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
 import com.android.wallpaper.picker.preview.ui.view.DualPreviewViewPager
 import com.android.wallpaper.picker.preview.ui.view.PreviewActionGroup
@@ -69,6 +70,21 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
     private lateinit var shareActivityResult: ActivityResultLauncher<Intent>
 
     private val wallpaperPreviewViewModel by activityViewModels<WallpaperPreviewViewModel>()
+
+    /**
+     * True if the view of this fragment is destroyed from the current or previous lifecycle.
+     *
+     * Null if it's the first life cycle, and false if the view has not been destroyed.
+     *
+     * Read-only during the first half of the lifecycle (when starting a fragment).
+     */
+    private var isViewDestroyed: Boolean? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        exitTransition = AnimationUtil.getFastFadeOutTransition()
+        reenterTransition = AnimationUtil.getFastFadeInTransition()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -132,6 +148,31 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
     override fun onViewStateRestored(savedInstanceState: Bundle?) {
         super.onViewStateRestored(savedInstanceState)
         bindScreenPreview(currentView, isFirstBinding = savedInstanceState == null)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Reinitialize the preview tab motion. If navigating up back to this fragment happened
+        // before the transition finished, the lifecycle begins at onStart without recreating the
+        // preview tabs,
+        isViewDestroyed?.let {
+            if (!it) {
+                currentView
+                    .requireViewById<PreviewTabs>(preview_tabs_container)
+                    .resetTransition(wallpaperPreviewViewModel.getSmallPreviewTabIndex())
+            }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // onStop won't destroy view
+        isViewDestroyed = false
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        isViewDestroyed = true
     }
 
     override fun getDefaultTitle(): CharSequence {
