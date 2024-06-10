@@ -18,12 +18,12 @@ package com.android.wallpaper.picker.preview.ui.viewmodel
 import android.graphics.Point
 import android.graphics.Rect
 import android.stats.style.StyleEnums
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
-import com.android.wallpaper.model.wallpaper.PreviewPagerPage
-import com.android.wallpaper.module.CustomizationSections
-import com.android.wallpaper.module.CustomizationSections.Screen
+import com.android.wallpaper.picker.BasePreviewActivity.EXTRA_VIEW_AS_HOME
 import com.android.wallpaper.picker.customization.shared.model.WallpaperColorsModel
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.data.WallpaperModel
@@ -68,6 +68,7 @@ constructor(
     private val displayUtils: DisplayUtils,
     @HomeScreenPreviewUtils private val homePreviewUtils: PreviewUtils,
     @LockScreenPreviewUtils private val lockPreviewUtils: PreviewUtils,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     // Don't update smaller display since we always use portrait, always use wallpaper display on
@@ -82,8 +83,7 @@ constructor(
 
     var isNewTask = false
 
-    // The source of current wallpaper preview, from HS or LS wallpaper.
-    var isViewAsHome = false
+    val isViewAsHome = savedStateHandle.get<Boolean>(EXTRA_VIEW_AS_HOME) ?: false
 
     fun getWallpaperPreviewSource(): Screen =
         if (isViewAsHome) Screen.HOME_SCREEN else Screen.LOCK_SCREEN
@@ -97,7 +97,7 @@ constructor(
     // On orientation change, the fragment's onCreateView will be called again.
     var isCurrentlyEditingCreativeWallpaper = false
 
-    val smallPreviewTabs = PreviewPagerPage.entries.map { it.screen }
+    val smallPreviewTabs = Screen.entries.toList()
 
     private val _smallPreviewSelectedTab = MutableStateFlow(getWallpaperPreviewSource())
     val smallPreviewSelectedTab = _smallPreviewSelectedTab.asStateFlow()
@@ -176,6 +176,7 @@ constructor(
 
     private val _isWallpaperColorPreviewEnabled = MutableStateFlow(false)
     val isWallpaperColorPreviewEnabled = _isWallpaperColorPreviewEnabled.asStateFlow()
+
     fun setIsWallpaperColorPreviewEnabled(isWallpaperColorPreviewEnabled: Boolean) {
         _isWallpaperColorPreviewEnabled.value = isWallpaperColorPreviewEnabled
     }
@@ -355,7 +356,7 @@ constructor(
         }
 
     private fun Set<Screen>.getDestination(): WallpaperDestination {
-        return if (containsAll(CustomizationSections.Screen.entries)) {
+        return if (containsAll(Screen.entries)) {
             WallpaperDestination.BOTH
         } else if (contains(Screen.HOME_SCREEN)) {
             WallpaperDestination.HOME
@@ -418,10 +419,26 @@ constructor(
     fun onSmallPreviewClicked(
         screen: Screen,
         deviceDisplayType: DeviceDisplayType,
-    ) {
-        smallTooltipViewModel.dismissTooltip()
-        _fullPreviewConfigViewModel.value = FullPreviewConfigViewModel(screen, deviceDisplayType)
-    }
+        navigate: () -> Unit,
+    ): Flow<(() -> Unit)?> =
+        combine(isSmallPreviewClickable, smallPreviewSelectedTab) { isClickable, selectedTab ->
+            if (isClickable) {
+                if (selectedTab == screen) {
+                    // If the selected preview matches the selected tab, navigate to full preview.
+                    {
+                        smallTooltipViewModel.dismissTooltip()
+                        _fullPreviewConfigViewModel.value =
+                            FullPreviewConfigViewModel(screen, deviceDisplayType)
+                        navigate()
+                    }
+                } else {
+                    // If the selected preview doesn't match the selected tab, switch tab to match.
+                    { setSmallPreviewSelectedTab(screen) }
+                }
+            } else {
+                null
+            }
+        }
 
     fun setDefaultFullPreviewConfigViewModel(
         deviceDisplayType: DeviceDisplayType,
