@@ -23,7 +23,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContract
-import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.activityViewModels
@@ -42,6 +41,7 @@ import com.android.wallpaper.picker.preview.ui.binder.PreviewActionsBinder
 import com.android.wallpaper.picker.preview.ui.binder.PreviewSelectorBinder
 import com.android.wallpaper.picker.preview.ui.binder.SetWallpaperButtonBinder
 import com.android.wallpaper.picker.preview.ui.binder.SetWallpaperProgressDialogBinder
+import com.android.wallpaper.picker.preview.ui.util.AnimationUtil
 import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
 import com.android.wallpaper.picker.preview.ui.view.DualPreviewViewPager
 import com.android.wallpaper.picker.preview.ui.view.PreviewActionGroup
@@ -70,6 +70,21 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
     private lateinit var shareActivityResult: ActivityResultLauncher<Intent>
 
     private val wallpaperPreviewViewModel by activityViewModels<WallpaperPreviewViewModel>()
+
+    /**
+     * True if the view of this fragment is destroyed from the current or previous lifecycle.
+     *
+     * Null if it's the first life cycle, and false if the view has not been destroyed.
+     *
+     * Read-only during the first half of the lifecycle (when starting a fragment).
+     */
+    private var isViewDestroyed: Boolean? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        exitTransition = AnimationUtil.getFastFadeOutTransition()
+        reenterTransition = AnimationUtil.getFastFadeInTransition()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -135,6 +150,31 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
         bindScreenPreview(currentView, isFirstBinding = savedInstanceState == null)
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Reinitialize the preview tab motion. If navigating up back to this fragment happened
+        // before the transition finished, the lifecycle begins at onStart without recreating the
+        // preview tabs,
+        isViewDestroyed?.let {
+            if (!it) {
+                currentView
+                    .requireViewById<PreviewTabs>(preview_tabs_container)
+                    .resetTransition(wallpaperPreviewViewModel.getSmallPreviewTabIndex())
+            }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // onStop won't destroy view
+        isViewDestroyed = false
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        isViewDestroyed = true
+    }
+
     override fun getDefaultTitle(): CharSequence {
         return getString(R.string.preview)
     }
@@ -161,7 +201,6 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                 wallpaperPreviewViewModel.fullPreviewConfigViewModel.value,
                 isFirstBinding,
             ) { sharedElement ->
-                wallpaperPreviewViewModel.isViewAsHome = dualPreviewView.currentItem == 1
                 val extras =
                     FragmentNavigatorExtras(sharedElement to FULL_PREVIEW_SHARED_ELEMENT_ID)
                 // Set to false on small-to-full preview transition to remove surfaceView jank.
@@ -187,9 +226,6 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                 wallpaperPreviewViewModel.fullPreviewConfigViewModel.value,
                 isFirstBinding,
             ) { sharedElement ->
-                wallpaperPreviewViewModel.isViewAsHome =
-                    tabs.requireViewById<MotionLayout>(R.id.preview_tabs).currentState ==
-                        R.id.secondary_tab_selected
                 val extras =
                     FragmentNavigatorExtras(sharedElement to FULL_PREVIEW_SHARED_ELEMENT_ID)
                 // Set to false on small-to-full preview transition to remove surfaceView jank.

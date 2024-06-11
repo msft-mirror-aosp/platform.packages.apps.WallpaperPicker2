@@ -24,16 +24,18 @@ import com.android.wallpaper.module.logging.TestUserEventLogger
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.modules.WallpaperPicker2AppModule
 import com.android.wallpaper.network.Requester
+import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
+import com.android.wallpaper.picker.customization.ui.binder.DefaultCustomizationOptionsBinder
 import com.android.wallpaper.picker.di.modules.EffectsModule
 import com.android.wallpaper.picker.preview.data.util.FakeLiveWallpaperDownloader
 import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
 import com.android.wallpaper.picker.preview.ui.util.DefaultImageEffectDialogUtil
 import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
 import com.android.wallpaper.testing.FakeDefaultRequester
+import com.android.wallpaper.testing.FakeDefaultWallpaperModelFactory
 import com.android.wallpaper.testing.TestInjector
 import com.android.wallpaper.testing.TestPartnerProvider
 import com.android.wallpaper.testing.TestWallpaperPreferences
-import com.android.wallpaper.util.converter.DefaultWallpaperModelFactory
 import com.android.wallpaper.util.converter.WallpaperModelFactory
 import dagger.Binds
 import dagger.Module
@@ -55,13 +57,13 @@ abstract class WallpaperPicker2TestModule {
 
     @Binds
     @Singleton
-    abstract fun bindWallpaperPreferences(impl: TestWallpaperPreferences): WallpaperPreferences
+    abstract fun bindWallpaperModelFactory(
+        impl: FakeDefaultWallpaperModelFactory
+    ): WallpaperModelFactory
 
     @Binds
     @Singleton
-    abstract fun bindWallpaperModelFactory(
-        impl: DefaultWallpaperModelFactory
-    ): WallpaperModelFactory
+    abstract fun bindWallpaperPreferences(impl: TestWallpaperPreferences): WallpaperPreferences
 
     @Binds
     @Singleton
@@ -82,4 +84,10 @@ abstract class WallpaperPicker2TestModule {
     @Binds
     @Singleton
     abstract fun bindEffectsController(impl: FakeEffectsController): EffectsController
+
+    @Binds
+    @Singleton
+    abstract fun bindCustomizationOptionsBinder(
+        impl: DefaultCustomizationOptionsBinder
+    ): CustomizationOptionsBinder
 }
