@@ -22,7 +22,9 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:gravity="center_horizontal"
-    android:padding="24dp">
+    android:padding="24dp"
+    android:clipChildren="false"
+    android:clipToPadding="false">
 
     <ImageView
         android:id="@+id/icon"
@@ -38,7 +40,7 @@
         android:layout_marginTop="16dp"
         android:textAppearance="@android:style/TextAppearance.DeviceDefault.Headline"
         android:textColor="@color/system_on_surface"
-        android:maxLines="1"
+        android:maxLines="2"
         android:ellipsize="end" />
 
     <TextView
@@ -65,6 +67,7 @@
         android:gravity="center_vertical|end"
         android:layout_marginTop="32dp"
         android:divider="@drawable/horizontal_divider_10dp"
-        android:showDividers="middle" />
-
+        android:showDividers="middle"
+        android:clipToPadding="false"
+        android:clipChildren="false" />
 </LinearLayout>
