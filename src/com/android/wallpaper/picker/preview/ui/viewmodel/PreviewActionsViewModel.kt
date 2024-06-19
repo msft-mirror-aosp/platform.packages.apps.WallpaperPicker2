@@ -266,23 +266,22 @@ constructor(
         MutableStateFlow(null)
     val imageEffectConfirmExitDialogViewModel = _imageEffectConfirmExitDialogViewModel.asStateFlow()
     val handleOnBackPressed: Flow<(() -> Boolean)?> =
-        combine(imageEffectFloatingSheetViewModel, interactor.imageEffect, isDownloading) {
-            viewModel,
-            effect,
-            isDownloading ->
+        combine(imageEffectFloatingSheetViewModel, interactor.imageEffect, isDownloading) { viewModel, effect, isDownloading ->
             when {
                 viewModel?.status == DOWNLOADING -> { ->
-                        _imageEffectConfirmExitDialogViewModel.value =
-                            ImageEffectDialogViewModel(
-                                onDismiss = { _imageEffectConfirmExitDialogViewModel.value = null },
-                                onContinue = {
-                                    // Continue to exit the screen. We should stop downloading.
-                                    effect?.let { interactor.interruptEffectsModelDownload(it) }
-                                },
-                            )
-                        true
-                    }
-                isDownloading -> { -> interactor.cancelDownloadWallpaper() }
+                    _imageEffectConfirmExitDialogViewModel.value =
+                        ImageEffectDialogViewModel(
+                            onDismiss = { _imageEffectConfirmExitDialogViewModel.value = null },
+                            onContinue = {
+                                // Continue to exit the screen. We should stop downloading.
+                                effect?.let { interactor.interruptEffectsModelDownload(it) }
+                            },
+                        )
+                    true
+                }
+                isDownloading -> { ->
+                    interactor.cancelDownloadWallpaper()
+                }
                 else -> null
             }
         }
@@ -419,11 +418,8 @@ constructor(
 
     /** [SHARE] */
     val shareIntent: Flow<Intent?> =
-        interactor.wallpaperModel.map { model ->
-            (model as? LiveWallpaperModel)?.creativeWallpaperData?.let { data ->
-                if (data.shareUri == null || data.shareUri == Uri.EMPTY) null
-                else data.getShareIntent()
-            }
+        interactor.wallpaperModel.map {
+            (it as? LiveWallpaperModel)?.creativeWallpaperData?.getShareIntent()
         }
     val isShareVisible: Flow<Boolean> = shareIntent.map { it != null }
 
