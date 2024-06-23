@@ -8,6 +8,7 @@ android_app {
     defaults: ["WallpaperPicker2_defaults"],
     platform_apis: true,
     static_libs: [
+        "WallpaperPicker2ApplicationLib",
         "WallpaperPicker2TestLib",
     ],
 }
@@ -38,4 +39,6 @@ android_robolectric_test {
     upstream: true,
 
     instrumentation_for: "WallpaperPicker2Shell",
+
+    strict_mode: false,
 }
