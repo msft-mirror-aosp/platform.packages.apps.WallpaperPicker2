@@ -17,20 +17,35 @@
 package com.android.wallpaper.picker.customization.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.android.wallpaper.model.Screen
+import com.android.wallpaper.model.Screen.LOCK_SCREEN
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 
 @HiltViewModel
 class CustomizationPickerViewModel2
 @Inject
 constructor(
-    val customizationOptionsViewModel: CustomizationOptionsViewModel,
+    customizationOptionsViewModelFactory: CustomizationOptionsViewModelFactory,
 ) : ViewModel() {
+
+    val customizationOptionsViewModel =
+        customizationOptionsViewModelFactory.create(viewModelScope = viewModelScope)
 
     enum class PickerScreen {
         MAIN,
         CUSTOMIZATION_OPTION,
+    }
+
+    private val _selectedPreviewScreen = MutableStateFlow(LOCK_SCREEN)
+    val selectedPreviewScreen = _selectedPreviewScreen.asStateFlow()
+
+    fun selectPreviewScreen(screen: Screen) {
+        _selectedPreviewScreen.value = screen
     }
 
     val screen =
