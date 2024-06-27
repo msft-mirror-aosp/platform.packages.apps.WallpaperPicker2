@@ -19,6 +19,8 @@ package com.android.wallpaper.picker.customization.ui.util
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.LinearLayout
+import com.android.wallpaper.model.Screen
 
 /** This util creates the views for customization options. */
 interface CustomizationOptionUtil {
@@ -26,13 +28,14 @@ interface CustomizationOptionUtil {
     // Enum for customization options
     interface CustomizationOption
 
-    fun initBottomSheetContent(bottomSheetContainer: FrameLayout, layoutInflater: LayoutInflater)
+    fun getOptionEntries(
+        screen: Screen,
+        optionContainer: LinearLayout,
+        layoutInflater: LayoutInflater,
+    ): List<Pair<CustomizationOption, View>>
 
-    fun getBottomSheetContent(option: CustomizationOption): View?
-
-    /**
-     * This function should be called when on destroy. The implementation should release any view
-     * references.
-     */
-    fun onDestroy()
+    fun initBottomSheetContent(
+        bottomSheetContainer: FrameLayout,
+        layoutInflater: LayoutInflater
+    ): Map<CustomizationOption, View>
 }

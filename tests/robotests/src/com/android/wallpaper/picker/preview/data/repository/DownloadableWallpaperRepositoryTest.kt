@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 The Android Open Source Project
+ * Copyright (C) 2023 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.picker.preview.domain.interactor
+package com.android.wallpaper.picker.preview.data.repository
 
 import android.app.WallpaperInfo
 import android.content.Context
@@ -22,15 +22,10 @@ import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.content.pm.ServiceInfo
 import com.android.wallpaper.picker.data.WallpaperModel
-import com.android.wallpaper.picker.preview.data.repository.CreativeEffectsRepository
-import com.android.wallpaper.picker.preview.data.repository.DownloadableWallpaperRepository
-import com.android.wallpaper.picker.preview.data.repository.WallpaperPreviewRepository
 import com.android.wallpaper.picker.preview.shared.model.DownloadStatus
 import com.android.wallpaper.picker.preview.shared.model.DownloadableWallpaperModel
-import com.android.wallpaper.testing.FakeImageEffectsRepository
 import com.android.wallpaper.testing.FakeLiveWallpaperDownloader
 import com.android.wallpaper.testing.ShadowWallpaperInfo
-import com.android.wallpaper.testing.TestWallpaperPreferences
 import com.android.wallpaper.testing.WallpaperModelUtils
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
@@ -38,11 +33,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import javax.inject.Inject
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -50,50 +41,35 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
+/**
+ * Tests for {@link WallpaperPreviewRepository}.
+ *
+ * WallpaperPreviewRepository cannot be injected in setUp() because it is annotated with scope
+ * ActivityRetainedScoped. We make an instance available via TestActivity, which can inject the SUT
+ * and expose it for testing.
+ */
 @HiltAndroidTest
-@OptIn(ExperimentalCoroutinesApi::class)
-@RunWith(RobolectricTestRunner::class)
 @Config(shadows = [ShadowWallpaperInfo::class])
-class PreviewActionsInteractorTest {
+@RunWith(RobolectricTestRunner::class)
+class DownloadableWallpaperRepositoryTest {
 
     @get:Rule var hiltRule = HiltAndroidRule(this)
 
     private lateinit var resultWallpaper: WallpaperModel.LiveWallpaperModel
-    private lateinit var wallpaperPreviewRepository: WallpaperPreviewRepository
-    private lateinit var creativeEffectsRepository: CreativeEffectsRepository
-    private lateinit var downloadableWallpaperRepository: DownloadableWallpaperRepository
-    private lateinit var underTest: PreviewActionsInteractor
+    private lateinit var underTest: DownloadableWallpaperRepository
 
-    @Inject lateinit var testDispatcher: TestDispatcher
     @Inject @ApplicationContext lateinit var appContext: Context
     @Inject lateinit var liveWallpaperDownloader: FakeLiveWallpaperDownloader
-    @Inject lateinit var wallpaperPreferences: TestWallpaperPreferences
-    @Inject lateinit var imageEffectsRepository: FakeImageEffectsRepository
 
     @Before
     fun setUp() {
         hiltRule.inject()
 
-        Dispatchers.setMain(testDispatcher)
-
         resultWallpaper = getTestLiveWallpaperModel()
-
-        wallpaperPreviewRepository = WallpaperPreviewRepository(wallpaperPreferences)
-        downloadableWallpaperRepository = DownloadableWallpaperRepository(liveWallpaperDownloader)
-        creativeEffectsRepository = CreativeEffectsRepository(appContext, testDispatcher)
         underTest =
-            PreviewActionsInteractor(
-                wallpaperPreviewRepository,
-                imageEffectsRepository,
-                creativeEffectsRepository,
-                downloadableWallpaperRepository,
-            )
+            DownloadableWallpaperRepository(liveWallpaperDownloader = liveWallpaperDownloader)
     }
 
-    /**
-     * Proceeds through all stages of a successful download, from
-     * [DownloadStatus.DOWNLOAD_NOT_AVAILABLE] to [DownloadStatus.DOWNLOADED]
-     */
     @Test
     fun downloadableWallpaperModel_downloadSuccess() = runTest {
         val downloadableWallpaperModel = collectLastValue(underTest.downloadableWallpaperModel)
@@ -106,7 +82,7 @@ class PreviewActionsInteractorTest {
         assertThat(downloadableWallpaperModel())
             .isEqualTo(DownloadableWallpaperModel(DownloadStatus.READY_TO_DOWNLOAD, null))
 
-        underTest.downloadWallpaper()
+        underTest.downloadWallpaper {}
 
         assertThat(downloadableWallpaperModel())
             .isEqualTo(DownloadableWallpaperModel(DownloadStatus.DOWNLOADING, null))
@@ -118,24 +94,11 @@ class PreviewActionsInteractorTest {
     }
 
     @Test
-    fun wallpaperModel_shouldUpdateWhenDownloadSuccess() = runTest {
-        val wallpaperModel = collectLastValue(wallpaperPreviewRepository.wallpaperModel)
-
-        assertThat(wallpaperModel()).isNull()
-
-        liveWallpaperDownloader.initiateDownloadableServiceByPass()
-        underTest.downloadWallpaper()
-        liveWallpaperDownloader.proceedToDownloadSuccess(resultWallpaper)
-
-        assertThat(wallpaperModel()).isEqualTo(resultWallpaper)
-    }
-
-    @Test
     fun downloadableWallpaperModel_downloadFailed() = runTest {
         val downloadableWallpaperModel = collectLastValue(underTest.downloadableWallpaperModel)
 
         liveWallpaperDownloader.initiateDownloadableServiceByPass()
-        underTest.downloadWallpaper()
+        underTest.downloadWallpaper {}
         liveWallpaperDownloader.proceedToDownloadFailed()
 
         assertThat(downloadableWallpaperModel())
@@ -147,7 +110,7 @@ class PreviewActionsInteractorTest {
         val downloadableWallpaperModel = collectLastValue(underTest.downloadableWallpaperModel)
 
         liveWallpaperDownloader.initiateDownloadableServiceByPass()
-        underTest.downloadWallpaper()
+        underTest.downloadWallpaper {}
         underTest.cancelDownloadWallpaper()
 
         assertThat(liveWallpaperDownloader.isCancelDownloadWallpaperCalled).isTrue()

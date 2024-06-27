@@ -13,17 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.wallpaper.picker.preview.ui.viewmodel
 
-import com.android.wallpaper.model.Screen
-import com.android.wallpaper.model.wallpaper.DeviceDisplayType
+package com.android.wallpaper.picker.preview.shared.model
 
-/** Configuration for a full preview, used by both wallpaper and workspace. */
-data class FullPreviewConfigViewModel(
+import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
 
-    /** The [Screen] the preview is rendering. */
-    val screen: Screen,
-
-    /** Is it a folded or unfolded display. Null for handheld. */
-    val deviceDisplayType: DeviceDisplayType,
+/**
+ * Data class representing the status and the wallpaper from downloading a downloadable wallpaper.
+ */
+data class DownloadableWallpaperModel(
+    val status: DownloadStatus,
+    val wallpaperModel: LiveWallpaperModel?,
 )
+
+enum class DownloadStatus {
+    DOWNLOAD_NOT_AVAILABLE,
+    READY_TO_DOWNLOAD,
+    DOWNLOADING,
+    DOWNLOADED,
+}
