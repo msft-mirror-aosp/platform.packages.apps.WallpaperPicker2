@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,20 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.picker.preview.shared.model
+package com.android.wallpaper.model
 
-import com.android.wallpaper.picker.data.WallpaperModel
+import android.app.WallpaperManager
 
-data class LiveWallpaperDownloadResultModel(
-    val code: LiveWallpaperDownloadResultCode,
-    val wallpaperModel: WallpaperModel.LiveWallpaperModel?
-)
+/** Screens for customization. */
+enum class Screen {
+    LOCK_SCREEN,
+    HOME_SCREEN;
 
-enum class LiveWallpaperDownloadResultCode {
-    SUCCESS,
-    FAIL,
+    /** Map the Screen enum to the flag used for setting wallpapers. */
+    fun toFlag(): Int {
+        return when (this) {
+            HOME_SCREEN -> WallpaperManager.FLAG_SYSTEM
+            LOCK_SCREEN -> WallpaperManager.FLAG_LOCK
+        }
+    }
 }

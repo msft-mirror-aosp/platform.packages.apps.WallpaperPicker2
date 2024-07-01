@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
+
      Copyright (C) 2020 The Android Open Source Project
 
      Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,20 +15,16 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content">
-
-    <ImageView
-        android:id="@+id/low_res_image"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:background="?android:colorBackground"
-        android:visibility="invisible"/>
-
-    <com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
-        android:id="@+id/full_res_image"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-</FrameLayout>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="@color/ripple_material">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/color_surface"/>
+            <corners
+                android:topLeftRadius="@dimen/customization_option_entry_corner_radius_small"
+                android:topRightRadius="@dimen/customization_option_entry_corner_radius_small"
+                android:bottomLeftRadius="@dimen/customization_option_entry_corner_radius_large"
+                android:bottomRightRadius="@dimen/customization_option_entry_corner_radius_large" />
+        </shape>
+    </item>
+</ripple>
