@@ -24,8 +24,8 @@ import com.android.wallpaper.module.WallpaperPicker2Injector
 import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.module.logging.NoOpUserEventLogger
 import com.android.wallpaper.module.logging.UserEventLogger
-import com.android.wallpaper.picker.preview.data.util.DefaultLiveWallpaperDownloader
-import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
+import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
+import com.android.wallpaper.picker.customization.ui.binder.DefaultCustomizationOptionsBinder
 import com.android.wallpaper.picker.preview.ui.util.DefaultImageEffectDialogUtil
 import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
 import com.android.wallpaper.util.converter.DefaultWallpaperModelFactory
@@ -51,12 +51,6 @@ abstract class WallpaperPicker2AppModule {
 
     @Binds
     @Singleton
-    abstract fun bindLiveWallpaperDownloader(
-        impl: DefaultLiveWallpaperDownloader
-    ): LiveWallpaperDownloader
-
-    @Binds
-    @Singleton
     abstract fun bindPartnerProvider(impl: DefaultPartnerProvider): PartnerProvider
 
     @Binds
@@ -64,6 +58,12 @@ abstract class WallpaperPicker2AppModule {
     abstract fun bindEffectsWallpaperDialogUtil(
         impl: DefaultImageEffectDialogUtil
     ): ImageEffectDialogUtil
+
+    @Binds
+    @Singleton
+    abstract fun bindCustomizationOptionsBinder(
+        impl: DefaultCustomizationOptionsBinder
+    ): CustomizationOptionsBinder
 
     companion object {
         @Provides

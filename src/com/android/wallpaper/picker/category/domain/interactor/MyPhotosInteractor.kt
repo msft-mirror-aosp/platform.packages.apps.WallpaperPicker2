@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.picker.preview.shared.model
+package com.android.wallpaper.picker.category.domain.interactor
 
-import com.android.wallpaper.picker.data.WallpaperModel
+import com.android.wallpaper.picker.data.category.CategoryModel
+import kotlinx.coroutines.flow.Flow
 
-data class LiveWallpaperDownloadResultModel(
-    val code: LiveWallpaperDownloadResultCode,
-    val wallpaperModel: WallpaperModel.LiveWallpaperModel?
-)
-
-enum class LiveWallpaperDownloadResultCode {
-    SUCCESS,
-    FAIL,
+/**
+ * Classes that implement this interface implement the business logic in assembling my photos
+ * category model
+ */
+interface MyPhotosInteractor {
+    val category: Flow<CategoryModel>
 }
