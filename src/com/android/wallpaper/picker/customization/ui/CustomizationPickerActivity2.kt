@@ -19,6 +19,7 @@ package com.android.wallpaper.picker.customization.ui
 import android.graphics.Color
 import android.graphics.Point
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -30,7 +31,9 @@ import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.constraintlayout.motion.widget.MotionLayout.TransitionListener
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.Guideline
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnLayout
 import androidx.core.view.doOnPreDraw
 import androidx.recyclerview.widget.RecyclerView
@@ -49,7 +52,6 @@ import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUti
 import com.android.wallpaper.picker.customization.ui.view.adapter.PreviewPagerAdapter
 import com.android.wallpaper.picker.customization.ui.view.transformer.PreviewPagerPageTransformer
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
-import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.data.repository.WallpaperPreviewRepository
@@ -75,6 +77,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
     @Inject @MainDispatcher lateinit var mainScope: CoroutineScope
 
     private var fullyCollapsed = false
+    private var navBarHeight: Int = 0
 
     private val customizationPickerViewModel: CustomizationPickerViewModel2 by viewModels()
     private var customizationOptionFloatingSheetMap: Map<CustomizationOption, View>? = null
@@ -105,6 +108,11 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         setupToolbar(requireViewById(R.id.toolbar_container))
 
         val rootView = requireViewById<MotionLayout>(R.id.picker_motion_layout)
+        ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            navBarHeight = insets.bottom
+            WindowInsetsCompat.CONSUMED
+        }
 
         customizationOptionFloatingSheetMap =
             customizationOptionUtil.initFloatingSheet(
@@ -136,13 +144,8 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         val optionContainer = requireViewById<MotionLayout>(R.id.customization_option_container)
         // The collapsed header height should be updated when option container's height is known
         optionContainer.doOnPreDraw {
+            Log.d("mmpud", "doOnPreDraw navBarHeight $navBarHeight")
             // The bottom navigation bar height
-            val navBarHeight =
-                resources.getIdentifier("navigation_bar_height", "dimen", "android").let {
-                    if (it > 0) {
-                        resources.getDimensionPixelSize(it)
-                    } else 0
-                }
             val collapsedHeaderHeight = rootView.height - optionContainer.height - navBarHeight
             if (
                 collapsedHeaderHeight >
@@ -291,7 +294,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         floatingSheetContainer.addView(view)
 
         view.doOnPreDraw {
-            val height = view.height
+            val height = view.height + navBarHeight
             guideline.setGuidelineEnd(height)
             floatingSheetContainer.translationY = 0.0f
             floatingSheetContainer.alpha = 0.0f
@@ -316,7 +319,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
                 setGuidelineEnd(R.id.preview_guideline_in_secondary_screen, height)
                 setTranslationY(
                     R.id.customization_option_floating_sheet_container,
-                    -height.toFloat()
+                    -height.toFloat(),
                 )
                 setAlpha(R.id.customization_option_floating_sheet_container, 1.0f)
                 constrainHeight(
@@ -335,42 +338,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         // TODO(b/328302105): MainScope ensures the job gets done non-blocking even if the
         //   activity has been destroyed already. Consider making this part of
         //   WallpaperConnectionUtils.
-        val previewViewModel = customizationPickerViewModel.basePreviewViewModel
-        val wallpapers = previewViewModel.wallpapers.value
-        // Keep a copy of current previewViewModel.wallpaperDisplaySize as what we want to
-        // disconnect. There's a chance mainScope executes the job not until new activity
-        // is created and the wallpaperDisplaySize is updated to a new one, e.g. when
-        // orientation changed.
-        // TODO(b/328302105): maintain this state in WallpaperConnectionUtils.
-        val currentWallpaperDisplay = previewViewModel.wallpaperDisplaySize.value
-        (wallpapers?.homeWallpaper as? WallpaperModel.LiveWallpaperModel)?.let {
-            mainScope.launch {
-                WallpaperConnectionUtils.disconnect(
-                    applicationContext,
-                    it,
-                    previewViewModel.smallerDisplaySize
-                )
-                WallpaperConnectionUtils.disconnect(
-                    applicationContext,
-                    it,
-                    currentWallpaperDisplay,
-                )
-            }
-        }
-        (wallpapers?.lockWallpaper as? WallpaperModel.LiveWallpaperModel)?.let {
-            mainScope.launch {
-                WallpaperConnectionUtils.disconnect(
-                    applicationContext,
-                    it,
-                    previewViewModel.smallerDisplaySize
-                )
-                WallpaperConnectionUtils.disconnect(
-                    applicationContext,
-                    it,
-                    currentWallpaperDisplay,
-                )
-            }
-        }
+        mainScope.launch { WallpaperConnectionUtils.disconnectAll(applicationContext) }
 
         super.onDestroy()
     }
