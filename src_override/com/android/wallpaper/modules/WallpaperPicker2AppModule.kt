@@ -15,7 +15,6 @@
  */
 package com.android.wallpaper.modules
 
-import android.content.Context
 import com.android.wallpaper.module.DefaultPartnerProvider
 import com.android.wallpaper.module.DefaultWallpaperPreferences
 import com.android.wallpaper.module.Injector
@@ -24,6 +23,8 @@ import com.android.wallpaper.module.WallpaperPicker2Injector
 import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.module.logging.NoOpUserEventLogger
 import com.android.wallpaper.module.logging.UserEventLogger
+import com.android.wallpaper.picker.category.client.DefaultWallpaperCategoryClient
+import com.android.wallpaper.picker.category.client.DefaultWallpaperCategoryClientImpl
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
 import com.android.wallpaper.picker.customization.ui.binder.DefaultCustomizationOptionsBinder
 import com.android.wallpaper.picker.preview.ui.util.DefaultImageEffectDialogUtil
@@ -34,7 +35,6 @@ import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -42,6 +42,12 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 abstract class WallpaperPicker2AppModule {
     @Binds @Singleton abstract fun bindInjector(impl: WallpaperPicker2Injector): Injector
+
+    @Binds
+    @Singleton
+    abstract fun bindWallpaperCategoryClient(
+        impl: DefaultWallpaperCategoryClientImpl
+    ): DefaultWallpaperCategoryClient
 
     @Binds
     @Singleton
@@ -65,15 +71,11 @@ abstract class WallpaperPicker2AppModule {
         impl: DefaultCustomizationOptionsBinder
     ): CustomizationOptionsBinder
 
-    companion object {
-        @Provides
-        @Singleton
-        fun provideWallpaperPreferences(
-            @ApplicationContext context: Context
-        ): WallpaperPreferences {
-            return DefaultWallpaperPreferences(context)
-        }
+    @Binds
+    @Singleton
+    abstract fun bindWallpaperPreferences(impl: DefaultWallpaperPreferences): WallpaperPreferences
 
+    companion object {
         @Provides
         @Singleton
         fun provideUserEventLogger(): UserEventLogger {
