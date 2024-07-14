@@ -14,16 +14,11 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.picker.category.client
+package com.android.wallpaper.model
 
-import com.android.wallpaper.picker.data.category.CategoryModel
+import com.android.wallpaper.picker.data.WallpaperModel
 
-/** This class is responsible for fetching categories and wallpaper info. from external sources. */
-interface WallpaperCategoryClient {
-
-    /**
-     * Every client using this interface can use this method to get the specific categories they
-     * need.
-     */
-    suspend fun getCategories(): List<CategoryModel>
-}
+data class WallpaperModelsPair(
+    val homeWallpaper: WallpaperModel,
+    val lockWallpaper: WallpaperModel?,
+)
