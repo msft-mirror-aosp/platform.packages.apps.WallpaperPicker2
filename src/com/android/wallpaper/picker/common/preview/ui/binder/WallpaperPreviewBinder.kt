@@ -32,8 +32,8 @@ import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.common.preview.ui.viewmodel.BasePreviewViewModel
 import com.android.wallpaper.picker.customization.shared.model.WallpaperColorsModel
 import com.android.wallpaper.picker.data.WallpaperModel
-import com.android.wallpaper.picker.preview.ui.util.SurfaceViewUtil
-import com.android.wallpaper.picker.preview.ui.util.SurfaceViewUtil.attachView
+import com.android.wallpaper.util.SurfaceViewUtils
+import com.android.wallpaper.util.SurfaceViewUtils.attachView
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.shouldEnforceSingleEngine
 import com.android.wallpaper.util.wallpaperconnection.WallpaperEngineConnection
@@ -46,7 +46,10 @@ import kotlinx.coroutines.launch
  */
 // Based on SmallWallpaperPreviewBinder, mostly unchanged, except with LoadingAnimationBinding
 // removed. Also we enable a screen to be defined during binding rather than reading from
-// viewModel.isViewAsHome.
+// viewModel.isViewAsHome. In addition the call to WallpaperConnectionUtils.disconnectAllServices at
+// the end of the static wallpaper binding is removed since it interferes with previewing one live
+// and one static wallpaper side by side, but should be re-visited when integrating into
+// WallpaperPreviewActivity for the cinematic wallpaper toggle case.
 object WallpaperPreviewBinder {
     fun bind(
         applicationContext: Context,
@@ -58,7 +61,7 @@ object WallpaperPreviewBinder {
         viewLifecycleOwner: LifecycleOwner,
         isFirstBinding: Boolean,
     ) {
-        var surfaceCallback: SurfaceViewUtil.SurfaceCallback? = null
+        var surfaceCallback: SurfaceViewUtils.SurfaceCallback? = null
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
                 surfaceCallback =
@@ -97,16 +100,19 @@ object WallpaperPreviewBinder {
         displaySize: Point,
         lifecycleOwner: LifecycleOwner,
         isFirstBinding: Boolean,
-    ): SurfaceViewUtil.SurfaceCallback {
+    ): SurfaceViewUtils.SurfaceCallback {
 
-        return object : SurfaceViewUtil.SurfaceCallback {
+        return object : SurfaceViewUtils.SurfaceCallback {
 
             var job: Job? = null
 
             override fun surfaceCreated(holder: SurfaceHolder) {
                 job =
                     lifecycleOwner.lifecycleScope.launch {
-                        viewModel.wallpaper.collect { (wallpaper, whichPreview) ->
+                        viewModel.wallpapersAndWhichPreview.collect { (wallpapers, whichPreview) ->
+                            val wallpaper =
+                                if (screen == Screen.HOME_SCREEN) wallpapers.homeWallpaper
+                                else wallpapers.lockWallpaper ?: wallpapers.homeWallpaper
                             if (wallpaper is WallpaperModel.LiveWallpaperModel) {
                                 val engineRenderingConfig =
                                     WallpaperConnectionUtils.EngineRenderingConfig(
@@ -148,13 +154,28 @@ object WallpaperPreviewBinder {
                                         staticPreviewView.requireViewById(R.id.low_res_image),
                                     fullResImageView =
                                         staticPreviewView.requireViewById(R.id.full_res_image),
-                                    viewModel = viewModel.staticWallpaperPreviewViewModel,
+                                    viewModel =
+                                        if (
+                                            screen == Screen.LOCK_SCREEN &&
+                                                wallpapers.lockWallpaper != null
+                                        ) {
+                                            // Only if home and lock screen are different, use lock
+                                            // view model, otherwise, re-use home view model for
+                                            // lock.
+                                            viewModel.staticLockWallpaperPreviewViewModel
+                                        } else {
+                                            viewModel.staticHomeWallpaperPreviewViewModel
+                                        },
                                     displaySize = displaySize,
                                     parentCoroutineScope = this,
                                 )
-                                // This is to possibly shut down all live wallpaper services
-                                // if they exist; otherwise static wallpaper can not show up.
-                                WallpaperConnectionUtils.disconnectAllServices(applicationContext)
+                                // TODO (b/348462236): investigate cinematic wallpaper toggle case
+                                // Previously all live wallpaper services are shut down to enable
+                                // static photos wallpaper to show up when cinematic effect is
+                                // toggled off, using WallpaperConnectionUtils.disconnectAllServices
+                                // This cannot work when previewing current wallpaper, and one
+                                // wallpaper is live and the other is static--it causes live
+                                // wallpaper to black screen occasionally.
                             }
                         }
                     }
