@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.android.wallpaper.picker.common.preview.ui.viewmodel
 
-package com.android.wallpaper.picker.category.client
+import android.graphics.Bitmap
+import android.graphics.Point
+import com.android.wallpaper.asset.Asset
+import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 
-import com.android.wallpaper.picker.data.category.CategoryModel
-
-/** This class is responsible for fetching categories and wallpaper info. from external sources. */
-interface WallpaperCategoryClient {
-
-    /**
-     * Every client using this interface can use this method to get the specific categories they
-     * need.
-     */
-    suspend fun getCategories(): List<CategoryModel>
-}
+data class FullResWallpaperViewModel(
+    val rawWallpaperBitmap: Bitmap,
+    // TODO(b/348462236): remove this field and use rawWallpaperBitmap's width and height
+    val rawWallpaperSize: Point,
+    val asset: Asset,
+    val fullPreviewCropModels: Map<Point, FullPreviewCropModel>?,
+)
