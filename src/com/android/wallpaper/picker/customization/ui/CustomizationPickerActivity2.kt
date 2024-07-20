@@ -19,7 +19,6 @@ package com.android.wallpaper.picker.customization.ui
 import android.graphics.Color
 import android.graphics.Point
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -30,7 +29,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.constraintlayout.motion.widget.MotionLayout.TransitionListener
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.constraintlayout.widget.Guideline
+import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -42,7 +41,6 @@ import com.android.wallpaper.R
 import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.Screen.HOME_SCREEN
 import com.android.wallpaper.model.Screen.LOCK_SCREEN
-import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.module.MultiPanesChecker
 import com.android.wallpaper.picker.common.preview.ui.binder.BasePreviewBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
@@ -56,6 +54,7 @@ import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.data.repository.WallpaperPreviewRepository
 import com.android.wallpaper.util.ActivityUtils
+import com.android.wallpaper.util.DisplayUtils
 import com.android.wallpaper.util.WallpaperConnection
 import com.android.wallpaper.util.converter.WallpaperModelFactory
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
@@ -73,6 +72,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
     @Inject lateinit var customizationOptionsBinder: CustomizationOptionsBinder
     @Inject lateinit var wallpaperModelFactory: WallpaperModelFactory
     @Inject lateinit var wallpaperPreviewRepository: WallpaperPreviewRepository
+    @Inject lateinit var displayUtils: DisplayUtils
     @Inject @BackgroundDispatcher lateinit var backgroundScope: CoroutineScope
     @Inject @MainDispatcher lateinit var mainScope: CoroutineScope
 
@@ -80,7 +80,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
     private var navBarHeight: Int = 0
 
     private val customizationPickerViewModel: CustomizationPickerViewModel2 by viewModels()
-    private var customizationOptionFloatingSheetMap: Map<CustomizationOption, View>? = null
+    private var customizationOptionFloatingSheetViewMap: Map<CustomizationOption, View>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,6 +100,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
                 0, /* requestCode */
             )
             finish()
+            return
         }
 
         setContentView(R.layout.activity_cusomization_picker2)
@@ -111,10 +112,12 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, windowInsets ->
             val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
             navBarHeight = insets.bottom
+            requireViewById<FrameLayout>(R.id.customization_option_floating_sheet_container)
+                .setPaddingRelative(0, 0, 0, navBarHeight)
             WindowInsetsCompat.CONSUMED
         }
 
-        customizationOptionFloatingSheetMap =
+        customizationOptionFloatingSheetViewMap =
             customizationOptionUtil.initFloatingSheet(
                 rootView.requireViewById<FrameLayout>(
                     R.id.customization_option_floating_sheet_container
@@ -139,12 +142,11 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         // TODO (b/348462236): adjust flow so this is always false when previewing current wallpaper
         previewViewModel.setIsWallpaperColorPreviewEnabled(false)
 
-        initPreviewPager()
+        initPreviewPager(isFirstBinding = savedInstanceState == null)
 
         val optionContainer = requireViewById<MotionLayout>(R.id.customization_option_container)
         // The collapsed header height should be updated when option container's height is known
         optionContainer.doOnPreDraw {
-            Log.d("mmpud", "doOnPreDraw navBarHeight $navBarHeight")
             // The bottom navigation bar height
             val collapsedHeaderHeight = rootView.height - optionContainer.height - navBarHeight
             if (
@@ -165,6 +167,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
                 view = rootView,
                 lockScreenCustomizationOptionEntries = initCustomizationOptionEntries(LOCK_SCREEN),
                 homeScreenCustomizationOptionEntries = initCustomizationOptionEntries(HOME_SCREEN),
+                customizationOptionFloatingSheetViewMap = customizationOptionFloatingSheetViewMap,
                 viewModel = customizationPickerViewModel,
                 customizationOptionsBinder = customizationOptionsBinder,
                 lifecycleOwner = this,
@@ -231,7 +234,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         return optionEntries
     }
 
-    private fun initPreviewPager() {
+    private fun initPreviewPager(isFirstBinding: Boolean) {
         val pager = requireViewById<ViewPager2>(R.id.preview_pager)
         val previewViewModel = customizationPickerViewModel.basePreviewViewModel
         pager.apply {
@@ -239,18 +242,20 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
                 val previewCard = viewHolder.itemView.requireViewById<View>(R.id.preview_card)
 
                 BasePreviewBinder.bind(
-                    applicationContext,
-                    previewCard,
-                    previewViewModel,
-                    if (position == 0) {
-                        LOCK_SCREEN
-                    } else {
-                        HOME_SCREEN
-                    },
-                    DeviceDisplayType.SINGLE,
-                    previewViewModel.wallpaperDisplaySize.value,
-                    this@CustomizationPickerActivity2,
-                    true
+                    applicationContext = applicationContext,
+                    view = previewCard,
+                    viewModel = previewViewModel,
+                    screen =
+                        if (position == 0) {
+                            LOCK_SCREEN
+                        } else {
+                            HOME_SCREEN
+                        },
+                    deviceDisplayType =
+                        displayUtils.getCurrentDisplayType(this@CustomizationPickerActivity2),
+                    displaySize = previewViewModel.wallpaperDisplaySize.value,
+                    lifecycleOwner = this@CustomizationPickerActivity2,
+                    isFirstBinding = isFirstBinding,
                 )
             }
             // Disable over scroll
@@ -285,46 +290,61 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         option: CustomizationOption,
         onComplete: () -> Unit
     ) {
-        val view = customizationOptionFloatingSheetMap?.get(option) ?: return
+        val view = customizationOptionFloatingSheetViewMap?.get(option) ?: return
 
         val floatingSheetContainer =
             requireViewById<FrameLayout>(R.id.customization_option_floating_sheet_container)
-        val guideline = requireViewById<Guideline>(R.id.preview_guideline_in_secondary_screen)
         floatingSheetContainer.removeAllViews()
         floatingSheetContainer.addView(view)
 
         view.doOnPreDraw {
             val height = view.height + navBarHeight
-            guideline.setGuidelineEnd(height)
             floatingSheetContainer.translationY = 0.0f
             floatingSheetContainer.alpha = 0.0f
             // Update the motion container
             motionContainer.getConstraintSet(R.id.expanded_header_primary)?.apply {
-                setTranslationY(R.id.customization_option_floating_sheet_container, 0.0f)
+                setTranslationY(
+                    R.id.customization_option_floating_sheet_container,
+                    height.toFloat()
+                )
                 setAlpha(R.id.customization_option_floating_sheet_container, 0.0f)
+                connect(
+                    R.id.customization_option_floating_sheet_container,
+                    ConstraintSet.BOTTOM,
+                    R.id.picker_motion_layout,
+                    ConstraintSet.BOTTOM
+                )
                 constrainHeight(
                     R.id.customization_option_floating_sheet_container,
-                    ConstraintLayout.LayoutParams.WRAP_CONTENT
+                    ConstraintLayout.LayoutParams.WRAP_CONTENT,
                 )
             }
             motionContainer.getConstraintSet(R.id.collapsed_header_primary)?.apply {
-                setTranslationY(R.id.customization_option_floating_sheet_container, 0.0f)
+                setTranslationY(
+                    R.id.customization_option_floating_sheet_container,
+                    height.toFloat()
+                )
                 setAlpha(R.id.customization_option_floating_sheet_container, 0.0f)
+                connect(
+                    R.id.customization_option_floating_sheet_container,
+                    ConstraintSet.BOTTOM,
+                    R.id.picker_motion_layout,
+                    ConstraintSet.BOTTOM
+                )
                 constrainHeight(
                     R.id.customization_option_floating_sheet_container,
-                    ConstraintLayout.LayoutParams.WRAP_CONTENT
+                    ConstraintLayout.LayoutParams.WRAP_CONTENT,
                 )
             }
             motionContainer.getConstraintSet(R.id.secondary)?.apply {
-                setGuidelineEnd(R.id.preview_guideline_in_secondary_screen, height)
                 setTranslationY(
                     R.id.customization_option_floating_sheet_container,
-                    -height.toFloat(),
+                    0.0f,
                 )
                 setAlpha(R.id.customization_option_floating_sheet_container, 1.0f)
                 constrainHeight(
                     R.id.customization_option_floating_sheet_container,
-                    ConstraintLayout.LayoutParams.WRAP_CONTENT
+                    ConstraintLayout.LayoutParams.WRAP_CONTENT,
                 )
             }
             onComplete()
