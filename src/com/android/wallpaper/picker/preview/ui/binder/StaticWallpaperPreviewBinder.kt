@@ -17,6 +17,8 @@ package com.android.wallpaper.picker.preview.ui.binder
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.graphics.Point
+import android.graphics.Rect
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.view.View
@@ -27,10 +29,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.android.wallpaper.R
+import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 import com.android.wallpaper.picker.preview.ui.util.FullResImageViewUtil
-import com.android.wallpaper.picker.preview.ui.viewmodel.FullResWallpaperViewModel
+import com.android.wallpaper.picker.preview.ui.view.SystemScaledWallpaperPreviewSurfaceView
 import com.android.wallpaper.picker.preview.ui.viewmodel.StaticWallpaperPreviewViewModel
+import com.android.wallpaper.util.RtlUtils
+import com.android.wallpaper.util.WallpaperCropUtils
 import com.android.wallpaper.util.WallpaperSurfaceCallback.LOW_RES_BITMAP_BLUR_RADIUS
 import com.davemorrissey.labs.subscaleview.ImageSource
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
@@ -42,29 +46,49 @@ object StaticWallpaperPreviewBinder {
     private const val CROSS_FADE_DURATION: Long = 200
 
     fun bind(
-        view: View,
+        lowResImageView: ImageView,
+        fullResImageView: SubsamplingScaleImageView,
         viewModel: StaticWallpaperPreviewViewModel,
-        lifecycleOwner: LifecycleOwner,
-        isSingleDisplayOrUnfoldedHorizontalHinge: Boolean,
-        isRtl: Boolean,
+        displaySize: Point,
+        viewLifecycleOwner: LifecycleOwner,
+        shouldCalibrateWithSystemScale: Boolean = false,
     ) {
-        val lowResImageView: ImageView = view.requireViewById(R.id.low_res_image)
         lowResImageView.initLowResImageView()
-
-        val fullResImageView: SubsamplingScaleImageView = view.requireViewById(R.id.full_res_image)
         fullResImageView.initFullResImageView()
 
-        lifecycleOwner.lifecycleScope.launch {
-            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { viewModel.lowResBitmap.collect { lowResImageView.setImageBitmap(it) } }
 
                 launch {
-                    viewModel.subsamplingScaleImageViewModel.collect {
+                    viewModel.subsamplingScaleImageViewModel.collect { imageModel ->
+                        val cropHint = imageModel.fullPreviewCropModels?.get(displaySize)?.cropHint
                         fullResImageView.setFullResImage(
-                            it,
-                            isSingleDisplayOrUnfoldedHorizontalHinge,
-                            isRtl,
+                            ImageSource.cachedBitmap(imageModel.rawWallpaperBitmap),
+                            imageModel.rawWallpaperSize,
+                            displaySize,
+                            cropHint,
+                            RtlUtils.isRtl(lowResImageView.context),
+                            shouldCalibrateWithSystemScale,
                         )
+
+                        // Fill in the default crop region if the displaySize for this preview is
+                        // missing.
+                        viewModel.fullPreviewCropModels.putIfAbsent(
+                            displaySize,
+                            FullPreviewCropModel(
+                                cropHint =
+                                    WallpaperCropUtils.calculateVisibleRect(
+                                        imageModel.rawWallpaperSize,
+                                        Point(
+                                            fullResImageView.measuredWidth,
+                                            fullResImageView.measuredHeight
+                                        )
+                                    ),
+                                cropSizeModel = null,
+                            )
+                        )
+
                         crossFadeInFullResImageView(lowResImageView, fullResImageView)
                     }
                 }
@@ -87,27 +111,42 @@ object StaticWallpaperPreviewBinder {
         setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
     }
 
+    /**
+     * @param shouldCalibrateWithSystemScale This flag should be true for rendering small previews.
+     *   Unlikely full wallpaper preview for static wallpapers, small wallpaper preview does not
+     *   scale up the surface view larger than the display view to conform with the system's actual
+     *   wallpaper scale (see [SystemScaledWallpaperPreviewSurfaceView]). Instead we need to apply
+     *   this system scale to [SubsamplingScaleImageView].
+     */
     private fun SubsamplingScaleImageView.setFullResImage(
-        viewModel: FullResWallpaperViewModel,
-        isSingleDisplayOrUnfoldedHorizontalHinge: Boolean,
+        imageSource: ImageSource,
+        rawWallpaperSize: Point,
+        displaySize: Point,
+        cropHint: Rect?,
         isRtl: Boolean,
+        shouldCalibrateWithSystemScale: Boolean = false,
     ) {
+        // Set the full res image
+        setImage(imageSource)
         // Calculate the scale and the center point for the full res image
         FullResImageViewUtil.getScaleAndCenter(
-                measuredWidth,
-                measuredHeight,
-                viewModel.offsetToStart,
-                viewModel.rawWallpaperSize,
-                isSingleDisplayOrUnfoldedHorizontalHinge,
+                Point(measuredWidth, measuredHeight),
+                rawWallpaperSize,
+                displaySize,
+                cropHint,
                 isRtl,
             )
-            .also { scaleAndCenter ->
+            .let { scaleAndCenter ->
                 minScale = scaleAndCenter.minScale
                 maxScale = scaleAndCenter.maxScale
-                setScaleAndCenter(scaleAndCenter.defaultScale, scaleAndCenter.center)
+                val scale =
+                    if (shouldCalibrateWithSystemScale)
+                        WallpaperCropUtils.getSystemWallpaperMaximumScale(
+                            context.applicationContext
+                        )
+                    else 1F
+                setScaleAndCenter(scaleAndCenter.defaultScale * scale, scaleAndCenter.center)
             }
-        // Set the full res image
-        setImage(ImageSource.bitmap(viewModel.rawWallpaperBitmap))
     }
 
     private fun crossFadeInFullResImageView(lowResImageView: ImageView, fullResImageView: View) {

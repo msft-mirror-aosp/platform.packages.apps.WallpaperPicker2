@@ -17,6 +17,7 @@
 
 package com.android.wallpaper.picker.customization.ui.viewmodel
 
+import android.stats.style.StyleEnums.SET_WALLPAPER_ENTRY_POINT_WALLPAPER_QUICK_SWITCHER
 import com.android.wallpaper.R
 import com.android.wallpaper.picker.common.text.ui.viewmodel.Text
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
@@ -94,7 +95,8 @@ constructor(
                         thumbnail = {
                             interactor.loadThumbnail(
                                 wallpaperId = preview.wallpaperId,
-                                lastUpdatedTimestamp = preview.lastUpdated
+                                lastUpdatedTimestamp = preview.lastUpdated,
+                                destination = destination
                             )
                         },
                         isLarge =
@@ -109,10 +111,7 @@ constructor(
                                 // click.
                                 (isSelected && !isSomethingBecomingSelected) || isBecomingSelected
                             },
-                        // We show the progress indicator if the option is in the process of
-                        // becoming the selected one following user click.
-                        isProgressIndicatorVisible = isBecomingSelectedFlow,
-                        isSelectionBorderVisible =
+                        isSelectionIndicatorVisible =
                             combine(
                                 isSelectedFlow,
                                 isBecomingSelectedFlow,
@@ -123,30 +122,16 @@ constructor(
                                 // the selected one following user click.
                                 (isSelected && !isSomethingBecomingSelected) || isBeingSelected
                             },
-                        isSelectionIconVisible =
-                            combine(
-                                isSelectedFlow,
-                                isSomethingBecomingSelectedFlow,
-                            ) { isSelected, isSomethingBecomingSelected ->
-                                // The selection icon is shown for the option that is
-                                // currently selected but only if nothing else is becoming
-                                // selected. If anything is being selected following user
-                                // click, the selection icon is not shown on any option.
-                                isSelected && !isSomethingBecomingSelected
-                            },
+                        title = preview.title,
                         onSelected =
                             combine(
                                     isSelectedFlow,
                                     isBecomingSelectedFlow,
                                     isSomethingBecomingSelectedFlow,
-                                ) { isSelected, isBeingSelected, isSomethingBecomingSelected,
-                                    ->
-                                    // An option is selectable if it is not itself becoming
-                                    // selected following user click or if nothing else is
-                                    // becoming selected but this option is not the selected
-                                    // one.
-                                    (isSomethingBecomingSelected && !isBeingSelected) ||
-                                        (!isSomethingBecomingSelected && !isSelected)
+                                ) { isSelected, _, isSomethingBecomingSelected ->
+                                    // An option is selectable if either something is not becoming
+                                    // selected and that item is itself not selected.
+                                    !isSomethingBecomingSelected && !isSelected
                                 }
                                 .distinctUntilChanged()
                                 .map { isSelectable ->
@@ -154,7 +139,9 @@ constructor(
                                         {
                                             // A selectable option can become selected.
                                             coroutineScope.launch {
-                                                interactor.setWallpaper(
+                                                interactor.setRecentWallpaper(
+                                                    setWallpaperEntryPoint =
+                                                        SET_WALLPAPER_ENTRY_POINT_WALLPAPER_QUICK_SWITCHER,
                                                     destination = destination,
                                                     wallpaperId = preview.wallpaperId,
                                                 )

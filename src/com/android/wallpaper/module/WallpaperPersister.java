@@ -20,17 +20,20 @@ import static android.app.WallpaperManager.FLAG_SYSTEM;
 import static android.app.WallpaperManager.SetWallpaperFlags;
 
 import android.graphics.Bitmap;
+import android.graphics.Point;
 import android.graphics.Rect;
 
 import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.android.wallpaper.asset.Asset;
-import com.android.wallpaper.model.StaticWallpaperMetadata;
+import com.android.wallpaper.model.StaticWallpaperPrefMetadata;
 import com.android.wallpaper.model.WallpaperInfo;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Interface for classes which persist wallpapers to the system.
@@ -73,12 +76,13 @@ public interface WallpaperPersister {
      * @return Whether the set wallpaper operation was successful.
      */
     boolean setWallpaperInRotation(Bitmap wallpaperBitmap, List<String> attributions,
-                                   int actionLabelRes, int actionIconRes,
-                                   String actionUrl, String collectionId, String remoteId);
+            String actionUrl, String collectionId, String remoteId);
 
     /**
      * Sets only the bitmap of a rotating wallpaper of the next rotation to the system and stores
      * the given static wallpaper data in the recent wallpapers list (and not metadata).
+     * This function is used for the very first time setting the rotation wallpaper. It is called
+     * after the user initiates rotation wallpaper and the first wallpaper is downloaded.
      *
      * @param wallpaperBitmap The rotating wallpaper's bitmap.
      * @param attributions List of attribution items.
@@ -104,8 +108,7 @@ public interface WallpaperPersister {
      * @return Whether the operation succeeded.
      */
     boolean finalizeWallpaperForNextRotation(List<String> attributions, String actionUrl,
-                                             int actionLabelRes, int actionIconRes,
-                                             String collectionId, int wallpaperId, String remoteId);
+            String collectionId, int wallpaperId, String remoteId);
 
     /**
      * Finalizes wallpaper metadata by persisting them to SharedPreferences and finalizes the
@@ -114,8 +117,6 @@ public interface WallpaperPersister {
      *
      * @param attributions      List of attribution items.
      * @param actionUrl         The action or "explore" URL for the wallpaper.
-     * @param actionLabelRes    Resource ID of the action label
-     * @param actionIconRes     Resource ID of the action icon
      * @param collectionId      ID of this wallpaper's collection.
      * @param wallpaperId       ID that uniquely identifies a wallpaper set to the
      *                          {@link android.app.WallpaperManager}.
@@ -125,8 +126,6 @@ public interface WallpaperPersister {
      */
     boolean saveStaticWallpaperMetadata(List<String> attributions,
             String actionUrl,
-            int actionLabelRes,
-            int actionIconRes,
             String collectionId,
             int wallpaperId,
             String remoteId,
@@ -137,7 +136,7 @@ public interface WallpaperPersister {
      * Save static image wallpaper's meta to the system preferences.
      */
     boolean saveStaticWallpaperToPreferences(int destination,
-            StaticWallpaperMetadata metadata);
+            StaticWallpaperPrefMetadata metadata);
 
     /**
      * @return the flag indicating which wallpaper to set when we're trying to set a wallpaper with
@@ -163,7 +162,18 @@ public interface WallpaperPersister {
      * Android, otherwise on pre-N versions of Android will return a positive integer when the
      * operation was successful and zero if the operation encountered an error.
      */
-    int setStreamToWallpaperManager(InputStream inputStream, Rect cropHint,
+    int setStreamToWallpaperManager(InputStream inputStream, @Nullable Rect cropHint,
+            boolean allowBackup, int whichWallpaper);
+
+    /**
+     * Sets a wallpaper stream to the {@link android.app.WallpaperManager}.
+     *
+     * @return an integer wallpaper ID. This is an actual wallpaper ID on N and later versions of
+     * Android, otherwise on pre-N versions of Android will return a positive integer when the
+     * operation was successful and zero if the operation encountered an error.
+     */
+    int setStreamWithCropsToWallpaperManager(InputStream inputStream,
+            @NonNull Map<Point, Rect> cropModel,
             boolean allowBackup, int whichWallpaper);
 
     /**

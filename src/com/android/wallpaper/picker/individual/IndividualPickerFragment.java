@@ -70,7 +70,6 @@ import com.android.wallpaper.picker.RotationStarter;
 import com.android.wallpaper.picker.StartRotationDialogFragment;
 import com.android.wallpaper.picker.StartRotationErrorDialogFragment;
 import com.android.wallpaper.util.ActivityUtils;
-import com.android.wallpaper.util.DiskBasedLogger;
 import com.android.wallpaper.util.LaunchUtils;
 import com.android.wallpaper.util.SizeCalculator;
 import com.android.wallpaper.widget.GridPaddingDecoration;
@@ -155,7 +154,6 @@ public class IndividualPickerFragment extends AppbarFragment
     PackageStatusNotifier.Listener mAppStatusListener;
 
     private ProgressDialog mProgressDialog;
-    private boolean mTestingMode;
     private ContentLoadingProgressBar mLoading;
     private CategoryProvider mCategoryProvider;
 
@@ -212,8 +210,6 @@ public class IndividualPickerFragment extends AppbarFragment
                 }
                 mCategory = (WallpaperCategory) category;
                 if (mCategory == null) {
-                    DiskBasedLogger.e(TAG, "Failed to find the category.", getContext());
-
                     // The absence of this category in the CategoryProvider indicates a broken
                     // state, see b/38030129. Hence, finish the activity and return.
                     getIndividualPickerFragmentHost().moveToPreviousFragment();
@@ -482,17 +478,6 @@ public class IndividualPickerFragment extends AppbarFragment
         startRotation(networkPreference);
     }
 
-    /**
-     * Enable a test mode of operation -- in which certain UI features are disabled to allow for
-     * UI tests to run correctly. Works around issue in ProgressDialog currently where the dialog
-     * constantly keeps the UI thread alive and blocks a test forever.
-     *
-     * @param testingMode
-     */
-    void setTestingMode(boolean testingMode) {
-        mTestingMode = testingMode;
-    }
-
     @Override
     public void startRotation(@NetworkPreference final int networkPreference) {
         if (!isRotationEnabled()) {
@@ -502,21 +487,19 @@ public class IndividualPickerFragment extends AppbarFragment
 
         // ProgressDialog endlessly updates the UI thread, keeping it from going idle which therefore
         // causes Espresso to hang once the dialog is shown.
-        if (!mTestingMode) {
-            int themeResId;
-            if (VERSION.SDK_INT < VERSION_CODES.LOLLIPOP) {
-                themeResId = R.style.ProgressDialogThemePreL;
-            } else {
-                themeResId = R.style.LightDialogTheme;
-            }
-            mProgressDialog = new ProgressDialog(getActivity(), themeResId);
-
-            mProgressDialog.setTitle(PROGRESS_DIALOG_NO_TITLE);
-            mProgressDialog.setMessage(
-                    getResources().getString(R.string.start_rotation_progress_message));
-            mProgressDialog.setIndeterminate(PROGRESS_DIALOG_INDETERMINATE);
-            mProgressDialog.show();
+        int themeResId;
+        if (VERSION.SDK_INT < VERSION_CODES.LOLLIPOP) {
+            themeResId = R.style.ProgressDialogThemePreL;
+        } else {
+            themeResId = R.style.LightDialogTheme;
         }
+        mProgressDialog = new ProgressDialog(getActivity(), themeResId);
+
+        mProgressDialog.setTitle(PROGRESS_DIALOG_NO_TITLE);
+        mProgressDialog.setMessage(
+                getResources().getString(R.string.start_rotation_progress_message));
+        mProgressDialog.setIndeterminate(PROGRESS_DIALOG_INDETERMINATE);
+        mProgressDialog.show();
 
         final Context appContext = getActivity().getApplicationContext();
 

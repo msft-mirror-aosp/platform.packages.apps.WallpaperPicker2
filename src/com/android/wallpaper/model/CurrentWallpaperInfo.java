@@ -22,15 +22,14 @@ import android.app.WallpaperManager;
 import android.content.Context;
 import android.os.Parcel;
 
-import androidx.annotation.DrawableRes;
-import androidx.annotation.StringRes;
-
 import com.android.wallpaper.asset.Asset;
 import com.android.wallpaper.asset.BuiltInWallpaperAsset;
-import com.android.wallpaper.asset.CurrentWallpaperAssetVN;
+import com.android.wallpaper.asset.CurrentWallpaperAsset;
+import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.module.InjectorProvider;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -54,10 +53,6 @@ public class CurrentWallpaperInfo extends WallpaperInfo {
     private final List<String> mAttributions;
     private Asset mAsset;
     private final String mActionUrl;
-    @StringRes
-    private int mActionLabelRes;
-    @DrawableRes
-    private int mActionIconRes;
     private final String mCollectionId;
     @SetWallpaperFlags
     private final int mWallpaperManagerFlag;
@@ -69,15 +64,11 @@ public class CurrentWallpaperInfo extends WallpaperInfo {
      * @param wallpaperManagerFlag Either SYSTEM or LOCK--the source of image data which this object
      *                             represents.
      */
-    public CurrentWallpaperInfo(List<String> attributions, String actionUrl,
-                                  @StringRes int actionLabelRes, @DrawableRes int actionIconRes,
-                                  String collectionId,
-                                  @SetWallpaperFlags int wallpaperManagerFlag) {
+    public CurrentWallpaperInfo(List<String> attributions, String actionUrl, String collectionId,
+            @SetWallpaperFlags int wallpaperManagerFlag) {
         mAttributions = attributions;
         mWallpaperManagerFlag = wallpaperManagerFlag;
         mActionUrl = actionUrl;
-        mActionLabelRes = actionLabelRes;
-        mActionIconRes = actionIconRes;
         mCollectionId = collectionId;
     }
 
@@ -89,8 +80,7 @@ public class CurrentWallpaperInfo extends WallpaperInfo {
         mWallpaperManagerFlag = in.readInt();
         mActionUrl = in.readString();
         mCollectionId = in.readString();
-        mActionLabelRes = in.readInt();
-        mActionIconRes = in.readInt();
+        mCropHints.putAll(in.readSerializable(HashMap.class.getClassLoader(), HashMap.class));
     }
 
     @Override
@@ -126,16 +116,6 @@ public class CurrentWallpaperInfo extends WallpaperInfo {
         return mCollectionId;
     }
 
-    @Override
-    public int getActionIconRes(Context unused) {
-        return mActionIconRes != 0 ? mActionIconRes : WallpaperInfo.getDefaultActionIcon();
-    }
-
-    @Override
-    public int getActionLabelRes(Context unused) {
-        return mActionLabelRes != 0 ? mActionLabelRes : WallpaperInfo.getDefaultActionLabel();
-    }
-
     /**
      * Constructs and returns an Asset instance representing the currently-set wallpaper asset.
      */
@@ -144,10 +124,16 @@ public class CurrentWallpaperInfo extends WallpaperInfo {
         boolean isSystemBuiltIn = mWallpaperManagerFlag == WallpaperManager.FLAG_SYSTEM
                 && !InjectorProvider.getInjector().getWallpaperStatusChecker(context)
                 .isHomeStaticWallpaperSet();
+        BaseFlags flags = InjectorProvider.getInjector().getFlags();
+        // Only get the full wallpaper asset when previewing a multi-crop wallpaper, otherwise get
+        // the cropped asset.
+        boolean getFullAsset = flags.isMultiCropPreviewUiEnabled() && flags.isMultiCropEnabled()
+                && !mCropHints.isEmpty();
 
         return (isSystemBuiltIn)
                 ? new BuiltInWallpaperAsset(context)
-                : new CurrentWallpaperAssetVN(context, mWallpaperManagerFlag);
+                : new CurrentWallpaperAsset(context, mWallpaperManagerFlag, /* getCropped= */
+                        !getFullAsset);
     }
 
     @Override
@@ -157,8 +143,7 @@ public class CurrentWallpaperInfo extends WallpaperInfo {
         parcel.writeInt(mWallpaperManagerFlag);
         parcel.writeString(mActionUrl);
         parcel.writeString(mCollectionId);
-        parcel.writeInt(mActionLabelRes);
-        parcel.writeInt(mActionIconRes);
+        parcel.writeSerializable(mCropHints);
     }
 
     @Override
@@ -171,5 +156,9 @@ public class CurrentWallpaperInfo extends WallpaperInfo {
     @Override
     public String getStoredWallpaperId(Context context) {
         return null;
+    }
+
+    public int getWallpaperManagerFlag() {
+        return mWallpaperManagerFlag;
     }
 }

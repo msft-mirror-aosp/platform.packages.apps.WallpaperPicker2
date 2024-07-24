@@ -19,6 +19,7 @@ package com.android.wallpaper.picker.customization.domain.interactor
 
 import android.graphics.Bitmap
 import com.android.wallpaper.module.CustomizationSections
+import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
@@ -98,21 +99,28 @@ class WallpaperInteractor(
     }
 
     /** Sets the wallpaper to the one with the given ID. */
-    suspend fun setWallpaper(
+    suspend fun setRecentWallpaper(
+        @SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
         destination: WallpaperDestination,
         wallpaperId: String,
     ) {
-        repository.setWallpaper(
+        repository.setRecentWallpaper(
+            setWallpaperEntryPoint = setWallpaperEntryPoint,
             destination = destination,
             wallpaperId = wallpaperId,
         )
     }
 
-    /** Returns a thumbnail for the wallpaper with the given ID. */
-    suspend fun loadThumbnail(wallpaperId: String, lastUpdatedTimestamp: Long): Bitmap? {
+    /** Returns a thumbnail for the wallpaper with the given ID and destination. */
+    suspend fun loadThumbnail(
+        wallpaperId: String,
+        lastUpdatedTimestamp: Long,
+        destination: WallpaperDestination
+    ): Bitmap? {
         return repository.loadThumbnail(
             wallpaperId = wallpaperId,
-            lastUpdatedTimestamp = lastUpdatedTimestamp
+            lastUpdatedTimestamp = lastUpdatedTimestamp,
+            destination = destination
         )
     }
 }

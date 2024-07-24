@@ -41,7 +41,6 @@ open class ScreenPreviewViewModel(
     private val onWallpaperColorChanged: (WallpaperColors?) -> Unit = {},
     private val wallpaperInteractor: WallpaperInteractor,
     val screen: Screen,
-    val onPreviewClicked: (() -> Unit)? = null,
 ) {
 
     val previewContentDescription: Int =
@@ -57,14 +56,17 @@ open class ScreenPreviewViewModel(
         // TODO(b/281730113) Remove this once better solution is ready.
         return wallpaperUpdateEvents().map { thisWallpaper ->
             val otherWallpaper = wallpaperUpdateEvents(otherScreen()).first()
-            wallpaperInteractor.shouldHandleReload() ||
-                thisWallpaper?.wallpaperId == otherWallpaper?.wallpaperId
+            true
         }
     }
 
     fun wallpaperThumbnail(): Flow<Bitmap?> {
         return wallpaperUpdateEvents().filterNotNull().map { wallpaper ->
-            wallpaperInteractor.loadThumbnail(wallpaper.wallpaperId, wallpaper.lastUpdated)
+            wallpaperInteractor.loadThumbnail(
+                wallpaper.wallpaperId,
+                wallpaper.lastUpdated,
+                getWallpaperDestination()
+            )
         }
     }
 
@@ -101,11 +103,13 @@ open class ScreenPreviewViewModel(
 
     open val isLoading: Flow<Boolean> =
         wallpaperInteractor.isSelectingWallpaper(
-            destination =
-                if (screen == Screen.LOCK_SCREEN) {
-                    WallpaperDestination.LOCK
-                } else {
-                    WallpaperDestination.HOME
-                },
+            destination = getWallpaperDestination(),
         )
+
+    private fun getWallpaperDestination() =
+        if (screen == Screen.LOCK_SCREEN) {
+            WallpaperDestination.LOCK
+        } else {
+            WallpaperDestination.HOME
+        }
 }

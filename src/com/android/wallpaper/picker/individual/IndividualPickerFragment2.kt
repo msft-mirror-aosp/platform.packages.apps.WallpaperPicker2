@@ -19,6 +19,8 @@ import CreativeCategoryHolder
 import android.app.Activity
 import android.app.ProgressDialog
 import android.app.WallpaperManager
+import android.app.WallpaperManager.FLAG_LOCK
+import android.app.WallpaperManager.FLAG_SYSTEM
 import android.content.DialogInterface
 import android.content.res.Configuration
 import android.content.res.Resources
@@ -66,7 +68,6 @@ import com.android.wallpaper.picker.RotationStarter
 import com.android.wallpaper.picker.StartRotationDialogFragment
 import com.android.wallpaper.picker.StartRotationErrorDialogFragment
 import com.android.wallpaper.util.ActivityUtils
-import com.android.wallpaper.util.DiskBasedLogger
 import com.android.wallpaper.util.LaunchUtils
 import com.android.wallpaper.util.SizeCalculator
 import com.android.wallpaper.widget.GridPaddingDecoration
@@ -174,8 +175,6 @@ class IndividualPickerFragment2 :
                     }
 
                     if (fetchedCategory == null) {
-                        DiskBasedLogger.e(TAG, "Failed to find the category.", context)
-
                         // The absence of this category in the CategoryProvider indicates a broken
                         // state, see b/38030129. Hence, finish the activity and return.
                         getIndividualPickerFragmentHost().moveToPreviousFragment()
@@ -236,8 +235,10 @@ class IndividualPickerFragment2 :
                 val appliedWallpaperIds =
                     getAppliedWallpaperIds().also { this.appliedWallpaperIds = it }
                 val firstEntry = byGroup.keys.firstOrNull()
-                val currentWallpaper: android.app.WallpaperInfo? =
-                    WallpaperManager.getInstance(context).wallpaperInfo
+                val currentHomeWallpaper: android.app.WallpaperInfo? =
+                    WallpaperManager.getInstance(context).getWallpaperInfo(FLAG_SYSTEM)
+                val currentLockWallpaper: android.app.WallpaperInfo? =
+                    WallpaperManager.getInstance(context).getWallpaperInfo(FLAG_LOCK)
 
                 // Handle first group (templates/items that allow to create a new wallpaper)
                 if (mIsCreativeWallpaperEnabled && firstEntry != null && supportsUserCreated) {
@@ -257,7 +258,12 @@ class IndividualPickerFragment2 :
                         if (!TextUtils.isEmpty(groupName)) {
                             addItemHeader(groupName, items.isEmpty())
                         }
-                        addWallpaperItems(wallpapers, currentWallpaper, appliedWallpaperIds)
+                        addWallpaperItems(
+                            wallpapers,
+                            currentHomeWallpaper,
+                            currentLockWallpaper,
+                            appliedWallpaperIds
+                        )
                     }
                 }
                 maybeSetUpImageGrid()
@@ -309,13 +315,15 @@ class IndividualPickerFragment2 :
      */
     private fun addWallpaperItems(
         wallpapers: List<WallpaperInfo>,
-        currentWallpaper: android.app.WallpaperInfo?,
-        appliedWallpaperIds: Set<String>
+        currentHomeWallpaper: android.app.WallpaperInfo?,
+        currentLockWallpaper: android.app.WallpaperInfo?,
+        appliedWallpaperIds: Set<String>,
     ) {
         items.addAll(
             wallpapers.map {
                 val isApplied =
-                    if (it is LiveWallpaperInfo) it.isApplied(currentWallpaper)
+                    if (it is LiveWallpaperInfo)
+                        (it.isApplied(currentHomeWallpaper, currentLockWallpaper))
                     else appliedWallpaperIds.contains(it.wallpaperId)
                 PickerItem.WallpaperItem(it, isApplied)
             }
@@ -545,7 +553,7 @@ class IndividualPickerFragment2 :
     override fun onResume() {
         super.onResume()
         val preferences = InjectorProvider.getInjector().getPreferences(requireActivity())
-        preferences.lastAppActiveTimestamp = Date().time
+        preferences.setLastAppActiveTimestamp(Date().time)
 
         // Reset Glide memory settings to a "normal" level of usage since it may have been lowered
         // in PreviewFragment.
@@ -713,15 +721,15 @@ class IndividualPickerFragment2 :
             if (wallpaperInfo != null) {
                 wallpaperInfo.serviceName
             } else {
-                prefs.homeWallpaperRemoteId
+                prefs.getHomeWallpaperRemoteId()
             }
-        if (!TextUtils.isEmpty(homeWallpaperId)) {
+        if (!homeWallpaperId.isNullOrEmpty()) {
             appliedWallpaperIds.add(homeWallpaperId)
         }
         val isLockWallpaperApplied =
             wallpaperManager!!.getWallpaperId(WallpaperManager.FLAG_LOCK) >= 0
-        val lockWallpaperId = prefs.lockWallpaperRemoteId
-        if (isLockWallpaperApplied && !TextUtils.isEmpty(lockWallpaperId)) {
+        val lockWallpaperId = prefs.getLockWallpaperRemoteId()
+        if (isLockWallpaperApplied && !lockWallpaperId.isNullOrEmpty()) {
             appliedWallpaperIds.add(lockWallpaperId)
         }
         return appliedWallpaperIds
@@ -731,7 +739,7 @@ class IndividualPickerFragment2 :
     private fun isAppliedWallpaperChanged(): Boolean {
         // Reload wallpapers if the current wallpapers have changed
         getAppliedWallpaperIds().let {
-            if (appliedWallpaperIds.isEmpty() || appliedWallpaperIds != it) {
+            if (appliedWallpaperIds != it) {
                 return true
             }
         }

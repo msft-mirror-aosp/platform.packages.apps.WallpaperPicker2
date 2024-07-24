@@ -25,7 +25,6 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -50,7 +49,7 @@ import com.android.wallpaper.module.LargeScreenMultiPanesChecker;
 import com.android.wallpaper.module.MultiPanesChecker;
 import com.android.wallpaper.module.NetworkStatusNotifier;
 import com.android.wallpaper.module.NetworkStatusNotifier.NetworkStatus;
-import com.android.wallpaper.module.UserEventLogger;
+import com.android.wallpaper.module.logging.UserEventLogger;
 import com.android.wallpaper.picker.AppbarFragment.AppbarFragmentHost;
 import com.android.wallpaper.picker.CategorySelectorFragment.CategorySelectorFragmentHost;
 import com.android.wallpaper.picker.MyPhotosStarter.PermissionChangedListener;
@@ -83,19 +82,17 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
 
     private BottomActionBar mBottomActionBar;
     private boolean mIsSafeToCommitFragmentTransaction;
-    private boolean mIsUseRevampedUi;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         Injector injector = InjectorProvider.getInjector();
         mDelegate = new WallpaperPickerDelegate(this, this, injector);
-        mUserEventLogger = injector.getUserEventLogger(this);
+        mUserEventLogger = injector.getUserEventLogger();
         mNetworkStatusNotifier = injector.getNetworkStatusNotifier(this);
         mNetworkStatus = mNetworkStatusNotifier.getNetworkStatus();
         mDisplayUtils = injector.getDisplayUtils(this);
-        mIsUseRevampedUi = injector.getFlags().isUseRevampedUiEnabled(this);
 
-        enforceOrientation();
+        enforcePortraitForHandheldAndFoldedDisplay();
 
         // Restore this Activity's state before restoring contained Fragments state.
         super.onCreate(savedInstanceState);
@@ -131,9 +128,8 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
 
             // Switch to the target fragment.
             switchFragment(isWallpaperOnlyMode(getIntent())
-                    ? WallpaperOnlyFragment.newInstance(mIsUseRevampedUi)
-                    : CustomizationPickerFragment.newInstance(
-                            mIsUseRevampedUi, startFromLockScreen));
+                    ? WallpaperOnlyFragment.newInstance()
+                    : CustomizationPickerFragment.newInstance(startFromLockScreen));
 
             // Cache the categories, but only if we're not restoring state (b/276767415).
             mDelegate.prefetchCategories();
@@ -142,9 +138,7 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
         if (savedInstanceState == null) {
             // We only want to start a new undo session if this activity is brand-new. A non-new
             // activity will have a non-null savedInstanceState.
-            if (mIsUseRevampedUi) {
-                injector.getUndoInteractor(this, this).startSession();
-            }
+            injector.getUndoInteractor(this, this).startSession();
         }
 
         final Intent intent = getIntent();
@@ -196,11 +190,6 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
     protected void onResume() {
         super.onResume();
         mIsSafeToCommitFragmentTransaction = true;
-        boolean wallpaperOnly = isWallpaperOnlyMode(getIntent());
-        boolean provisioned = Settings.Global.getInt(getContentResolver(),
-                Settings.Global.DEVICE_PROVISIONED, 0) != 0;
-
-        mUserEventLogger.logResumed(provisioned, wallpaperOnly);
     }
 
     @Override
@@ -211,7 +200,6 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
 
     @Override
     protected void onStop() {
-        mUserEventLogger.logStopped();
         if (mNetworkStatusListener != null) {
             mNetworkStatusNotifier.unregisterListener(mNetworkStatusListener);
             mNetworkStatusListener = null;
@@ -353,7 +341,7 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
         if (mDelegate.handleActivityResult(requestCode, resultCode, data)) {
             if (isSUWMode(this)) {
                 finishActivityForSUW();
-            } else if (mIsUseRevampedUi) {
+            } else {
                 // We don't finish in the revamped UI to let the user have a chance to reset the
                 // change they made, should they want to. We do, however, remove all the fragments
                 // from our back stack to reveal the root fragment, revealing the main screen of the
@@ -362,8 +350,6 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
                 while (fragmentManager.getBackStackEntryCount() > 0) {
                     fragmentManager.popBackStackImmediate();
                 }
-            } else {
-                finishActivityWithResultOk();
             }
         }
     }
@@ -408,22 +394,21 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        enforceOrientation();
+        enforcePortraitForHandheldAndFoldedDisplay();
     }
 
     /**
-     * Allows any orientation for large screen devices (tablets and unfolded foldables) while
-     * forcing portrait for smaller screens (handheld and folded foldables).
+     * If the display is a handheld display or a folded display from a foldable, we enforce the
+     * activity to be portrait.
      *
      * This method should be called upon initialization of this activity, and whenever there is a
      * configuration change.
      */
     @SuppressLint("SourceLockedOrientationActivity")
-    private void enforceOrientation() {
-        int wantedOrientation =
-                mDisplayUtils.isLargeScreenDevice() && mDisplayUtils.isOnWallpaperDisplay(this)
-                        ? ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                        : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+    private void enforcePortraitForHandheldAndFoldedDisplay() {
+        int wantedOrientation = mDisplayUtils.isLargeScreenOrUnfoldedDisplay(this)
+                ? ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
         if (getRequestedOrientation() != wantedOrientation) {
             setRequestedOrientation(wantedOrientation);
         }

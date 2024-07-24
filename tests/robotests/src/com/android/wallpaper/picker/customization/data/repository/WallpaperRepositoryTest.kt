@@ -17,6 +17,7 @@
 
 package com.android.wallpaper.picker.customization.data.repository
 
+import android.stats.style.StyleEnums.SET_WALLPAPER_ENTRY_POINT_WALLPAPER_PREVIEW
 import androidx.test.filters.SmallTest
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.testing.FakeWallpaperClient
@@ -95,18 +96,22 @@ class WallpaperRepositoryTest {
 
             // Pause the client so we can examine the interim state.
             client.pause()
-            underTest.setWallpaper(
+            underTest.setRecentWallpaper(
+                SET_WALLPAPER_ENTRY_POINT_WALLPAPER_PREVIEW,
                 WallpaperDestination.HOME,
                 FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS[1].wallpaperId,
             )
-            prefs.homeWallpaperRecentsKey =
+            prefs.setHomeWallpaperRecentsKey(
                 FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS[1].wallpaperId
-            underTest.setWallpaper(
+            )
+            underTest.setRecentWallpaper(
+                SET_WALLPAPER_ENTRY_POINT_WALLPAPER_PREVIEW,
                 WallpaperDestination.LOCK,
                 FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS[2].wallpaperId,
             )
-            prefs.lockWallpaperRecentsKey =
+            prefs.setLockWallpaperRecentsKey(
                 FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS[2].wallpaperId
+            )
             assertThat(recentHomeWallpapers())
                 .isEqualTo(FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS)
             assertThat(recentLockWallpapers())
@@ -174,11 +179,13 @@ class WallpaperRepositoryTest {
             assertThat(selectedLockWallpaperId())
                 .isEqualTo(FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS.first().wallpaperId)
 
-            underTest.setWallpaper(
+            underTest.setRecentWallpaper(
+                SET_WALLPAPER_ENTRY_POINT_WALLPAPER_PREVIEW,
                 WallpaperDestination.HOME,
                 FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS[1].wallpaperId,
             )
-            underTest.setWallpaper(
+            underTest.setRecentWallpaper(
+                SET_WALLPAPER_ENTRY_POINT_WALLPAPER_PREVIEW,
                 WallpaperDestination.LOCK,
                 FakeWallpaperClient.INITIAL_RECENT_WALLPAPERS[2].wallpaperId,
             )

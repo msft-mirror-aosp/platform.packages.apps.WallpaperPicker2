@@ -17,10 +17,18 @@
 
 package com.android.wallpaper.testing
 
+import android.app.WallpaperColors
 import android.graphics.Bitmap
+import android.graphics.Point
+import android.graphics.Rect
+import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.data.content.WallpaperClient
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
+import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
+import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
+import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
+import java.io.InputStream
 import kotlin.math.min
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,13 +85,36 @@ class FakeWallpaperClient : WallpaperClient {
             ?: error("No wallpapers for screen $destination")
     }
 
-    override suspend fun setWallpaper(
+    override suspend fun setStaticWallpaper(
+        setWallpaperEntryPoint: Int,
+        destination: WallpaperDestination,
+        wallpaperModel: StaticWallpaperModel,
+        inputStream: InputStream?,
+        bitmap: Bitmap,
+        wallpaperSize: Point,
+        fullPreviewCropModels: Map<Point, FullPreviewCropModel>?,
+    ) {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun setLiveWallpaper(
+        setWallpaperEntryPoint: Int,
+        destination: WallpaperDestination,
+        wallpaperModel: LiveWallpaperModel,
+    ) {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun setRecentWallpaper(
+        @SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
         destination: WallpaperDestination,
         wallpaperId: String,
         onDone: () -> Unit
     ) {
         if (isPaused) {
-            deferred.add { setWallpaper(destination, wallpaperId, onDone) }
+            deferred.add {
+                setRecentWallpaper(setWallpaperEntryPoint, destination, wallpaperId, onDone)
+            }
         } else {
             _recentWallpapers.value =
                 _recentWallpapers.value.toMutableMap().apply {
@@ -97,7 +128,10 @@ class FakeWallpaperClient : WallpaperClient {
         }
     }
 
-    override suspend fun loadThumbnail(wallpaperId: String): Bitmap? {
+    override suspend fun loadThumbnail(
+        wallpaperId: String,
+        destination: WallpaperDestination
+    ): Bitmap? {
         return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
     }
 
@@ -105,21 +139,23 @@ class FakeWallpaperClient : WallpaperClient {
         return true
     }
 
+    override fun getCurrentCropHints(displaySizes: List<Point>, which: Int): Map<Point, Rect>? {
+        return emptyMap()
+    }
+
+    override suspend fun getWallpaperColors(
+        bitmap: Bitmap,
+        cropHints: Map<Point, Rect>?
+    ): WallpaperColors? {
+        return null
+    }
+
     companion object {
         val INITIAL_RECENT_WALLPAPERS =
             listOf(
-                WallpaperModel(
-                    wallpaperId = "zero",
-                    placeholderColor = 0,
-                ),
-                WallpaperModel(
-                    wallpaperId = "one",
-                    placeholderColor = 1,
-                ),
-                WallpaperModel(
-                    wallpaperId = "two",
-                    placeholderColor = 2,
-                ),
+                WallpaperModel(wallpaperId = "zero", placeholderColor = 0, title = "title1"),
+                WallpaperModel(wallpaperId = "one", placeholderColor = 1, title = "title2"),
+                WallpaperModel(wallpaperId = "two", placeholderColor = 2, title = "title3"),
             )
     }
 }
