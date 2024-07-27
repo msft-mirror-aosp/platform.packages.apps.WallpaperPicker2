@@ -363,7 +363,7 @@ object PreviewActionsBinder {
                                                 )
                                             }
                                         },
-                                        informationViewModel.actionButtonTitle
+                                        informationViewModel.actionButtonTitle,
                                     )
                                 }
                                 imageEffectViewModel != null ->
