@@ -69,26 +69,6 @@ public class WallpaperInfoHelper {
         return actionLabel;
     }
 
-    /**
-     * Loads the explore Intent from the actionUrl
-     */
-    public static void loadExploreIntent(
-            Context context,
-            @Nullable String actionUrl,
-            @NonNull ExploreIntentReceiver callback) {
-        CharSequence actionLabel = context.getString(R.string.explore);
-
-        if (!TextUtils.isEmpty(actionUrl)) {
-            Uri exploreUri = Uri.parse(actionUrl);
-            ExploreIntentChecker intentChecker =
-                    InjectorProvider.getInjector().getExploreIntentChecker(context);
-            intentChecker.fetchValidActionViewIntent(exploreUri,
-                    intent -> callback.onReceiveExploreIntent(actionLabel, intent));
-        } else {
-            callback.onReceiveExploreIntent(actionLabel, null);
-        }
-    }
-
     /** Indicates if the explore button should show up in the wallpaper info view. */
     public static boolean shouldShowExploreButton(Context context, @Nullable Intent exploreIntent) {
         return exploreIntent != null && !ActivityUtils.isSUWMode(context);
