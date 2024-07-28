@@ -87,7 +87,6 @@ constructor(
             if (wallpaperModel == null || !wallpaperModel.shouldShowInformationFloatingSheet()) {
                 null
             } else {
-
                 InformationFloatingSheetViewModel(
                     wallpaperModel.commonWallpaperData.attributions,
                     if (wallpaperModel.commonWallpaperData.exploreActionUrl.isNullOrEmpty()) {
