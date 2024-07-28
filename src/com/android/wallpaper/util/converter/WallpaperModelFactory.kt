@@ -111,8 +111,7 @@ interface WallpaperModelFactory {
             val currentHomeWallpaper =
                 wallpaperManager.getWallpaperInfo(WallpaperManager.FLAG_SYSTEM)
             val currentLockWallpaper = wallpaperManager.getWallpaperInfo(WallpaperManager.FLAG_LOCK)
-            var contextDescription: CharSequence? =
-                info.loadContextDescription(context.getPackageManager())
+            val contextDescription: CharSequence? = this.getActionDescription(context)
             return LiveWallpaperData(
                 groupName = groupNameOfWallpaper,
                 systemWallpaperInfo = info,
