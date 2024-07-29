@@ -246,6 +246,14 @@ open class TestInjector @Inject constructor(private val userEventLogger: UserEve
                         return true
                     }
 
+                    override fun isAIWallpaperEnabled(context: Context): Boolean {
+                        return true
+                    }
+
+                    override fun isWallpaperCategoryRefactoringEnabled(): Boolean {
+                        return true
+                    }
+
                     override fun getCachedFlags(
                         context: Context
                     ): List<CustomizationProviderClient.Flag> {
