@@ -13,14 +13,25 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="200dp"
-    android:background="#00ff00">
-    <TextView
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/floating_tab_toolbar_background"
+    tools:ignore="contentDescription"
+    android:padding="@dimen/floating_tab_toolbar_padding">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/tab_list"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Clock customization bottom sheet"
-        android:layout_gravity="center" />
+        android:orientation="horizontal"
+        app:layoutManager="LinearLayoutManager"  />
+
+    <include
+        layout="@layout/floating_toolbar_tab_placeholder"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="invisible" />
 </FrameLayout>

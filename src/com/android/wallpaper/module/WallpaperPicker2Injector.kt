@@ -26,8 +26,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleOwner
 import com.android.customization.model.color.DefaultWallpaperColorResources
 import com.android.customization.model.color.WallpaperColorResources
-import com.android.systemui.shared.settings.data.repository.SecureSettingsRepository
-import com.android.systemui.shared.settings.data.repository.SecureSettingsRepositoryImpl
 import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.effects.EffectsController
 import com.android.wallpaper.model.CategoryProvider
@@ -45,12 +43,9 @@ import com.android.wallpaper.picker.PreviewActivity
 import com.android.wallpaper.picker.PreviewFragment
 import com.android.wallpaper.picker.ViewOnlyPreviewActivity
 import com.android.wallpaper.picker.customization.data.content.WallpaperClient
-import com.android.wallpaper.picker.customization.data.content.WallpaperClientImpl
 import com.android.wallpaper.picker.customization.data.repository.WallpaperColorsRepository
-import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperSnapshotRestorer
-import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.individual.IndividualPickerFragment
 import com.android.wallpaper.picker.undo.data.repository.UndoRepository
@@ -60,7 +55,6 @@ import com.android.wallpaper.util.DisplayUtils
 import dagger.Lazy
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 
 @Singleton
@@ -68,7 +62,6 @@ open class WallpaperPicker2Injector
 @Inject
 constructor(
     @MainDispatcher private val mainScope: CoroutineScope,
-    @BackgroundDispatcher private val bgDispatcher: CoroutineDispatcher,
 ) : Injector {
     private var alarmManagerWrapper: AlarmManagerWrapper? = null
     private var bitmapCropper: BitmapCropper? = null
@@ -89,8 +82,7 @@ constructor(
     private var wallpaperInteractor: WallpaperInteractor? = null
     private var wallpaperClient: WallpaperClient? = null
     private var wallpaperSnapshotRestorer: WallpaperSnapshotRestorer? = null
-    private var secureSettingsRepository: SecureSettingsRepository? = null
-    private var wallpaperColorsRepository: WallpaperColorsRepository? = null
+
     private var previewActivityIntentFactory: InlinePreviewIntentFactory? = null
     private var viewOnlyPreviewActivityIntentFactory: InlinePreviewIntentFactory? = null
 
@@ -104,6 +96,7 @@ constructor(
     @Inject lateinit var injectedWallpaperClient: Lazy<WallpaperClient>
     @Inject lateinit var injectedWallpaperInteractor: Lazy<WallpaperInteractor>
     @Inject lateinit var prefs: Lazy<WallpaperPreferences>
+    @Inject lateinit var wallpaperColorsRepository: Lazy<WallpaperColorsRepository>
 
     override fun getApplicationCoroutineScope(): CoroutineScope {
         return mainScope
@@ -304,37 +297,11 @@ constructor(
     }
 
     override fun getWallpaperInteractor(context: Context): WallpaperInteractor {
-        if (getFlags().isMultiCropEnabled()) {
-            return injectedWallpaperInteractor.get()
-        }
-
-        val appContext = context.applicationContext
-        return wallpaperInteractor
-            ?: WallpaperInteractor(
-                    repository =
-                        WallpaperRepository(
-                            scope = getApplicationCoroutineScope(),
-                            client = getWallpaperClient(context),
-                            wallpaperPreferences = getPreferences(context = appContext),
-                            backgroundDispatcher = bgDispatcher,
-                        ),
-                )
-                .also { wallpaperInteractor = it }
+        return injectedWallpaperInteractor.get()
     }
 
     override fun getWallpaperClient(context: Context): WallpaperClient {
-        if (getFlags().isMultiCropEnabled()) {
-            return injectedWallpaperClient.get()
-        }
-
-        val appContext = context.applicationContext
-        return wallpaperClient
-            ?: WallpaperClientImpl(
-                    context = appContext,
-                    wallpaperManager = WallpaperManager.getInstance(appContext),
-                    wallpaperPreferences = getPreferences(appContext),
-                )
-                .also { wallpaperClient = it }
+        return injectedWallpaperClient.get()
     }
 
     override fun getWallpaperSnapshotRestorer(context: Context): WallpaperSnapshotRestorer {
@@ -346,18 +313,8 @@ constructor(
                 .also { wallpaperSnapshotRestorer = it }
     }
 
-    protected fun getSecureSettingsRepository(context: Context): SecureSettingsRepository {
-        return secureSettingsRepository
-            ?: SecureSettingsRepositoryImpl(
-                    contentResolver = context.applicationContext.contentResolver,
-                    backgroundDispatcher = bgDispatcher,
-                )
-                .also { secureSettingsRepository = it }
-    }
-
     override fun getWallpaperColorsRepository(): WallpaperColorsRepository {
-        return wallpaperColorsRepository
-            ?: WallpaperColorsRepository().also { wallpaperColorsRepository = it }
+        return wallpaperColorsRepository.get()
     }
 
     override fun getWallpaperColorResources(
