@@ -19,12 +19,21 @@ package com.android.wallpaper.picker.di.modules
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.res.Resources
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.Looper
+import android.os.Process
 import com.android.wallpaper.module.DefaultNetworkStatusNotifier
 import com.android.wallpaper.module.LargeScreenMultiPanesChecker
 import com.android.wallpaper.module.MultiPanesChecker
 import com.android.wallpaper.module.NetworkStatusNotifier
 import com.android.wallpaper.network.Requester
 import com.android.wallpaper.network.WallpaperRequester
+import com.android.wallpaper.picker.category.client.DefaultWallpaperCategoryClient
+import com.android.wallpaper.picker.category.client.DefaultWallpaperCategoryClientImpl
+import com.android.wallpaper.picker.category.data.repository.DefaultWallpaperCategoryRepository
+import com.android.wallpaper.picker.category.data.repository.WallpaperCategoryRepository
 import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.MyPhotosInteractor
@@ -45,30 +54,17 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import java.util.concurrent.Executor
+import javax.inject.Qualifier
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class SharedAppModule {
-    @Binds @Singleton abstract fun bindUiModeManager(impl: UiModeManagerImpl): UiModeManagerWrapper
-
-    @Binds
-    @Singleton
-    abstract fun bindNetworkStatusNotifier(
-        impl: DefaultNetworkStatusNotifier
-    ): NetworkStatusNotifier
-
-    @Binds @Singleton abstract fun bindWallpaperRequester(impl: WallpaperRequester): Requester
-
-    @Binds
-    @Singleton
-    abstract fun bindWallpaperXMLParser(impl: WallpaperParserImpl): WallpaperParser
 
     @Binds
     @Singleton
     abstract fun bindCategoryFactory(impl: DefaultCategoryFactory): CategoryFactory
-
-    @Binds @Singleton abstract fun bindWallpaperClient(impl: WallpaperClientImpl): WallpaperClient
 
     @Binds
     @Singleton
@@ -77,18 +73,82 @@ abstract class SharedAppModule {
     @Binds
     @Singleton
     abstract fun bindCreativeCategoryInteractor(
-        impl: CreativeCategoryInteractorImpl
+        impl: CreativeCategoryInteractorImpl,
     ): CreativeCategoryInteractor
 
     @Binds
     @Singleton
     abstract fun bindMyPhotosInteractor(impl: MyPhotosInteractorImpl): MyPhotosInteractor
 
+    @Binds
+    @Singleton
+    abstract fun bindNetworkStatusNotifier(
+        impl: DefaultNetworkStatusNotifier
+    ): NetworkStatusNotifier
+
+    @Binds @Singleton abstract fun bindRequester(impl: WallpaperRequester): Requester
+
+    @Binds
+    @Singleton
+    abstract fun bindUiModeManagerWrapper(impl: UiModeManagerImpl): UiModeManagerWrapper
+
+    @Binds
+    @Singleton
+    abstract fun bindWallpaperCategoryClient(
+        impl: DefaultWallpaperCategoryClientImpl
+    ): DefaultWallpaperCategoryClient
+
+    @Binds
+    @Singleton
+    abstract fun bindWallpaperCategoryRepository(
+        impl: DefaultWallpaperCategoryRepository
+    ): WallpaperCategoryRepository
+
+    @Binds @Singleton abstract fun bindWallpaperClient(impl: WallpaperClientImpl): WallpaperClient
+
+    @Binds @Singleton abstract fun bindWallpaperParser(impl: WallpaperParserImpl): WallpaperParser
+
     companion object {
+
+        @Qualifier
+        @MustBeDocumented
+        @Retention(AnnotationRetention.RUNTIME)
+        annotation class BroadcastRunning
+
+        private const val BROADCAST_SLOW_DISPATCH_THRESHOLD = 1000L
+        private const val BROADCAST_SLOW_DELIVERY_THRESHOLD = 1000L
+
+        /** Provide a BroadcastRunning Executor (for sending and receiving broadcasts). */
         @Provides
         @Singleton
-        fun provideWallpaperManager(@ApplicationContext appContext: Context): WallpaperManager {
-            return WallpaperManager.getInstance(appContext)
+        @BroadcastRunning
+        fun provideBroadcastRunningExecutor(@BroadcastRunning looper: Looper?): Executor {
+            val handler = Handler(looper ?: Looper.getMainLooper())
+            return Executor { command -> handler.post(command) }
+        }
+
+        @Provides
+        @Singleton
+        @BroadcastRunning
+        fun provideBroadcastRunningLooper(): Looper {
+            return HandlerThread(
+                    "BroadcastRunning",
+                    Process.THREAD_PRIORITY_BACKGROUND,
+                )
+                .apply {
+                    start()
+                    looper.setSlowLogThresholdMs(
+                        BROADCAST_SLOW_DISPATCH_THRESHOLD,
+                        BROADCAST_SLOW_DELIVERY_THRESHOLD,
+                    )
+                }
+                .looper
+        }
+
+        @Provides
+        @Singleton
+        fun provideMultiPanesChecker(): MultiPanesChecker {
+            return LargeScreenMultiPanesChecker()
         }
 
         @Provides
@@ -99,8 +159,14 @@ abstract class SharedAppModule {
 
         @Provides
         @Singleton
-        fun provideMultiPanesChecker(): MultiPanesChecker {
-            return LargeScreenMultiPanesChecker()
+        fun provideResources(@ApplicationContext context: Context): Resources {
+            return context.resources
+        }
+
+        @Provides
+        @Singleton
+        fun provideWallpaperManager(@ApplicationContext appContext: Context): WallpaperManager {
+            return WallpaperManager.getInstance(appContext)
         }
     }
 }
