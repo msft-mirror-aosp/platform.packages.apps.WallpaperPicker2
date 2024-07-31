@@ -18,10 +18,12 @@ package com.android.wallpaper.picker.customization.ui.binder
 
 import android.view.View
 import androidx.constraintlayout.motion.widget.MotionLayout
+import androidx.core.view.doOnLayout
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.android.wallpaper.R
 import com.android.wallpaper.model.Screen.HOME_SCREEN
@@ -35,6 +37,11 @@ import kotlinx.coroutines.launch
 
 object CustomizationPickerBinder2 {
 
+    private const val ALPHA_SELECTED_PREVIEW = 1f
+    private const val ALPHA_NON_SELECTED_PREVIEW = 0.4f
+    private const val LOCK_SCREEN_PREVIEW_POSITION = 0
+    private const val HOME_SCREEN_PREVIEW_POSITION = 1
+
     /**
      * @return Callback for the [CustomizationPickerActivity2] to set
      *   [CustomizationPickerViewModel2]'s screen state to null, which infers to the main screen. We
@@ -44,6 +51,7 @@ object CustomizationPickerBinder2 {
         view: View,
         lockScreenCustomizationOptionEntries: List<Pair<CustomizationOption, View>>,
         homeScreenCustomizationOptionEntries: List<Pair<CustomizationOption, View>>,
+        customizationOptionFloatingSheetViewMap: Map<CustomizationOption, View>?,
         viewModel: CustomizationPickerViewModel2,
         customizationOptionsBinder: CustomizationOptionsBinder,
         lifecycleOwner: LifecycleOwner,
@@ -56,10 +64,72 @@ object CustomizationPickerBinder2 {
         pager.registerOnPageChangeCallback(
             object : ViewPager2.OnPageChangeCallback() {
                 override fun onPageSelected(position: Int) {
-                    viewModel.selectPreviewScreen(if (position == 0) LOCK_SCREEN else HOME_SCREEN)
+                    viewModel.selectPreviewScreen(
+                        if (position == LOCK_SCREEN_PREVIEW_POSITION) LOCK_SCREEN else HOME_SCREEN
+                    )
                 }
             }
         )
+        val mediumAnimTimeMs =
+            view.resources.getInteger(android.R.integer.config_mediumAnimTime).toLong()
+        pager.doOnLayout {
+            // RecyclerView items can only be reliably retrieved on layout.
+            val lockScreenPreview =
+                (pager.getChildAt(0) as? RecyclerView)
+                    ?.findViewHolderForAdapterPosition(LOCK_SCREEN_PREVIEW_POSITION)
+                    ?.itemView
+            val homeScreenPreview =
+                (pager.getChildAt(0) as? RecyclerView)
+                    ?.findViewHolderForAdapterPosition(HOME_SCREEN_PREVIEW_POSITION)
+                    ?.itemView
+            val fadePreview = { position: Int ->
+                lockScreenPreview?.apply {
+                    findViewById<View>(R.id.wallpaper_surface)
+                        .animate()
+                        .alpha(
+                            if (position == LOCK_SCREEN_PREVIEW_POSITION) ALPHA_SELECTED_PREVIEW
+                            else ALPHA_NON_SELECTED_PREVIEW
+                        )
+                        .setDuration(mediumAnimTimeMs)
+                        .start()
+                    findViewById<View>(R.id.workspace_surface)
+                        .animate()
+                        .alpha(
+                            if (position == LOCK_SCREEN_PREVIEW_POSITION) ALPHA_SELECTED_PREVIEW
+                            else ALPHA_NON_SELECTED_PREVIEW
+                        )
+                        .setDuration(mediumAnimTimeMs)
+                        .start()
+                }
+                homeScreenPreview?.apply {
+                    findViewById<View>(R.id.wallpaper_surface)
+                        .animate()
+                        .alpha(
+                            if (position == HOME_SCREEN_PREVIEW_POSITION) ALPHA_SELECTED_PREVIEW
+                            else ALPHA_NON_SELECTED_PREVIEW
+                        )
+                        .setDuration(mediumAnimTimeMs)
+                        .start()
+                    findViewById<View>(R.id.workspace_surface)
+                        .animate()
+                        .alpha(
+                            if (position == HOME_SCREEN_PREVIEW_POSITION) ALPHA_SELECTED_PREVIEW
+                            else ALPHA_NON_SELECTED_PREVIEW
+                        )
+                        .setDuration(mediumAnimTimeMs)
+                        .start()
+                }
+            }
+            fadePreview(pager.currentItem)
+            pager.registerOnPageChangeCallback(
+                object : ViewPager2.OnPageChangeCallback() {
+                    override fun onPageSelected(position: Int) {
+                        super.onPageSelected(position)
+                        fadePreview(position)
+                    }
+                }
+            )
+        }
 
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -93,6 +163,7 @@ object CustomizationPickerBinder2 {
             view,
             lockScreenCustomizationOptionEntries,
             homeScreenCustomizationOptionEntries,
+            customizationOptionFloatingSheetViewMap,
             viewModel.customizationOptionsViewModel,
             lifecycleOwner,
         )

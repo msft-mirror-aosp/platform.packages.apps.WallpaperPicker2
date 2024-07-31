@@ -17,12 +17,16 @@
 package com.android.wallpaper.picker.category.data
 
 import android.content.Context
+import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.content.pm.ApplicationInfo
+import android.content.pm.ResolveInfo
 import com.android.wallpaper.model.PartnerWallpaperInfo
 import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.picker.category.client.DefaultWallpaperCategoryClient
+import com.android.wallpaper.picker.category.client.DefaultWallpaperCategoryClientImpl
 import com.android.wallpaper.picker.data.category.CategoryModel
 import com.android.wallpaper.picker.data.category.CommonCategoryData
-import com.android.wallpaper.testing.FakeDefaultCategoryFactory
 import com.android.wallpaper.testing.FakeWallpaperParser
 import com.android.wallpaper.testing.TestInjector
 import com.android.wallpaper.testing.TestPartnerProvider
@@ -43,16 +47,16 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 
 @HiltAndroidTest
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-class DefaultWallpaperCategoryClientTest {
+class DefaultWallpaperCategoryClientImplTest {
 
     @get:Rule var hiltRule = HiltAndroidRule(this)
     @Inject @ApplicationContext lateinit var context: Context
     @Inject lateinit var partnerProvider: TestPartnerProvider
-    @Inject lateinit var defaultCategoryFactory: FakeDefaultCategoryFactory
     @Inject lateinit var wallpaperXMLParser: FakeWallpaperParser
     @Inject lateinit var testDispatcher: TestDispatcher
     @Inject lateinit var testScope: TestScope
@@ -65,12 +69,7 @@ class DefaultWallpaperCategoryClientTest {
         hiltRule.inject()
         Dispatchers.setMain(testDispatcher)
         defaultWallpaperCategoryClient =
-            DefaultWallpaperCategoryClient(
-                context,
-                partnerProvider,
-                defaultCategoryFactory,
-                wallpaperXMLParser
-            )
+            DefaultWallpaperCategoryClientImpl(context, partnerProvider, wallpaperXMLParser)
         InjectorProvider.setInjector(testInjector)
         val resources = context.resources
         partnerProvider.resources = resources
@@ -87,13 +86,11 @@ class DefaultWallpaperCategoryClientTest {
             val result = defaultWallpaperCategoryClient.getMyPhotosCategory()
 
             assertThat(expectedCategoryModel.commonCategoryData.collectionId)
-                .isEqualTo(result.commonCategoryData.collectionId)
+                .isEqualTo(result.collectionId)
 
-            assertThat(expectedCategoryModel.commonCategoryData.priority)
-                .isEqualTo(result.commonCategoryData.priority)
+            assertThat(expectedCategoryModel.commonCategoryData.priority).isEqualTo(result.priority)
 
-            assertThat(expectedCategoryModel.commonCategoryData.title)
-                .isEqualTo(result.commonCategoryData.title)
+            assertThat(expectedCategoryModel.commonCategoryData.title).isEqualTo(result.title)
         }
 
     @Test
@@ -105,9 +102,8 @@ class DefaultWallpaperCategoryClientTest {
                 async { defaultWallpaperCategoryClient.getOnDeviceCategory() }.await()
 
             assertThat(categoryModel).isNotNull()
-            assertThat(categoryModel?.commonCategoryData?.title).isEqualTo("On-device wallpapers")
-            assertThat(categoryModel?.commonCategoryData?.collectionId)
-                .isEqualTo("on_device_wallpapers")
+            assertThat(categoryModel?.title).isEqualTo("On-device wallpapers")
+            assertThat(categoryModel?.collectionId).isEqualTo("on_device_wallpapers")
         }
 
     @Test
@@ -123,11 +119,52 @@ class DefaultWallpaperCategoryClientTest {
     @Test
     fun getSystemCategories() =
         testScope.runTest {
-            val categoryModel = async { defaultWallpaperCategoryClient.getCategories() }.await()
+            val categoryModel =
+                async { defaultWallpaperCategoryClient.getSystemCategories() }.await()
 
             assertThat(categoryModel).isNotNull()
-            assertThat(categoryModel[0].commonCategoryData.title).isEqualTo("sample-title-1")
-            assertThat(categoryModel[0].commonCategoryData.collectionId)
-                .isEqualTo("sample-collection-id")
+            assertThat(categoryModel[0].title).isEqualTo("sample-title-1")
+            assertThat(categoryModel[0].collectionId).isEqualTo("sample-collection-id")
         }
+
+    @Test
+    fun getThirdPartyCategory() =
+        testScope.runTest {
+            // Get the shadow package manager
+            val shadowPackageManager = shadowOf(context.packageManager)
+            val fakeThirdPartyApp1 = createFakeResolveInfo("com.example.app1", "ThirdPartyApp1")
+            val fakeThirdPartyApp2 = createFakeResolveInfo("com.example.app2", "ThirdPartyApp2")
+            val fakeImagePickerApp = createFakeResolveInfo("com.example.imagepicker", "ImagePicker")
+            shadowPackageManager.addResolveInfoForIntent(
+                Intent(Intent.ACTION_SET_WALLPAPER),
+                listOf(fakeThirdPartyApp1, fakeThirdPartyApp2, fakeImagePickerApp)
+            )
+            shadowPackageManager.addResolveInfoForIntent(
+                Intent(Intent.ACTION_GET_CONTENT).setType("image/*"),
+                listOf(fakeImagePickerApp)
+            )
+
+            val result = defaultWallpaperCategoryClient.getThirdPartyCategory()
+            assertThat(result).hasSize(2)
+            assertThat(result[0].title).isEqualTo("ThirdPartyApp1")
+            assertThat(result[0].collectionId).contains("com.example.app1")
+            assertThat(result[1].title).isEqualTo("ThirdPartyApp2")
+            assertThat(result[1].collectionId).contains("com.example.app2")
+        }
+
+    private fun createFakeResolveInfo(packageName: String, label: String): ResolveInfo {
+        return ResolveInfo().apply {
+            activityInfo =
+                ActivityInfo().apply {
+                    this.packageName = packageName
+                    name = "${packageName}.MainActivity"
+                    applicationInfo =
+                        ApplicationInfo().apply {
+                            this.packageName = packageName
+                            labelRes = 0
+                            nonLocalizedLabel = label
+                        }
+                }
+        }
+    }
 }
