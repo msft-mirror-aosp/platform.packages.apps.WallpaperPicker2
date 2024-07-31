@@ -29,19 +29,18 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.constraintlayout.motion.widget.MotionLayout.TransitionListener
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.constraintlayout.widget.Guideline
+import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnLayout
 import androidx.core.view.doOnPreDraw
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
-import com.android.app.tracing.coroutines.launch
 import com.android.wallpaper.R
 import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.Screen.HOME_SCREEN
 import com.android.wallpaper.model.Screen.LOCK_SCREEN
-import com.android.wallpaper.model.wallpaper.DeviceDisplayType
-import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.module.MultiPanesChecker
 import com.android.wallpaper.picker.common.preview.ui.binder.BasePreviewBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
@@ -52,10 +51,13 @@ import com.android.wallpaper.picker.customization.ui.view.adapter.PreviewPagerAd
 import com.android.wallpaper.picker.customization.ui.view.transformer.PreviewPagerPageTransformer
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
+import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.data.repository.WallpaperPreviewRepository
 import com.android.wallpaper.util.ActivityUtils
+import com.android.wallpaper.util.DisplayUtils
 import com.android.wallpaper.util.WallpaperConnection
 import com.android.wallpaper.util.converter.WallpaperModelFactory
+import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import com.google.android.material.appbar.AppBarLayout
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -70,12 +72,15 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
     @Inject lateinit var customizationOptionsBinder: CustomizationOptionsBinder
     @Inject lateinit var wallpaperModelFactory: WallpaperModelFactory
     @Inject lateinit var wallpaperPreviewRepository: WallpaperPreviewRepository
+    @Inject lateinit var displayUtils: DisplayUtils
     @Inject @BackgroundDispatcher lateinit var backgroundScope: CoroutineScope
+    @Inject @MainDispatcher lateinit var mainScope: CoroutineScope
 
     private var fullyCollapsed = false
+    private var navBarHeight: Int = 0
 
     private val customizationPickerViewModel: CustomizationPickerViewModel2 by viewModels()
-    private var customizationOptionFloatingSheetMap: Map<CustomizationOption, View>? = null
+    private var customizationOptionFloatingSheetViewMap: Map<CustomizationOption, View>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,6 +100,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
                 0, /* requestCode */
             )
             finish()
+            return
         }
 
         setContentView(R.layout.activity_cusomization_picker2)
@@ -103,8 +109,15 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         setupToolbar(requireViewById(R.id.toolbar_container))
 
         val rootView = requireViewById<MotionLayout>(R.id.picker_motion_layout)
+        ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            navBarHeight = insets.bottom
+            requireViewById<FrameLayout>(R.id.customization_option_floating_sheet_container)
+                .setPaddingRelative(0, 0, 0, navBarHeight)
+            WindowInsetsCompat.CONSUMED
+        }
 
-        customizationOptionFloatingSheetMap =
+        customizationOptionFloatingSheetViewMap =
             customizationOptionUtil.initFloatingSheet(
                 rootView.requireViewById<FrameLayout>(
                     R.id.customization_option_floating_sheet_container
@@ -126,38 +139,15 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
 
         val previewViewModel = customizationPickerViewModel.basePreviewViewModel
         previewViewModel.setWhichPreview(WallpaperConnection.WhichPreview.EDIT_CURRENT)
-        previewViewModel.setIsWallpaperColorPreviewEnabled(
-            !InjectorProvider.getInjector().isCurrentSelectedColorPreset(applicationContext)
-        )
+        // TODO (b/348462236): adjust flow so this is always false when previewing current wallpaper
+        previewViewModel.setIsWallpaperColorPreviewEnabled(false)
 
-        // WIP, the current preview flow only allows setting one wallpaper model to preview.
-        // To test the preview flow we get and set the current home wallpaper model.
-        // TODO (b/348462236): add ability preview current wallpaper models, lock and home
-        val wallpaperInfoFactory =
-            InjectorProvider.getInjector().getCurrentWallpaperInfoFactory(applicationContext)
-        backgroundScope.launch {
-            wallpaperInfoFactory.createCurrentWallpaperInfos(
-                applicationContext,
-                /* forceRefresh= */ true,
-            ) { homeWallpaper, _, _ ->
-                val homeWallpaperModel =
-                    wallpaperModelFactory.getWallpaperModel(applicationContext, homeWallpaper)
-                wallpaperPreviewRepository.setWallpaperModel(homeWallpaperModel)
-            }
-        }
-
-        initPreviewPager()
+        initPreviewPager(isFirstBinding = savedInstanceState == null)
 
         val optionContainer = requireViewById<MotionLayout>(R.id.customization_option_container)
         // The collapsed header height should be updated when option container's height is known
         optionContainer.doOnPreDraw {
             // The bottom navigation bar height
-            val navBarHeight =
-                resources.getIdentifier("navigation_bar_height", "dimen", "android").let {
-                    if (it > 0) {
-                        resources.getDimensionPixelSize(it)
-                    } else 0
-                }
             val collapsedHeaderHeight = rootView.height - optionContainer.height - navBarHeight
             if (
                 collapsedHeaderHeight >
@@ -177,6 +167,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
                 view = rootView,
                 lockScreenCustomizationOptionEntries = initCustomizationOptionEntries(LOCK_SCREEN),
                 homeScreenCustomizationOptionEntries = initCustomizationOptionEntries(HOME_SCREEN),
+                customizationOptionFloatingSheetViewMap = customizationOptionFloatingSheetViewMap,
                 viewModel = customizationPickerViewModel,
                 customizationOptionsBinder = customizationOptionsBinder,
                 lifecycleOwner = this,
@@ -243,7 +234,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         return optionEntries
     }
 
-    private fun initPreviewPager() {
+    private fun initPreviewPager(isFirstBinding: Boolean) {
         val pager = requireViewById<ViewPager2>(R.id.preview_pager)
         val previewViewModel = customizationPickerViewModel.basePreviewViewModel
         pager.apply {
@@ -251,18 +242,23 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
                 val previewCard = viewHolder.itemView.requireViewById<View>(R.id.preview_card)
 
                 BasePreviewBinder.bind(
-                    applicationContext,
-                    previewCard,
-                    previewViewModel,
-                    if (position == 0) {
-                        LOCK_SCREEN
-                    } else {
-                        HOME_SCREEN
-                    },
-                    DeviceDisplayType.SINGLE,
-                    previewViewModel.wallpaperDisplaySize.value,
-                    this@CustomizationPickerActivity2,
-                    true
+                    applicationContext = applicationContext,
+                    view = previewCard,
+                    viewModel = previewViewModel,
+                    screen =
+                        if (position == 0) {
+                            LOCK_SCREEN
+                        } else {
+                            HOME_SCREEN
+                        },
+                    deviceDisplayType =
+                        displayUtils.getCurrentDisplayType(this@CustomizationPickerActivity2),
+                    displaySize =
+                        if (displayUtils.isOnWallpaperDisplay(this@CustomizationPickerActivity2))
+                            previewViewModel.wallpaperDisplaySize.value
+                        else previewViewModel.smallerDisplaySize,
+                    lifecycleOwner = this@CustomizationPickerActivity2,
+                    isFirstBinding = isFirstBinding,
                 )
             }
             // Disable over scroll
@@ -297,50 +293,77 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         option: CustomizationOption,
         onComplete: () -> Unit
     ) {
-        val view = customizationOptionFloatingSheetMap?.get(option) ?: return
+        val view = customizationOptionFloatingSheetViewMap?.get(option) ?: return
 
         val floatingSheetContainer =
             requireViewById<FrameLayout>(R.id.customization_option_floating_sheet_container)
-        val guideline = requireViewById<Guideline>(R.id.preview_guideline_in_secondary_screen)
         floatingSheetContainer.removeAllViews()
         floatingSheetContainer.addView(view)
 
         view.doOnPreDraw {
-            val height = view.height
-            guideline.setGuidelineEnd(height)
+            val height = view.height + navBarHeight
             floatingSheetContainer.translationY = 0.0f
             floatingSheetContainer.alpha = 0.0f
             // Update the motion container
             motionContainer.getConstraintSet(R.id.expanded_header_primary)?.apply {
-                setTranslationY(R.id.customization_option_floating_sheet_container, 0.0f)
+                setTranslationY(
+                    R.id.customization_option_floating_sheet_container,
+                    height.toFloat()
+                )
                 setAlpha(R.id.customization_option_floating_sheet_container, 0.0f)
+                connect(
+                    R.id.customization_option_floating_sheet_container,
+                    ConstraintSet.BOTTOM,
+                    R.id.picker_motion_layout,
+                    ConstraintSet.BOTTOM
+                )
                 constrainHeight(
                     R.id.customization_option_floating_sheet_container,
-                    ConstraintLayout.LayoutParams.WRAP_CONTENT
+                    ConstraintLayout.LayoutParams.WRAP_CONTENT,
                 )
             }
             motionContainer.getConstraintSet(R.id.collapsed_header_primary)?.apply {
-                setTranslationY(R.id.customization_option_floating_sheet_container, 0.0f)
+                setTranslationY(
+                    R.id.customization_option_floating_sheet_container,
+                    height.toFloat()
+                )
                 setAlpha(R.id.customization_option_floating_sheet_container, 0.0f)
+                connect(
+                    R.id.customization_option_floating_sheet_container,
+                    ConstraintSet.BOTTOM,
+                    R.id.picker_motion_layout,
+                    ConstraintSet.BOTTOM
+                )
                 constrainHeight(
                     R.id.customization_option_floating_sheet_container,
-                    ConstraintLayout.LayoutParams.WRAP_CONTENT
+                    ConstraintLayout.LayoutParams.WRAP_CONTENT,
                 )
             }
             motionContainer.getConstraintSet(R.id.secondary)?.apply {
-                setGuidelineEnd(R.id.preview_guideline_in_secondary_screen, height)
                 setTranslationY(
                     R.id.customization_option_floating_sheet_container,
-                    -height.toFloat()
+                    0.0f,
                 )
                 setAlpha(R.id.customization_option_floating_sheet_container, 1.0f)
                 constrainHeight(
                     R.id.customization_option_floating_sheet_container,
-                    ConstraintLayout.LayoutParams.WRAP_CONTENT
+                    ConstraintLayout.LayoutParams.WRAP_CONTENT,
                 )
             }
             onComplete()
         }
+    }
+
+    override fun onDestroy() {
+        // TODO(b/333879532): Only disconnect when leaving the Activity without introducing black
+        //  preview. If onDestroy is caused by an orientation change, we should keep the connection
+        //  to avoid initiating the engines again.
+        // TODO(b/328302105): MainScope ensures the job gets done non-blocking even if the
+        //   activity has been destroyed already. Consider making this part of
+        //   WallpaperConnectionUtils.
+        mainScope.launch { WallpaperConnectionUtils.disconnectAll(applicationContext) }
+
+        super.onDestroy()
     }
 
     interface EmptyTransitionListener : TransitionListener {
