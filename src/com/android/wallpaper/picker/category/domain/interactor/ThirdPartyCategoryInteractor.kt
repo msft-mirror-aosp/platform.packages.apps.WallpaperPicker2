@@ -14,18 +14,15 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.picker.category.domain.interactor.implementations
+package com.android.wallpaper.picker.category.domain.interactor
 
-import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
 import com.android.wallpaper.picker.data.category.CategoryModel
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
 
-/** This class implements the business logic in assembling creative category models */
-@Singleton
-class CreativeCategoryInteractorImpl @Inject constructor() : CreativeCategoryInteractor {
-    // default implementation of creatives is empty in aosp
-    override val categories: Flow<List<CategoryModel>> = emptyFlow()
+/**
+ * Classes that implement this interface implement the business logic for assembling categories from
+ * third party apps
+ */
+interface ThirdPartyCategoryInteractor {
+    val categories: Flow<List<CategoryModel>>
 }
