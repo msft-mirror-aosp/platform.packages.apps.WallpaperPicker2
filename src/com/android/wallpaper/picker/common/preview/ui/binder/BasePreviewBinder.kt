@@ -25,6 +25,7 @@ import com.android.wallpaper.R
 import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.common.preview.ui.viewmodel.BasePreviewViewModel
+import kotlinx.coroutines.CompletableDeferred
 
 /**
  * Common base preview binder that is only responsible for binding the workspace and wallpaper, and
@@ -43,9 +44,10 @@ object BasePreviewBinder {
         deviceDisplayType: DeviceDisplayType,
         displaySize: Point,
         lifecycleOwner: LifecycleOwner,
-        isFirstBinding: Boolean,
+        isFirstBindingDeferred: CompletableDeferred<Boolean>,
     ) {
         val wallpaperSurface: SurfaceView = view.requireViewById(R.id.wallpaper_surface)
+        val workspaceSurface: SurfaceView = view.requireViewById(R.id.workspace_surface)
 
         WallpaperPreviewBinder.bind(
             applicationContext = applicationContext,
@@ -55,7 +57,25 @@ object BasePreviewBinder {
             displaySize = displaySize,
             deviceDisplayType = deviceDisplayType,
             viewLifecycleOwner = lifecycleOwner,
-            isFirstBinding = isFirstBinding,
+            isFirstBindingDeferred = isFirstBindingDeferred,
+        )
+
+        val previewUtils =
+            when (screen) {
+                Screen.HOME_SCREEN -> {
+                    viewModel.homePreviewUtils
+                }
+                Screen.LOCK_SCREEN -> {
+                    viewModel.lockPreviewUtils
+                }
+            }
+
+        WorkspacePreviewBinder.bind(
+            surfaceView = workspaceSurface,
+            viewModel = viewModel,
+            previewUtils = previewUtils,
+            deviceDisplayType = deviceDisplayType,
+            lifecycleOwner = lifecycleOwner,
         )
     }
 }
