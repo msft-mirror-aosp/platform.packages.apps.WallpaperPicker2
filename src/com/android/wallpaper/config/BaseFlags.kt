@@ -19,11 +19,11 @@ import android.app.WallpaperManager
 import android.content.Context
 import com.android.settings.accessibility.Flags.enableColorContrastControl
 import com.android.systemui.Flags.clockReactiveVariants
+import com.android.systemui.Flags.newPickerUi
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClient
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClientImpl
 import com.android.systemui.shared.customization.data.content.CustomizationProviderContract as Contract
 import com.android.wallpaper.Flags.magicPortraitFlag
-import com.android.wallpaper.Flags.newPickerUiFlag
 import com.android.wallpaper.Flags.refactorWallpaperCategoryFlag
 import com.android.wallpaper.Flags.wallpaperRestorerFlag
 import com.android.wallpaper.module.InjectorProvider
@@ -33,15 +33,25 @@ import kotlinx.coroutines.runBlocking
 abstract class BaseFlags {
     private var customizationProviderClient: CustomizationProviderClient? = null
     private var cachedFlags: List<CustomizationProviderClient.Flag>? = null
+
     open fun isStagingBackdropContentEnabled() = false
+
     open fun isWallpaperEffectEnabled() = false
+
     open fun isWallpaperEffectModelDownloadEnabled() = true
+
     open fun isInterruptModelDownloadEnabled() = false
+
     open fun isWallpaperRestorerEnabled() = wallpaperRestorerFlag()
+
     open fun isWallpaperCategoryRefactoringEnabled() = refactorWallpaperCategoryFlag()
+
     open fun isColorContrastControlEnabled() = enableColorContrastControl()
+
     open fun isMagicPortraitEnabled() = magicPortraitFlag()
-    open fun isNewPickerUi() = newPickerUiFlag()
+
+    open fun isNewPickerUi() = newPickerUi()
+
     open fun isClockReactiveVariantsEnabled() = clockReactiveVariants()
 
     open fun isMultiCropEnabled() = WallpaperManager.isMultiCropEnabled()
