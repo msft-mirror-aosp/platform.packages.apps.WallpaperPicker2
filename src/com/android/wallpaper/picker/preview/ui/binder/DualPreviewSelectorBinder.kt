@@ -23,6 +23,8 @@ import com.android.wallpaper.picker.preview.ui.view.DualPreviewViewPager
 import com.android.wallpaper.picker.preview.ui.view.PreviewTabs
 import com.android.wallpaper.picker.preview.ui.viewmodel.FullPreviewConfigViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
+import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
+import kotlinx.coroutines.CompletableDeferred
 
 /**
  * This binder binds the data and view models for the dual preview collection on the small preview
@@ -39,7 +41,8 @@ object DualPreviewSelectorBinder {
         currentNavDestId: Int,
         transition: Transition?,
         transitionConfig: FullPreviewConfigViewModel?,
-        isFirstBinding: Boolean,
+        wallpaperConnectionUtils: WallpaperConnectionUtils,
+        isFirstBindingDeferred: CompletableDeferred<Boolean>,
         navigate: (View) -> Unit,
     ) {
         DualPreviewPagerBinder.bind(
@@ -50,7 +53,8 @@ object DualPreviewSelectorBinder {
             currentNavDestId,
             transition,
             transitionConfig,
-            isFirstBinding,
+            wallpaperConnectionUtils,
+            isFirstBindingDeferred,
             navigate,
         )
 

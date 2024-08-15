@@ -29,12 +29,13 @@ import com.android.wallpaper.R
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.customization.shared.model.WallpaperColorsModel
 import com.android.wallpaper.picker.data.WallpaperModel
-import com.android.wallpaper.picker.preview.ui.util.SurfaceViewUtil
-import com.android.wallpaper.picker.preview.ui.util.SurfaceViewUtil.attachView
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
+import com.android.wallpaper.util.SurfaceViewUtils
+import com.android.wallpaper.util.SurfaceViewUtils.attachView
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
-import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.shouldEnforceSingleEngine
+import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.Companion.shouldEnforceSingleEngine
 import com.android.wallpaper.util.wallpaperconnection.WallpaperEngineConnection.WallpaperEngineConnectionListener
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -55,9 +56,10 @@ object SmallWallpaperPreviewBinder {
         applicationContext: Context,
         viewLifecycleOwner: LifecycleOwner,
         deviceDisplayType: DeviceDisplayType,
-        isFirstBinding: Boolean,
+        wallpaperConnectionUtils: WallpaperConnectionUtils,
+        isFirstBindingDeferred: CompletableDeferred<Boolean>,
     ) {
-        var surfaceCallback: SurfaceViewUtil.SurfaceCallback? = null
+        var surfaceCallback: SurfaceViewUtils.SurfaceCallback? = null
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
                 surfaceCallback =
@@ -68,7 +70,8 @@ object SmallWallpaperPreviewBinder {
                         deviceDisplayType = deviceDisplayType,
                         displaySize = displaySize,
                         lifecycleOwner = viewLifecycleOwner,
-                        isFirstBinding
+                        wallpaperConnectionUtils = wallpaperConnectionUtils,
+                        isFirstBindingDeferred,
                     )
                 surface.setZOrderMediaOverlay(true)
                 surfaceCallback?.let { surface.holder.addCallback(it) }
@@ -93,10 +96,11 @@ object SmallWallpaperPreviewBinder {
         deviceDisplayType: DeviceDisplayType,
         displaySize: Point,
         lifecycleOwner: LifecycleOwner,
-        isFirstBinding: Boolean,
-    ): SurfaceViewUtil.SurfaceCallback {
+        wallpaperConnectionUtils: WallpaperConnectionUtils,
+        isFirstBindingDeferred: CompletableDeferred<Boolean>,
+    ): SurfaceViewUtils.SurfaceCallback {
 
-        return object : SurfaceViewUtil.SurfaceCallback {
+        return object : SurfaceViewUtils.SurfaceCallback {
 
             var job: Job? = null
             var loadingAnimationBinding: PreviewEffectsLoadingBinder.Binding? = null
@@ -106,19 +110,19 @@ object SmallWallpaperPreviewBinder {
                     lifecycleOwner.lifecycleScope.launch {
                         viewModel.smallWallpaper.collect { (wallpaper, whichPreview) ->
                             if (wallpaper is WallpaperModel.LiveWallpaperModel) {
-                                WallpaperConnectionUtils.connect(
+                                wallpaperConnectionUtils.connect(
                                     applicationContext,
                                     wallpaper,
                                     whichPreview,
                                     viewModel.getWallpaperPreviewSource().toFlag(),
                                     surface,
-                                    WallpaperConnectionUtils.EngineRenderingConfig(
+                                    WallpaperConnectionUtils.Companion.EngineRenderingConfig(
                                         wallpaper.shouldEnforceSingleEngine(),
                                         deviceDisplayType = deviceDisplayType,
                                         viewModel.smallerDisplaySize,
                                         viewModel.wallpaperDisplaySize.value,
                                     ),
-                                    isFirstBinding,
+                                    isFirstBindingDeferred,
                                     object : WallpaperEngineConnectionListener {
                                         override fun onWallpaperColorsChanged(
                                             colors: WallpaperColors?,
@@ -147,7 +151,7 @@ object SmallWallpaperPreviewBinder {
                                 )
                                 // This is to possibly shut down all live wallpaper services
                                 // if they exist; otherwise static wallpaper can not show up.
-                                WallpaperConnectionUtils.disconnectAllServices(applicationContext)
+                                wallpaperConnectionUtils.disconnectAllServices(applicationContext)
 
                                 loadingAnimationBinding =
                                     PreviewEffectsLoadingBinder.bind(
