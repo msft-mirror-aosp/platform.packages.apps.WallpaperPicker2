@@ -16,18 +16,25 @@
 
 package com.android.wallpaper.picker.category.ui.viewmodel
 
+import android.content.Context
+import android.content.pm.ResolveInfo
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.wallpaper.R
+import com.android.wallpaper.picker.category.domain.interactor.CategoriesLoadingStatusInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.MyPhotosInteractor
+import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.zip
 import kotlinx.coroutines.launch
 
 /** Top level [ViewModel] for the categories screen */
@@ -38,6 +45,9 @@ constructor(
     private val singleCategoryInteractor: CategoryInteractor,
     private val creativeWallpaperInteractor: CreativeCategoryInteractor,
     private val myPhotosInteractor: MyPhotosInteractor,
+    private val thirdPartyCategoryInteractor: ThirdPartyCategoryInteractor,
+    private val loadindStatusInteractor: CategoriesLoadingStatusInteractor,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _navigationEvents = MutableSharedFlow<NavigationEvent>()
@@ -59,13 +69,31 @@ constructor(
         viewModelScope.launch { _navigationEvents.emit(NavigationEvent.NavigateToPhotosPicker) }
     }
 
-    private fun navigateToThirdPartyApp(componentId: String) {
+    private fun navigateToThirdPartyApp(resolveInfo: ResolveInfo) {
         viewModelScope.launch {
-            _navigationEvents.emit(NavigationEvent.NavigateToThirdParty(componentId))
+            _navigationEvents.emit(NavigationEvent.NavigateToThirdParty(resolveInfo))
         }
     }
 
-    private val individualSectionViewModels: Flow<List<SectionViewModel>> =
+    private val thirdPartyCategorySections: Flow<List<SectionViewModel>> =
+        thirdPartyCategoryInteractor.categories.map { categories ->
+            return@map categories.map { category ->
+                SectionViewModel(
+                    tileViewModels =
+                        listOf(
+                            TileViewModel(null, null, category.commonCategoryData.title) {
+                                category.thirdPartyCategoryData?.resolveInfo?.let {
+                                    navigateToThirdPartyApp(it)
+                                }
+                            }
+                        ),
+                    columnCount = 1,
+                    sectionTitle = null
+                )
+            }
+        }
+
+    private val defaultCategorySections: Flow<List<SectionViewModel>> =
         singleCategoryInteractor.categories.map { categories ->
             return@map categories.map { category ->
                 SectionViewModel(
@@ -73,19 +101,31 @@ constructor(
                         listOf(
                             TileViewModel(
                                 defaultDrawable = null,
-                                thumbnailAsset = null,
+                                thumbnailAsset = category.collectionCategoryData?.thumbAsset,
                                 text = category.commonCategoryData.title,
                             ) {
-                                //  TODO(b/352081782): check if there is a single wallpaper
-                                navigateToWallpaperCollection(
-                                    category.commonCategoryData.collectionId
-                                )
+                                if (
+                                    category.collectionCategoryData?.isSingleWallpaperCategory ==
+                                        true
+                                ) {
+                                    navigateToPreviewScreen(
+                                        category.commonCategoryData.collectionId
+                                    )
+                                } else {
+                                    navigateToWallpaperCollection(
+                                        category.commonCategoryData.collectionId
+                                    )
+                                }
                             }
                         ),
-                    columnCount = 1
+                    columnCount = 1,
+                    sectionTitle = null
                 )
             }
         }
+
+    private val individualSectionViewModels: Flow<List<SectionViewModel>> =
+        defaultCategorySections.zip(thirdPartyCategorySections) { list1, list2 -> list1 + list2 }
 
     private val creativeSectionViewModel: Flow<SectionViewModel> =
         creativeWallpaperInteractor.categories.map { categories ->
@@ -93,11 +133,21 @@ constructor(
                 categories.map { category ->
                     TileViewModel(
                         defaultDrawable = null,
-                        thumbnailAsset = null,
+                        thumbnailAsset = category.collectionCategoryData?.thumbAsset,
                         text = category.commonCategoryData.title,
-                    )
+                    ) {
+                        if (category.collectionCategoryData?.isSingleWallpaperCategory == true) {
+                            navigateToPreviewScreen(category.commonCategoryData.collectionId)
+                        } else {
+                            navigateToWallpaperCollection(category.commonCategoryData.collectionId)
+                        }
+                    }
                 }
-            return@map SectionViewModel(tileViewModels = tiles, columnCount = 3)
+            return@map SectionViewModel(
+                tileViewModels = tiles,
+                columnCount = 3,
+                sectionTitle = context.getString(R.string.creative_wallpaper_title)
+            )
         }
 
     private val myPhotosSectionViewModel: Flow<SectionViewModel> =
@@ -114,7 +164,8 @@ constructor(
                             navigateToPhotosPicker()
                         }
                     ),
-                columnCount = 3
+                columnCount = 3,
+                sectionTitle = context.getString(R.string.choose_a_wallpaper_section_title)
             )
         }
 
@@ -130,6 +181,8 @@ constructor(
             }
         }
 
+    val isLoading: Flow<Boolean> = loadindStatusInteractor.isLoading
+
     /** This method updates the photos category */
     fun updateMyPhotosCategory() {
         myPhotosInteractor.updateMyPhotos()
@@ -142,6 +195,6 @@ constructor(
 
         object NavigateToPhotosPicker : NavigationEvent()
 
-        data class NavigateToThirdParty(val component: String) : NavigationEvent()
+        data class NavigateToThirdParty(val resolveInfo: ResolveInfo) : NavigationEvent()
     }
 }

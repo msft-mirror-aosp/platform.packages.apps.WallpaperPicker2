@@ -23,20 +23,25 @@ import com.android.wallpaper.module.LargeScreenMultiPanesChecker
 import com.android.wallpaper.module.MultiPanesChecker
 import com.android.wallpaper.module.NetworkStatusNotifier
 import com.android.wallpaper.picker.category.data.repository.WallpaperCategoryRepository
+import com.android.wallpaper.picker.category.domain.interactor.CategoriesLoadingStatusInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.MyPhotosInteractor
+import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
+import com.android.wallpaper.picker.category.ui.view.providers.IndividualPickerFactory
+import com.android.wallpaper.picker.category.ui.view.providers.implementation.DefaultIndividualPickerFactory
 import com.android.wallpaper.picker.customization.data.content.WallpaperClient
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
-import com.android.wallpaper.picker.di.modules.DispatchersModule
 import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.di.modules.SharedAppModule
 import com.android.wallpaper.system.UiModeManagerWrapper
+import com.android.wallpaper.testing.FakeCategoriesLoadingStatusInteractor
 import com.android.wallpaper.testing.FakeCategoryInteractor
 import com.android.wallpaper.testing.FakeCreativeWallpaperInteractor
 import com.android.wallpaper.testing.FakeDefaultCategoryFactory
 import com.android.wallpaper.testing.FakeDefaultWallpaperCategoryRepository
 import com.android.wallpaper.testing.FakeMyPhotosInteractor
+import com.android.wallpaper.testing.FakeThirdPartyCategoryInteractor
 import com.android.wallpaper.testing.FakeUiModeManager
 import com.android.wallpaper.testing.FakeWallpaperClient
 import com.android.wallpaper.testing.FakeWallpaperParser
@@ -57,11 +62,8 @@ import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 
 @Module
-@TestInstallIn(
-    components = [SingletonComponent::class],
-    replaces = [SharedAppModule::class, DispatchersModule::class]
-)
-internal abstract class SharedTestModule {
+@TestInstallIn(components = [SingletonComponent::class], replaces = [SharedAppModule::class])
+internal abstract class SharedAppTestModule {
 
     // Also use the test dispatcher for work intended for the background thread. This makes tests
     // single-threaded and more deterministic.
@@ -94,6 +96,18 @@ internal abstract class SharedTestModule {
         impl: FakeDefaultWallpaperCategoryRepository
     ): WallpaperCategoryRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindIndividualPickerFactoryFragment(
+        impl: DefaultIndividualPickerFactory
+    ): IndividualPickerFactory
+
+    @Binds
+    @Singleton
+    abstract fun bindLoadingStatusInteractor(
+        impl: FakeCategoriesLoadingStatusInteractor,
+    ): CategoriesLoadingStatusInteractor
+
     // Use the test dispatcher for work intended for the main thread
     @Binds
     @Singleton
@@ -110,6 +124,12 @@ internal abstract class SharedTestModule {
     @Binds
     @Singleton
     abstract fun bindNetworkStatusNotifier(impl: TestNetworkStatusNotifier): NetworkStatusNotifier
+
+    @Binds
+    @Singleton
+    abstract fun bindThirdPartyCategoryInteractor(
+        impl: FakeThirdPartyCategoryInteractor
+    ): ThirdPartyCategoryInteractor
 
     @Binds
     @Singleton
