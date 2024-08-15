@@ -23,7 +23,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContract
-import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.activityViewModels
@@ -42,6 +41,7 @@ import com.android.wallpaper.picker.preview.ui.binder.PreviewActionsBinder
 import com.android.wallpaper.picker.preview.ui.binder.PreviewSelectorBinder
 import com.android.wallpaper.picker.preview.ui.binder.SetWallpaperButtonBinder
 import com.android.wallpaper.picker.preview.ui.binder.SetWallpaperProgressDialogBinder
+import com.android.wallpaper.picker.preview.ui.util.AnimationUtil
 import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
 import com.android.wallpaper.picker.preview.ui.view.DualPreviewViewPager
 import com.android.wallpaper.picker.preview.ui.view.PreviewActionGroup
@@ -49,9 +49,11 @@ import com.android.wallpaper.picker.preview.ui.view.PreviewTabs
 import com.android.wallpaper.picker.preview.ui.viewmodel.Action
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.android.wallpaper.util.DisplayUtils
+import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 
 /**
@@ -65,11 +67,28 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
     @Inject lateinit var displayUtils: DisplayUtils
     @Inject lateinit var logger: UserEventLogger
     @Inject lateinit var imageEffectDialogUtil: ImageEffectDialogUtil
+    @Inject lateinit var wallpaperConnectionUtils: WallpaperConnectionUtils
 
     private lateinit var currentView: View
     private lateinit var shareActivityResult: ActivityResultLauncher<Intent>
 
     private val wallpaperPreviewViewModel by activityViewModels<WallpaperPreviewViewModel>()
+    private val isFirstBindingDeferred = CompletableDeferred<Boolean>()
+
+    /**
+     * True if the view of this fragment is destroyed from the current or previous lifecycle.
+     *
+     * Null if it's the first life cycle, and false if the view has not been destroyed.
+     *
+     * Read-only during the first half of the lifecycle (when starting a fragment).
+     */
+    private var isViewDestroyed: Boolean? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        exitTransition = AnimationUtil.getFastFadeOutTransition()
+        reenterTransition = AnimationUtil.getFastFadeInTransition()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -86,6 +105,7 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                 false,
             )
         setUpToolbar(currentView, /* upArrow= */ true, /* transparentToolbar= */ true)
+        bindScreenPreview(currentView, isFirstBindingDeferred)
         bindPreviewActions(currentView)
 
         SetWallpaperButtonBinder.bind(
@@ -132,7 +152,32 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
 
     override fun onViewStateRestored(savedInstanceState: Bundle?) {
         super.onViewStateRestored(savedInstanceState)
-        bindScreenPreview(currentView, isFirstBinding = savedInstanceState == null)
+        isFirstBindingDeferred.complete(savedInstanceState == null)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Reinitialize the preview tab motion. If navigating up back to this fragment happened
+        // before the transition finished, the lifecycle begins at onStart without recreating the
+        // preview tabs,
+        isViewDestroyed?.let {
+            if (!it) {
+                currentView
+                    .requireViewById<PreviewTabs>(preview_tabs_container)
+                    .resetTransition(wallpaperPreviewViewModel.getSmallPreviewTabIndex())
+            }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // onStop won't destroy view
+        isViewDestroyed = false
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        isViewDestroyed = true
     }
 
     override fun getDefaultTitle(): CharSequence {
@@ -143,7 +188,10 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
         return ContextCompat.getColor(requireContext(), R.color.system_on_surface)
     }
 
-    private fun bindScreenPreview(view: View, isFirstBinding: Boolean) {
+    private fun bindScreenPreview(
+        view: View,
+        isFirstBindingDeferred: CompletableDeferred<Boolean>
+    ) {
         val currentNavDestId = checkNotNull(findNavController().currentDestination?.id)
         val tabs = view.requireViewById<PreviewTabs>(preview_tabs_container)
         if (displayUtils.hasMultiInternalDisplays()) {
@@ -159,9 +207,9 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                 currentNavDestId,
                 (reenterTransition as Transition?),
                 wallpaperPreviewViewModel.fullPreviewConfigViewModel.value,
-                isFirstBinding,
+                wallpaperConnectionUtils,
+                isFirstBindingDeferred,
             ) { sharedElement ->
-                wallpaperPreviewViewModel.isViewAsHome = dualPreviewView.currentItem == 1
                 val extras =
                     FragmentNavigatorExtras(sharedElement to FULL_PREVIEW_SHARED_ELEMENT_ID)
                 // Set to false on small-to-full preview transition to remove surfaceView jank.
@@ -171,7 +219,7 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                         resId = R.id.action_smallPreviewFragment_to_fullPreviewFragment,
                         args = null,
                         navOptions = null,
-                        navigatorExtras = extras
+                        navigatorExtras = extras,
                     )
             }
         } else {
@@ -185,11 +233,9 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                 currentNavDestId,
                 (reenterTransition as Transition?),
                 wallpaperPreviewViewModel.fullPreviewConfigViewModel.value,
-                isFirstBinding,
+                wallpaperConnectionUtils,
+                isFirstBindingDeferred,
             ) { sharedElement ->
-                wallpaperPreviewViewModel.isViewAsHome =
-                    tabs.requireViewById<MotionLayout>(R.id.preview_tabs).currentState ==
-                        R.id.secondary_tab_selected
                 val extras =
                     FragmentNavigatorExtras(sharedElement to FULL_PREVIEW_SHARED_ELEMENT_ID)
                 // Set to false on small-to-full preview transition to remove surfaceView jank.
@@ -199,7 +245,7 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                         resId = R.id.action_smallPreviewFragment_to_fullPreviewFragment,
                         args = null,
                         navOptions = null,
-                        navigatorExtras = extras
+                        navigatorExtras = extras,
                     )
             }
         }

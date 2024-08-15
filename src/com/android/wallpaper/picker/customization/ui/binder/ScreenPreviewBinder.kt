@@ -48,8 +48,8 @@ import com.android.wallpaper.asset.BitmapCachingAsset
 import com.android.wallpaper.asset.CurrentWallpaperAsset
 import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.model.LiveWallpaperInfo
+import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.WallpaperInfo
-import com.android.wallpaper.module.CustomizationSections
 import com.android.wallpaper.picker.FixedWidthDisplayRatioFrameLayout
 import com.android.wallpaper.picker.WorkspaceSurfaceHolderCallback
 import com.android.wallpaper.picker.customization.animation.view.LoadingAnimation
@@ -75,7 +75,9 @@ object ScreenPreviewBinder {
             id: Int,
             args: Bundle = Bundle.EMPTY,
         )
+
         fun destroy()
+
         fun surface(): SurfaceView
     }
 
@@ -172,6 +174,19 @@ object ScreenPreviewBinder {
             // ...and cleanup immediately
             cleanupWallpaperConnectionRunnable.run()
         }
+
+        val activityLifecycleObserver =
+            object : DefaultLifecycleObserver {
+                override fun onStop(owner: LifecycleOwner) {
+                    super.onStop(owner)
+                    // Wallpaper connection does not need to be detached between
+                    // fragments. Detach in activity onStop so that it is detached
+                    // when CustomizationPickerActivity is put on the back stack or
+                    // destroyed.
+                    wallpaperConnection?.detachConnection()
+                }
+            }
+        (activity as LifecycleOwner).lifecycle.addObserver(activityLifecycleObserver)
 
         val job =
             lifecycleOwner.lifecycleScope.launch {
@@ -416,8 +431,7 @@ object ScreenPreviewBinder {
                                         if (wallpaperPreviewImage?.drawable is ColorDrawable) {
                                             currentWallpaperThumbnail?.let { thumbnail ->
                                                 BitmapDrawable(activity.resources, thumbnail)
-                                            }
-                                                ?: wallpaperPreviewImage.drawable
+                                            } ?: wallpaperPreviewImage.drawable
                                         } else wallpaperPreviewImage?.drawable
                                     animationBackground?.let {
                                         loadingView.setImageDrawable(animationBackground)
@@ -545,7 +559,7 @@ object ScreenPreviewBinder {
         viewModel: ScreenPreviewViewModel,
         wallpaperSurface: SurfaceView,
         mirrorSurface: SurfaceView?,
-        screen: CustomizationSections.Screen,
+        screen: Screen,
         onEngineShown: () -> Unit
     ) =
         WallpaperConnection(

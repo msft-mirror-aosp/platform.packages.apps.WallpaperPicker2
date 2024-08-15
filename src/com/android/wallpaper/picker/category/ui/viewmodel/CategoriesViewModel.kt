@@ -16,41 +16,188 @@
 
 package com.android.wallpaper.picker.category.ui.viewmodel
 
+import android.content.Context
+import android.content.pm.ResolveInfo
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.android.wallpaper.R
+import com.android.wallpaper.picker.category.domain.interactor.CategoriesLoadingStatusInteractor
+import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
+import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
+import com.android.wallpaper.picker.category.domain.interactor.MyPhotosInteractor
+import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
+import com.android.wallpaper.picker.data.WallpaperModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.zip
+import kotlinx.coroutines.launch
 
 /** Top level [ViewModel] for the categories screen */
 @HiltViewModel
 class CategoriesViewModel
 @Inject
 constructor(
-// TODO: inject interacters here
+    private val singleCategoryInteractor: CategoryInteractor,
+    private val creativeWallpaperInteractor: CreativeCategoryInteractor,
+    private val myPhotosInteractor: MyPhotosInteractor,
+    private val thirdPartyCategoryInteractor: ThirdPartyCategoryInteractor,
+    private val loadindStatusInteractor: CategoriesLoadingStatusInteractor,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
-    // this is a stub flow to mimic category data until the interactor is ready to consume
-    val sections: Flow<List<SectionViewModel>> = flow {
-        val tiles = generateTiles()
+    private val _navigationEvents = MutableSharedFlow<NavigationEvent>()
+    val navigationEvents = _navigationEvents.asSharedFlow()
 
-        val sectionsList =
-            listOf(
-                SectionViewModel(tiles.subList(0, 2), 3),
-                SectionViewModel(tiles.subList(2, 3), 3),
-                SectionViewModel(listOf(tiles[4]), 1),
-                SectionViewModel(listOf(tiles[5]), 1),
-                SectionViewModel(listOf(tiles[6]), 1),
-                SectionViewModel(listOf(tiles[7]), 1),
-                SectionViewModel(listOf(tiles[8]), 1),
-                SectionViewModel(listOf(tiles[9]), 1),
-            )
-        // Emit the list of sections
-        emit(sectionsList)
+    private fun navigateToWallpaperCollection(collectionId: String) {
+        viewModelScope.launch {
+            _navigationEvents.emit(NavigationEvent.NavigateToWallpaperCollection(collectionId))
+        }
     }
 
-    // stub data source for testing until interacter is ready to cosnume
-    fun generateTiles(): List<TileViewModel> {
-        return (1..10).map { TileViewModel(null, "Tile $it") }
+    private fun navigateToPreviewScreen(wallpaperModel: WallpaperModel) {
+        viewModelScope.launch {
+            _navigationEvents.emit(NavigationEvent.NavigateToPreviewScreen(wallpaperModel))
+        }
+    }
+
+    private fun navigateToPhotosPicker() {
+        viewModelScope.launch { _navigationEvents.emit(NavigationEvent.NavigateToPhotosPicker) }
+    }
+
+    private fun navigateToThirdPartyApp(resolveInfo: ResolveInfo) {
+        viewModelScope.launch {
+            _navigationEvents.emit(NavigationEvent.NavigateToThirdParty(resolveInfo))
+        }
+    }
+
+    private val thirdPartyCategorySections: Flow<List<SectionViewModel>> =
+        thirdPartyCategoryInteractor.categories.map { categories ->
+            return@map categories.map { category ->
+                SectionViewModel(
+                    tileViewModels =
+                        listOf(
+                            TileViewModel(null, null, category.commonCategoryData.title) {
+                                category.thirdPartyCategoryData?.resolveInfo?.let {
+                                    navigateToThirdPartyApp(it)
+                                }
+                            }
+                        ),
+                    columnCount = 1,
+                    sectionTitle = null
+                )
+            }
+        }
+
+    private val defaultCategorySections: Flow<List<SectionViewModel>> =
+        singleCategoryInteractor.categories.map { categories ->
+            return@map categories.map { category ->
+                SectionViewModel(
+                    tileViewModels =
+                        listOf(
+                            TileViewModel(
+                                defaultDrawable = null,
+                                thumbnailAsset = category.collectionCategoryData?.thumbAsset,
+                                text = category.commonCategoryData.title,
+                            ) {
+                                if (
+                                    category.collectionCategoryData?.isSingleWallpaperCategory ==
+                                        true
+                                ) {
+                                    navigateToPreviewScreen(
+                                        category.collectionCategoryData.wallpaperModels[0]
+                                    )
+                                } else {
+                                    navigateToWallpaperCollection(
+                                        category.commonCategoryData.collectionId
+                                    )
+                                }
+                            }
+                        ),
+                    columnCount = 1,
+                    sectionTitle = null
+                )
+            }
+        }
+
+    private val individualSectionViewModels: Flow<List<SectionViewModel>> =
+        defaultCategorySections.zip(thirdPartyCategorySections) { list1, list2 -> list1 + list2 }
+
+    private val creativeSectionViewModel: Flow<SectionViewModel> =
+        creativeWallpaperInteractor.categories.map { categories ->
+            val tiles =
+                categories.map { category ->
+                    TileViewModel(
+                        defaultDrawable = null,
+                        thumbnailAsset = category.collectionCategoryData?.thumbAsset,
+                        text = category.commonCategoryData.title,
+                    ) {
+                        if (category.collectionCategoryData?.isSingleWallpaperCategory == true) {
+                            navigateToPreviewScreen(
+                                category.collectionCategoryData.wallpaperModels[0]
+                            )
+                        } else {
+                            navigateToWallpaperCollection(category.commonCategoryData.collectionId)
+                        }
+                    }
+                }
+            return@map SectionViewModel(
+                tileViewModels = tiles,
+                columnCount = 3,
+                sectionTitle = context.getString(R.string.creative_wallpaper_title)
+            )
+        }
+
+    private val myPhotosSectionViewModel: Flow<SectionViewModel> =
+        myPhotosInteractor.category.map { category ->
+            SectionViewModel(
+                tileViewModels =
+                    listOf(
+                        TileViewModel(
+                            defaultDrawable = category.imageCategoryData?.defaultDrawable,
+                            thumbnailAsset = category.imageCategoryData?.thumbnailAsset,
+                            text = category.commonCategoryData.title,
+                        ) {
+                            // TODO(b/352081782): trigger the effect with effect controller
+                            navigateToPhotosPicker()
+                        }
+                    ),
+                columnCount = 3,
+                sectionTitle = context.getString(R.string.choose_a_wallpaper_section_title)
+            )
+        }
+
+    val sections: Flow<List<SectionViewModel>> =
+        combine(individualSectionViewModels, creativeSectionViewModel, myPhotosSectionViewModel) {
+            individualViewModels,
+            creativeViewModel,
+            myPhotosViewModel ->
+            buildList {
+                add(creativeViewModel)
+                add(myPhotosViewModel)
+                addAll(individualViewModels)
+            }
+        }
+
+    val isLoading: Flow<Boolean> = loadindStatusInteractor.isLoading
+
+    /** This method updates the photos category */
+    fun updateMyPhotosCategory() {
+        myPhotosInteractor.updateMyPhotos()
+    }
+
+    sealed class NavigationEvent {
+        data class NavigateToWallpaperCollection(val categoryId: String) : NavigationEvent()
+
+        data class NavigateToPreviewScreen(val wallpaperModel: WallpaperModel) : NavigationEvent()
+
+        object NavigateToPhotosPicker : NavigationEvent()
+
+        data class NavigateToThirdParty(val resolveInfo: ResolveInfo) : NavigationEvent()
     }
 }
