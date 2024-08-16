@@ -21,6 +21,7 @@ import android.net.Uri
 import android.view.View
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.core.view.isInvisible
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -72,13 +73,20 @@ object PreviewActionsBinder {
         val floatingSheetCallback =
             object : BottomSheetBehavior.BottomSheetCallback() {
                 override fun onStateChanged(view: View, newState: Int) {
+                    // We set visibility to invisible, instead of gone because we listen to the
+                    // state change of the BottomSheet and the state change callbacks are only fired
+                    // when the view is not gone.
                     if (newState == STATE_HIDDEN) {
                         actionsViewModel.onFloatingSheetCollapsed()
+                        floatingSheet.isInvisible = true
+                    } else {
+                        floatingSheet.isInvisible = false
                     }
                 }
 
                 override fun onSlide(p0: View, p1: Float) {}
             }
+        floatingSheet.isInvisible = !actionsViewModel.isAnyActionChecked()
         floatingSheet.addFloatingSheetCallback(floatingSheetCallback)
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
@@ -124,11 +132,7 @@ object PreviewActionsBinder {
                         actionGroup.setClickListener(
                             DOWNLOAD,
                             if (it) {
-                                {
-                                    lifecycleOwner.lifecycleScope.launch {
-                                        actionsViewModel.downloadWallpaper()
-                                    }
-                                }
+                                { actionsViewModel.downloadWallpaper() }
                             } else null,
                         )
                     }
@@ -306,7 +310,12 @@ object PreviewActionsBinder {
                             val callback =
                                 object : OnBackPressedCallback(true) {
                                         override fun handleOnBackPressed() {
-                                            handleOnBackPressed()
+                                            val handled = handleOnBackPressed()
+                                            if (!handled) {
+                                                onBackPressedCallback?.remove()
+                                                onBackPressedCallback = null
+                                                activity.onBackPressedDispatcher.onBackPressed()
+                                            }
                                         }
                                     }
                                     .also { onBackPressedCallback = it }
@@ -346,7 +355,7 @@ object PreviewActionsBinder {
                                 informationViewModel != null -> {
                                     floatingSheet.setInformationContent(
                                         informationViewModel.attributions,
-                                        informationViewModel.exploreActionUrl?.let { url ->
+                                        informationViewModel.actionUrl?.let { url ->
                                             {
                                                 logger.logWallpaperExploreButtonClicked()
                                                 floatingSheet.context.startActivity(
@@ -354,6 +363,7 @@ object PreviewActionsBinder {
                                                 )
                                             }
                                         },
+                                        informationViewModel.actionButtonTitle,
                                     )
                                 }
                                 imageEffectViewModel != null ->
