@@ -23,9 +23,12 @@ import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.util.WallpaperConnection
 import com.android.wallpaper.util.WallpaperConnection.WhichPreview
+import dagger.hilt.android.scopes.ActivityRetainedScoped
 import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -33,9 +36,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-object WallpaperConnectionUtils {
-
-    const val TAG = "WallpaperConnectionUtils"
+@ActivityRetainedScoped
+class WallpaperConnectionUtils @Inject constructor() {
 
     // engineMap and surfaceControlMap are used for disconnecting wallpaper services.
     private val wallpaperConnectionMap = ConcurrentHashMap<String, Deferred<WallpaperConnection>>()
@@ -56,7 +58,7 @@ object WallpaperConnectionUtils {
         destinationFlag: Int,
         surfaceView: SurfaceView,
         engineRenderingConfig: EngineRenderingConfig,
-        isFirstBinding: Boolean,
+        isFirstBindingDeferred: CompletableDeferred<Boolean>,
         listener: WallpaperEngineConnection.WallpaperEngineConnectionListener? = null,
     ) {
         val wallpaperInfo = wallpaperModel.liveWallpaperData.systemWallpaperInfo
@@ -71,7 +73,7 @@ object WallpaperConnectionUtils {
                     mutex.withLock {
                         if (!creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
                             // First time binding wallpaper should initialize wallpaper preview.
-                            if (isFirstBinding) {
+                            if (isFirstBindingDeferred.await()) {
                                 context.contentResolver.update(it, ContentValues(), null)
                             }
                             creativeWallpaperConfigPreviewUriMap[uriKey] = it
@@ -114,38 +116,17 @@ object WallpaperConnectionUtils {
         }
     }
 
-    suspend fun disconnect(
-        context: Context,
-        wallpaperModel: LiveWallpaperModel,
-        displaySize: Point,
-    ) {
-        val engineKey = wallpaperModel.liveWallpaperData.systemWallpaperInfo.getKey(displaySize)
-
-        traceAsync(TAG, "disconnect") {
-            if (wallpaperConnectionMap.containsKey(engineKey)) {
-                mutex.withLock {
-                    wallpaperConnectionMap.remove(engineKey)?.await()?.disconnect(context)
-                }
-            }
-
-            if (surfaceControlMap.containsKey(engineKey)) {
-                mutex.withLock {
-                    surfaceControlMap.remove(engineKey)?.let { surfaceControls ->
-                        surfaceControls.forEach { it.release() }
-                        surfaceControls.clear()
-                    }
-                }
-            }
-
-            val uriKey = wallpaperModel.liveWallpaperData.systemWallpaperInfo.getKey()
-            if (creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
-                mutex.withLock {
-                    if (creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
-                        creativeWallpaperConfigPreviewUriMap.remove(uriKey)
-                    }
+    suspend fun disconnectAll(context: Context) {
+        disconnectAllServices(context)
+        surfaceControlMap.keys.map { key ->
+            mutex.withLock {
+                surfaceControlMap[key]?.let { surfaceControls ->
+                    surfaceControls.forEach { it.release() }
+                    surfaceControls.clear()
                 }
             }
         }
+        surfaceControlMap.clear()
     }
 
     /**
@@ -256,7 +237,11 @@ object WallpaperConnectionUtils {
                             serviceConnection: ServiceConnection,
                             wallpaperService: IWallpaperService
                         ) {
-                            k.resumeWith(Result.success(Pair(serviceConnection, wallpaperService)))
+                            if (k.isActive) {
+                                k.resumeWith(
+                                    Result.success(Pair(serviceConnection, wallpaperService))
+                                )
+                            }
                         }
                     }
                 )
@@ -268,7 +253,7 @@ object WallpaperConnectionUtils {
                         Context.BIND_IMPORTANT or
                         Context.BIND_ALLOW_ACTIVITY_STARTS
                 )
-            if (!success) {
+            if (!success && k.isActive) {
                 k.resumeWith(Result.failure(Exception("Fail to bind the live wallpaper service.")))
             }
         }
@@ -356,35 +341,39 @@ object WallpaperConnectionUtils {
         }
     }
 
-    data class EngineRenderingConfig(
-        val enforceSingleEngine: Boolean,
-        val deviceDisplayType: DeviceDisplayType,
-        val smallDisplaySize: Point,
-        val wallpaperDisplaySize: Point,
-    ) {
-        fun getEngineDisplaySize(): Point {
-            // If we need to enforce single engine, always return the larger screen's preview
-            return if (enforceSingleEngine) {
-                return wallpaperDisplaySize
-            } else {
-                getPreviewDisplaySize()
+    companion object {
+        const val TAG = "WallpaperConnectionUtils"
+
+        data class EngineRenderingConfig(
+            val enforceSingleEngine: Boolean,
+            val deviceDisplayType: DeviceDisplayType,
+            val smallDisplaySize: Point,
+            val wallpaperDisplaySize: Point,
+        ) {
+            fun getEngineDisplaySize(): Point {
+                // If we need to enforce single engine, always return the larger screen's preview
+                return if (enforceSingleEngine) {
+                    return wallpaperDisplaySize
+                } else {
+                    getPreviewDisplaySize()
+                }
+            }
+
+            private fun getPreviewDisplaySize(): Point {
+                return when (deviceDisplayType) {
+                    DeviceDisplayType.SINGLE -> wallpaperDisplaySize
+                    DeviceDisplayType.FOLDED -> smallDisplaySize
+                    DeviceDisplayType.UNFOLDED -> wallpaperDisplaySize
+                }
             }
         }
 
-        private fun getPreviewDisplaySize(): Point {
-            return when (deviceDisplayType) {
-                DeviceDisplayType.SINGLE -> wallpaperDisplaySize
-                DeviceDisplayType.FOLDED -> smallDisplaySize
-                DeviceDisplayType.UNFOLDED -> wallpaperDisplaySize
+        fun LiveWallpaperModel.shouldEnforceSingleEngine(): Boolean {
+            return when {
+                creativeWallpaperData != null -> false
+                liveWallpaperData.isEffectWallpaper -> false
+                else -> true // Only fallback to single engine rendering for legacy live wallpapers
             }
-        }
-    }
-
-    fun LiveWallpaperModel.shouldEnforceSingleEngine(): Boolean {
-        return when {
-            creativeWallpaperData != null -> false
-            liveWallpaperData.isEffectWallpaper -> false
-            else -> true // Only fallback to single engine rendering for legacy live wallpapers
         }
     }
 }
