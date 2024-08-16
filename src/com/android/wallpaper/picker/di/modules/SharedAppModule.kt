@@ -20,6 +20,10 @@ import android.app.WallpaperManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Resources
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.Looper
+import android.os.Process
 import com.android.wallpaper.module.DefaultNetworkStatusNotifier
 import com.android.wallpaper.module.LargeScreenMultiPanesChecker
 import com.android.wallpaper.module.MultiPanesChecker
@@ -30,12 +34,10 @@ import com.android.wallpaper.picker.category.client.DefaultWallpaperCategoryClie
 import com.android.wallpaper.picker.category.client.DefaultWallpaperCategoryClientImpl
 import com.android.wallpaper.picker.category.data.repository.DefaultWallpaperCategoryRepository
 import com.android.wallpaper.picker.category.data.repository.WallpaperCategoryRepository
-import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
-import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.MyPhotosInteractor
-import com.android.wallpaper.picker.category.domain.interactor.implementations.CategoryInteractorImpl
-import com.android.wallpaper.picker.category.domain.interactor.implementations.CreativeCategoryInteractorImpl
+import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.implementations.MyPhotosInteractorImpl
+import com.android.wallpaper.picker.category.domain.interactor.implementations.ThirdPartyCategoryInteractorImpl
 import com.android.wallpaper.picker.customization.data.content.WallpaperClient
 import com.android.wallpaper.picker.customization.data.content.WallpaperClientImpl
 import com.android.wallpaper.system.UiModeManagerImpl
@@ -50,7 +52,18 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import java.util.concurrent.Executor
+import javax.inject.Qualifier
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+
+/** Qualifier for main thread [CoroutineDispatcher] bound to app lifecycle. */
+@Qualifier annotation class MainDispatcher
+
+/** Qualifier for background thread [CoroutineDispatcher] for long running and blocking tasks. */
+@Qualifier annotation class BackgroundDispatcher
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -59,16 +72,6 @@ abstract class SharedAppModule {
     @Binds
     @Singleton
     abstract fun bindCategoryFactory(impl: DefaultCategoryFactory): CategoryFactory
-
-    @Binds
-    @Singleton
-    abstract fun bindCategoryInteractor(impl: CategoryInteractorImpl): CategoryInteractor
-
-    @Binds
-    @Singleton
-    abstract fun bindCreativeCategoryInteractor(
-        impl: CreativeCategoryInteractorImpl,
-    ): CreativeCategoryInteractor
 
     @Binds
     @Singleton
@@ -81,6 +84,12 @@ abstract class SharedAppModule {
     ): NetworkStatusNotifier
 
     @Binds @Singleton abstract fun bindRequester(impl: WallpaperRequester): Requester
+
+    @Binds
+    @Singleton
+    abstract fun bindThirdPartyCategoryInteractor(
+        impl: ThirdPartyCategoryInteractorImpl,
+    ): ThirdPartyCategoryInteractor
 
     @Binds
     @Singleton
@@ -103,6 +112,57 @@ abstract class SharedAppModule {
     @Binds @Singleton abstract fun bindWallpaperParser(impl: WallpaperParserImpl): WallpaperParser
 
     companion object {
+
+        @Qualifier
+        @MustBeDocumented
+        @Retention(AnnotationRetention.RUNTIME)
+        annotation class BroadcastRunning
+
+        private const val BROADCAST_SLOW_DISPATCH_THRESHOLD = 1000L
+        private const val BROADCAST_SLOW_DELIVERY_THRESHOLD = 1000L
+
+        @Provides
+        @BackgroundDispatcher
+        fun provideBackgroundDispatcher(): CoroutineDispatcher = Dispatchers.IO
+
+        @Provides
+        @BackgroundDispatcher
+        fun provideBackgroundScope(): CoroutineScope = CoroutineScope(Dispatchers.IO)
+
+        /** Provide a BroadcastRunning Executor (for sending and receiving broadcasts). */
+        @Provides
+        @Singleton
+        @BroadcastRunning
+        fun provideBroadcastRunningExecutor(@BroadcastRunning looper: Looper?): Executor {
+            val handler = Handler(looper ?: Looper.getMainLooper())
+            return Executor { command -> handler.post(command) }
+        }
+
+        @Provides
+        @Singleton
+        @BroadcastRunning
+        fun provideBroadcastRunningLooper(): Looper {
+            return HandlerThread(
+                    "BroadcastRunning",
+                    Process.THREAD_PRIORITY_BACKGROUND,
+                )
+                .apply {
+                    start()
+                    looper.setSlowLogThresholdMs(
+                        BROADCAST_SLOW_DISPATCH_THRESHOLD,
+                        BROADCAST_SLOW_DELIVERY_THRESHOLD,
+                    )
+                }
+                .looper
+        }
+
+        @Provides
+        @MainDispatcher
+        fun provideMainDispatcher(): CoroutineDispatcher = Dispatchers.Main
+
+        @Provides
+        @MainDispatcher
+        fun provideMainScope(): CoroutineScope = CoroutineScope(Dispatchers.Main)
 
         @Provides
         @Singleton

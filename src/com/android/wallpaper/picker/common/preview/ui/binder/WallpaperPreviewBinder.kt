@@ -35,8 +35,9 @@ import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.util.SurfaceViewUtils
 import com.android.wallpaper.util.SurfaceViewUtils.attachView
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
-import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.shouldEnforceSingleEngine
+import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.Companion.shouldEnforceSingleEngine
 import com.android.wallpaper.util.wallpaperconnection.WallpaperEngineConnection
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -59,7 +60,8 @@ object WallpaperPreviewBinder {
         displaySize: Point,
         deviceDisplayType: DeviceDisplayType,
         viewLifecycleOwner: LifecycleOwner,
-        isFirstBinding: Boolean,
+        wallpaperConnectionUtils: WallpaperConnectionUtils,
+        isFirstBindingDeferred: CompletableDeferred<Boolean>,
     ) {
         var surfaceCallback: SurfaceViewUtils.SurfaceCallback? = null
         viewLifecycleOwner.lifecycleScope.launch {
@@ -73,7 +75,8 @@ object WallpaperPreviewBinder {
                         deviceDisplayType = deviceDisplayType,
                         displaySize = displaySize,
                         lifecycleOwner = viewLifecycleOwner,
-                        isFirstBinding = isFirstBinding,
+                        wallpaperConnectionUtils = wallpaperConnectionUtils,
+                        isFirstBindingDeferred = isFirstBindingDeferred,
                     )
                 surfaceView.setZOrderMediaOverlay(true)
                 surfaceCallback?.let { surfaceView.holder.addCallback(it) }
@@ -99,7 +102,8 @@ object WallpaperPreviewBinder {
         deviceDisplayType: DeviceDisplayType,
         displaySize: Point,
         lifecycleOwner: LifecycleOwner,
-        isFirstBinding: Boolean,
+        wallpaperConnectionUtils: WallpaperConnectionUtils,
+        isFirstBindingDeferred: CompletableDeferred<Boolean>,
     ): SurfaceViewUtils.SurfaceCallback {
 
         return object : SurfaceViewUtils.SurfaceCallback {
@@ -115,7 +119,7 @@ object WallpaperPreviewBinder {
                                 else wallpapers.lockWallpaper ?: wallpapers.homeWallpaper
                             if (wallpaper is WallpaperModel.LiveWallpaperModel) {
                                 val engineRenderingConfig =
-                                    WallpaperConnectionUtils.EngineRenderingConfig(
+                                    WallpaperConnectionUtils.Companion.EngineRenderingConfig(
                                         wallpaper.shouldEnforceSingleEngine(),
                                         deviceDisplayType = deviceDisplayType,
                                         viewModel.smallerDisplaySize,
@@ -133,14 +137,14 @@ object WallpaperPreviewBinder {
                                             )
                                         }
                                     }
-                                WallpaperConnectionUtils.connect(
+                                wallpaperConnectionUtils.connect(
                                     applicationContext,
                                     wallpaper,
                                     whichPreview,
                                     screen.toFlag(),
                                     surfaceView,
                                     engineRenderingConfig,
-                                    isFirstBinding,
+                                    isFirstBindingDeferred,
                                     listener,
                                 )
                             } else if (wallpaper is WallpaperModel.StaticWallpaperModel) {
