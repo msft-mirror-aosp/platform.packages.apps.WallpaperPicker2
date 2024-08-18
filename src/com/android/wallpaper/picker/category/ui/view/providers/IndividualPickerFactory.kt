@@ -14,15 +14,13 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.picker.category.domain.interactor
+package com.android.wallpaper.picker.category.ui.view.providers
 
-import com.android.wallpaper.picker.data.category.CategoryModel
-import kotlinx.coroutines.flow.Flow
+import androidx.fragment.app.Fragment
 
 /**
- * Classes that implement this interface implement the business logic for assembling ungrouped
- * category models
+ * This interface provides the signature to classes to provide the correct IndividualPickerFragment
  */
-interface CategoryInteractor {
-    val categories: Flow<List<CategoryModel>>
+interface IndividualPickerFactory {
+    fun getIndividualPickerInstance(collectionId: String): Fragment
 }
