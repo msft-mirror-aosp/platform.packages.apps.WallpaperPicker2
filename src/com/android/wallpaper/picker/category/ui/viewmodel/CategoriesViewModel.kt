@@ -16,15 +16,19 @@
 
 package com.android.wallpaper.picker.category.ui.viewmodel
 
+import android.content.Context
 import android.content.pm.ResolveInfo
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.wallpaper.R
 import com.android.wallpaper.picker.category.domain.interactor.CategoriesLoadingStatusInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.MyPhotosInteractor
 import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
+import com.android.wallpaper.picker.data.WallpaperModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -44,6 +48,7 @@ constructor(
     private val myPhotosInteractor: MyPhotosInteractor,
     private val thirdPartyCategoryInteractor: ThirdPartyCategoryInteractor,
     private val loadindStatusInteractor: CategoriesLoadingStatusInteractor,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _navigationEvents = MutableSharedFlow<NavigationEvent>()
@@ -55,9 +60,9 @@ constructor(
         }
     }
 
-    private fun navigateToPreviewScreen(collectionId: String) {
+    private fun navigateToPreviewScreen(wallpaperModel: WallpaperModel) {
         viewModelScope.launch {
-            _navigationEvents.emit(NavigationEvent.NavigateToPreviewScreen(collectionId))
+            _navigationEvents.emit(NavigationEvent.NavigateToPreviewScreen(wallpaperModel))
         }
     }
 
@@ -83,7 +88,8 @@ constructor(
                                 }
                             }
                         ),
-                    columnCount = 1
+                    columnCount = 1,
+                    sectionTitle = null
                 )
             }
         }
@@ -104,7 +110,7 @@ constructor(
                                         true
                                 ) {
                                     navigateToPreviewScreen(
-                                        category.commonCategoryData.collectionId
+                                        category.collectionCategoryData.wallpaperModels[0]
                                     )
                                 } else {
                                     navigateToWallpaperCollection(
@@ -113,7 +119,8 @@ constructor(
                                 }
                             }
                         ),
-                    columnCount = 1
+                    columnCount = 1,
+                    sectionTitle = null
                 )
             }
         }
@@ -131,13 +138,19 @@ constructor(
                         text = category.commonCategoryData.title,
                     ) {
                         if (category.collectionCategoryData?.isSingleWallpaperCategory == true) {
-                            navigateToPreviewScreen(category.commonCategoryData.collectionId)
+                            navigateToPreviewScreen(
+                                category.collectionCategoryData.wallpaperModels[0]
+                            )
                         } else {
                             navigateToWallpaperCollection(category.commonCategoryData.collectionId)
                         }
                     }
                 }
-            return@map SectionViewModel(tileViewModels = tiles, columnCount = 3)
+            return@map SectionViewModel(
+                tileViewModels = tiles,
+                columnCount = 3,
+                sectionTitle = context.getString(R.string.creative_wallpaper_title)
+            )
         }
 
     private val myPhotosSectionViewModel: Flow<SectionViewModel> =
@@ -154,7 +167,8 @@ constructor(
                             navigateToPhotosPicker()
                         }
                     ),
-                columnCount = 3
+                columnCount = 3,
+                sectionTitle = context.getString(R.string.choose_a_wallpaper_section_title)
             )
         }
 
@@ -180,7 +194,7 @@ constructor(
     sealed class NavigationEvent {
         data class NavigateToWallpaperCollection(val categoryId: String) : NavigationEvent()
 
-        data class NavigateToPreviewScreen(val wallpaperId: String) : NavigationEvent()
+        data class NavigateToPreviewScreen(val wallpaperModel: WallpaperModel) : NavigationEvent()
 
         object NavigateToPhotosPicker : NavigationEvent()
 
