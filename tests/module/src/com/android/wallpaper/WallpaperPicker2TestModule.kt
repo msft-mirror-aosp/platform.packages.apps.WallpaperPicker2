@@ -24,14 +24,13 @@ import com.android.wallpaper.module.logging.TestUserEventLogger
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.modules.WallpaperPicker2AppModule
 import com.android.wallpaper.network.Requester
+import com.android.wallpaper.picker.category.client.DefaultWallpaperCategoryClient
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
 import com.android.wallpaper.picker.customization.ui.binder.DefaultCustomizationOptionsBinder
-import com.android.wallpaper.picker.di.modules.EffectsModule
-import com.android.wallpaper.picker.preview.data.util.FakeLiveWallpaperDownloader
-import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
 import com.android.wallpaper.picker.preview.ui.util.DefaultImageEffectDialogUtil
 import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
 import com.android.wallpaper.testing.FakeDefaultRequester
+import com.android.wallpaper.testing.FakeDefaultWallpaperCategoryClient
 import com.android.wallpaper.testing.FakeDefaultWallpaperModelFactory
 import com.android.wallpaper.testing.TestInjector
 import com.android.wallpaper.testing.TestPartnerProvider
@@ -46,40 +45,21 @@ import javax.inject.Singleton
 @Module
 @TestInstallIn(
     components = [SingletonComponent::class],
-    replaces = [EffectsModule::class, WallpaperPicker2AppModule::class]
+    replaces = [WallpaperPicker2AppModule::class]
 )
 abstract class WallpaperPicker2TestModule {
-    @Binds @Singleton abstract fun bindInjector(impl: TestInjector): Injector
-
-    @Binds @Singleton abstract fun bindUserEventLogger(impl: TestUserEventLogger): UserEventLogger
-
-    @Binds @Singleton abstract fun bindFakeRequester(impl: FakeDefaultRequester): Requester
 
     @Binds
     @Singleton
-    abstract fun bindWallpaperModelFactory(
-        impl: FakeDefaultWallpaperModelFactory
-    ): WallpaperModelFactory
+    abstract fun bindCustomizationOptionsBinder(
+        impl: DefaultCustomizationOptionsBinder
+    ): CustomizationOptionsBinder
 
     @Binds
     @Singleton
-    abstract fun bindWallpaperPreferences(impl: TestWallpaperPreferences): WallpaperPreferences
-
-    @Binds
-    @Singleton
-    abstract fun bindLiveWallpaperDownloader(
-        impl: FakeLiveWallpaperDownloader
-    ): LiveWallpaperDownloader
-
-    @Binds
-    @Singleton
-    abstract fun providePartnerProvider(impl: TestPartnerProvider): PartnerProvider
-
-    @Binds
-    @Singleton
-    abstract fun bindEffectsWallpaperDialogUtil(
-        impl: DefaultImageEffectDialogUtil
-    ): ImageEffectDialogUtil
+    abstract fun bindDefaultWallpaperCategoryClient(
+        impl: FakeDefaultWallpaperCategoryClient,
+    ): DefaultWallpaperCategoryClient
 
     @Binds
     @Singleton
@@ -87,7 +67,25 @@ abstract class WallpaperPicker2TestModule {
 
     @Binds
     @Singleton
-    abstract fun bindCustomizationOptionsBinder(
-        impl: DefaultCustomizationOptionsBinder
-    ): CustomizationOptionsBinder
+    abstract fun bindImageEffectDialogUtil(
+        impl: DefaultImageEffectDialogUtil
+    ): ImageEffectDialogUtil
+
+    @Binds @Singleton abstract fun bindInjector(impl: TestInjector): Injector
+
+    @Binds @Singleton abstract fun bindPartnerProvider(impl: TestPartnerProvider): PartnerProvider
+
+    @Binds @Singleton abstract fun bindRequester(impl: FakeDefaultRequester): Requester
+
+    @Binds @Singleton abstract fun bindUserEventLogger(impl: TestUserEventLogger): UserEventLogger
+
+    @Binds
+    @Singleton
+    abstract fun bindWallpaperModelFactory(
+        impl: FakeDefaultWallpaperModelFactory,
+    ): WallpaperModelFactory
+
+    @Binds
+    @Singleton
+    abstract fun bindWallpaperPreferences(impl: TestWallpaperPreferences): WallpaperPreferences
 }
