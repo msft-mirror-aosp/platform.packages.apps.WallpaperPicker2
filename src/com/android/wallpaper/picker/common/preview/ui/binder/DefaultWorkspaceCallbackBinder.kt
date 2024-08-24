@@ -14,19 +14,22 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.picker.category.ui.view.providers
+package com.android.wallpaper.picker.common.preview.ui.binder
 
-import androidx.fragment.app.Fragment
-import com.android.wallpaper.picker.category.ui.viewmodel.CategoriesViewModel
+import android.os.Message
+import androidx.lifecycle.LifecycleOwner
+import com.android.wallpaper.model.Screen
+import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationOptionsViewModel
+import javax.inject.Inject
+import javax.inject.Singleton
 
-/**
- * This interface provides the signature to classes to provide the correct IndividualPickerFragment
- */
-interface IndividualPickerFactory {
-    fun getIndividualPickerInstance(collectionId: String): Fragment
+@Singleton
+class DefaultWorkspaceCallbackBinder @Inject constructor() : WorkspaceCallbackBinder {
 
-    fun getIndividualPickerInstance(
-        collectionId: String,
-        categoryType: CategoriesViewModel.CategoryType
-    ): Fragment
+    override fun bind(
+        workspaceCallback: Message,
+        viewModel: CustomizationOptionsViewModel,
+        screen: Screen,
+        lifecycleOwner: LifecycleOwner,
+    ) {}
 }

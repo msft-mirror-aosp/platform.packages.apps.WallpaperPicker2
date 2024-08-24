@@ -14,19 +14,21 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.picker.category.ui.view.providers
+package com.android.wallpaper.picker.category.client
 
-import androidx.fragment.app.Fragment
-import com.android.wallpaper.picker.category.ui.viewmodel.CategoriesViewModel
+import android.content.pm.ApplicationInfo
+import android.content.pm.ResolveInfo
+import com.android.wallpaper.model.WallpaperInfo
 
 /**
- * This interface provides the signature to classes to provide the correct IndividualPickerFragment
+ * This class is used for handling all operations related to live wallpapers. This is meant to
+ * contain all methods/functions that LiveWallpaperInfo class currently holds.
  */
-interface IndividualPickerFactory {
-    fun getIndividualPickerInstance(collectionId: String): Fragment
+interface LiveWallpapersClient {
 
-    fun getIndividualPickerInstance(
-        collectionId: String,
-        categoryType: CategoriesViewModel.CategoryType
-    ): Fragment
+    /**
+     * Retrieves a list of all installed live wallpapers on the device,
+     * excluding those whose package names are specified in the provided set.
+     */
+    fun getAll(excludedPackageNames: Set<String?>?): List<WallpaperInfo>
 }
