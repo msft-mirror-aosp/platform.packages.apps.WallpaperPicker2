@@ -14,19 +14,21 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.picker.category.ui.view.providers
+package com.android.wallpaper.picker.customization.ui.binder
 
-import androidx.fragment.app.Fragment
-import com.android.wallpaper.picker.category.ui.viewmodel.CategoriesViewModel
+import android.widget.Button
+import android.widget.FrameLayout
+import android.widget.Toolbar
+import androidx.lifecycle.LifecycleOwner
+import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationOptionsViewModel
 
-/**
- * This interface provides the signature to classes to provide the correct IndividualPickerFragment
- */
-interface IndividualPickerFactory {
-    fun getIndividualPickerInstance(collectionId: String): Fragment
+interface ToolbarBinder {
 
-    fun getIndividualPickerInstance(
-        collectionId: String,
-        categoryType: CategoriesViewModel.CategoryType
-    ): Fragment
+    fun bind(
+        navButton: FrameLayout,
+        toolbar: Toolbar,
+        applyButton: Button,
+        viewModel: CustomizationOptionsViewModel,
+        lifecycleOwner: LifecycleOwner,
+    )
 }
