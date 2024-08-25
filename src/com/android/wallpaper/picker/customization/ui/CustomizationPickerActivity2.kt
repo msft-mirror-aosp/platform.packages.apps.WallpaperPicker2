@@ -16,10 +16,15 @@
 
 package com.android.wallpaper.picker.customization.ui
 
+import android.annotation.TargetApi
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Point
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup.MarginLayoutParams
+import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.Toolbar
@@ -46,12 +51,16 @@ import com.android.wallpaper.module.LargeScreenMultiPanesChecker
 import com.android.wallpaper.module.MultiPanesChecker
 import com.android.wallpaper.picker.common.preview.data.repository.PersistentWallpaperModelRepository
 import com.android.wallpaper.picker.common.preview.ui.binder.BasePreviewBinder
+import com.android.wallpaper.picker.common.preview.ui.binder.WorkspaceCallbackBinder
+import com.android.wallpaper.picker.customization.ui.binder.ColorUpdateBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationPickerBinder2
+import com.android.wallpaper.picker.customization.ui.binder.ToolbarBinder
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil.CustomizationOption
 import com.android.wallpaper.picker.customization.ui.view.adapter.PreviewPagerAdapter
 import com.android.wallpaper.picker.customization.ui.view.transformer.PreviewPagerPageTransformer
+import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
@@ -61,7 +70,6 @@ import com.android.wallpaper.util.DisplayUtils
 import com.android.wallpaper.util.WallpaperConnection
 import com.android.wallpaper.util.converter.WallpaperModelFactory
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
-import com.google.android.material.appbar.AppBarLayout
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CompletableDeferred
@@ -74,18 +82,22 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
     @Inject lateinit var multiPanesChecker: MultiPanesChecker
     @Inject lateinit var customizationOptionUtil: CustomizationOptionUtil
     @Inject lateinit var customizationOptionsBinder: CustomizationOptionsBinder
+    @Inject lateinit var workspaceCallbackBinder: WorkspaceCallbackBinder
+    @Inject lateinit var toolbarBinder: ToolbarBinder
     @Inject lateinit var wallpaperModelFactory: WallpaperModelFactory
     @Inject lateinit var persistentWallpaperModelRepository: PersistentWallpaperModelRepository
     @Inject lateinit var displayUtils: DisplayUtils
     @Inject @BackgroundDispatcher lateinit var backgroundScope: CoroutineScope
     @Inject @MainDispatcher lateinit var mainScope: CoroutineScope
     @Inject lateinit var wallpaperConnectionUtils: WallpaperConnectionUtils
+    @Inject lateinit var colorUpdateViewModel: ColorUpdateViewModel
 
     private var fullyCollapsed = false
     private var navBarHeight: Int = 0
 
     private val customizationPickerViewModel: CustomizationPickerViewModel2 by viewModels()
     private var customizationOptionFloatingSheetViewMap: Map<CustomizationOption, View>? = null
+    private var configuration: Configuration? = null
 
     private val startForResult =
         this.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
@@ -111,10 +123,23 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
             return
         }
 
+        configuration = Configuration(resources.configuration)
+
         setContentView(R.layout.activity_cusomization_picker2)
         WindowCompat.setDecorFitsSystemWindows(window, ActivityUtils.isSUWMode(this))
 
-        setupToolbar(requireViewById(R.id.toolbar_container))
+        setupToolbar(
+            requireViewById(R.id.nav_button),
+            requireViewById(R.id.toolbar),
+            requireViewById(R.id.apply_button),
+        )
+
+        val view = requireViewById<View>(R.id.root_view)
+        ColorUpdateBinder.bind(
+            setColor = { color -> view.setBackgroundColor(color) },
+            color = colorUpdateViewModel.colorSurfaceContainer,
+            lifecycleOwner = this,
+        )
 
         val rootView = requireViewById<MotionLayout>(R.id.picker_motion_layout)
         ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, windowInsets ->
@@ -122,6 +147,9 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
             navBarHeight = insets.bottom
             requireViewById<FrameLayout>(R.id.customization_option_floating_sheet_container)
                 .setPaddingRelative(0, 0, 0, navBarHeight)
+            val statusBarHeight = insets.top
+            val params = requireViewById<Toolbar>(R.id.toolbar).layoutParams as MarginLayoutParams
+            params.setMargins(0, statusBarHeight, 0, 0)
             WindowInsetsCompat.CONSUMED
         }
 
@@ -170,37 +198,37 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
             }
         }
 
-        val onBackPressed =
-            CustomizationPickerBinder2.bind(
-                view = rootView,
-                lockScreenCustomizationOptionEntries = initCustomizationOptionEntries(LOCK_SCREEN),
-                homeScreenCustomizationOptionEntries = initCustomizationOptionEntries(HOME_SCREEN),
-                customizationOptionFloatingSheetViewMap = customizationOptionFloatingSheetViewMap,
-                viewModel = customizationPickerViewModel,
-                customizationOptionsBinder = customizationOptionsBinder,
-                lifecycleOwner = this,
-                navigateToPrimary = {
-                    if (rootView.currentState == R.id.secondary) {
-                        rootView.transitionToState(
-                            if (fullyCollapsed) R.id.collapsed_header_primary
-                            else R.id.expanded_header_primary
-                        )
+        CustomizationPickerBinder2.bind(
+            view = rootView,
+            lockScreenCustomizationOptionEntries = initCustomizationOptionEntries(LOCK_SCREEN),
+            homeScreenCustomizationOptionEntries = initCustomizationOptionEntries(HOME_SCREEN),
+            customizationOptionFloatingSheetViewMap = customizationOptionFloatingSheetViewMap,
+            viewModel = customizationPickerViewModel,
+            customizationOptionsBinder = customizationOptionsBinder,
+            lifecycleOwner = this,
+            navigateToPrimary = {
+                if (rootView.currentState == R.id.secondary) {
+                    rootView.transitionToState(
+                        if (fullyCollapsed) R.id.collapsed_header_primary
+                        else R.id.expanded_header_primary
+                    )
+                }
+            },
+            navigateToSecondary = { screen ->
+                if (rootView.currentState != R.id.secondary) {
+                    setCustomizationOptionFloatingSheet(rootView, screen) {
+                        fullyCollapsed = rootView.progress == 1.0f
+                        rootView.transitionToState(R.id.secondary)
                     }
-                },
-                navigateToSecondary = { screen ->
-                    if (rootView.currentState != R.id.secondary) {
-                        setCustomizationOptionFloatingSheet(rootView, screen) {
-                            fullyCollapsed = rootView.progress == 1.0f
-                            rootView.transitionToState(R.id.secondary)
-                        }
-                    }
-                },
-            )
+                }
+            },
+        )
 
         onBackPressedDispatcher.addCallback(
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    val isOnBackPressedHandled = onBackPressed()
+                    val isOnBackPressedHandled =
+                        customizationPickerViewModel.customizationOptionsViewModel.deselectOption()
                     if (!isOnBackPressedHandled) {
                         remove()
                         onBackPressedDispatcher.onBackPressed()
@@ -210,11 +238,16 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         )
     }
 
-    private fun setupToolbar(toolbarContainer: AppBarLayout) {
-        toolbarContainer.setBackgroundColor(Color.TRANSPARENT)
-        val toolbar = toolbarContainer.requireViewById<Toolbar>(R.id.toolbar)
+    private fun setupToolbar(navButton: FrameLayout, toolbar: Toolbar, applyButton: Button) {
         toolbar.title = getString(R.string.app_name)
         toolbar.setBackgroundColor(Color.TRANSPARENT)
+        toolbarBinder.bind(
+            navButton,
+            toolbar,
+            applyButton,
+            customizationPickerViewModel.customizationOptionsViewModel,
+            this,
+        )
     }
 
     private fun initCustomizationOptionEntries(
@@ -259,6 +292,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
                     applicationContext = applicationContext,
                     view = previewCard,
                     viewModel = customizationPickerViewModel,
+                    workspaceCallbackBinder = workspaceCallbackBinder,
                     screen = screen,
                     deviceDisplayType =
                         displayUtils.getCurrentDisplayType(this@CustomizationPickerActivity2),
@@ -392,6 +426,19 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         mainScope.launch { wallpaperConnectionUtils.disconnectAll(applicationContext) }
 
         super.onDestroy()
+    }
+
+    @TargetApi(36)
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        configuration?.let {
+            val diff = newConfig.diff(it)
+            val isAssetsPathsChange = diff and ActivityInfo.CONFIG_ASSETS_PATHS != 0
+            if (isAssetsPathsChange) {
+                colorUpdateViewModel.updateColors()
+            }
+        }
+        configuration?.setTo(newConfig)
     }
 
     interface EmptyTransitionListener : TransitionListener {
