@@ -32,14 +32,14 @@ import com.android.wallpaper.network.Requester
 import com.android.wallpaper.network.WallpaperRequester
 import com.android.wallpaper.picker.category.client.DefaultWallpaperCategoryClient
 import com.android.wallpaper.picker.category.client.DefaultWallpaperCategoryClientImpl
+import com.android.wallpaper.picker.category.client.LiveWallpapersClient
+import com.android.wallpaper.picker.category.client.LiveWallpapersClientImpl
 import com.android.wallpaper.picker.category.data.repository.DefaultWallpaperCategoryRepository
 import com.android.wallpaper.picker.category.data.repository.WallpaperCategoryRepository
-import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
-import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.MyPhotosInteractor
-import com.android.wallpaper.picker.category.domain.interactor.implementations.CategoryInteractorImpl
-import com.android.wallpaper.picker.category.domain.interactor.implementations.CreativeCategoryInteractorImpl
+import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.implementations.MyPhotosInteractorImpl
+import com.android.wallpaper.picker.category.domain.interactor.implementations.ThirdPartyCategoryInteractorImpl
 import com.android.wallpaper.picker.customization.data.content.WallpaperClient
 import com.android.wallpaper.picker.customization.data.content.WallpaperClientImpl
 import com.android.wallpaper.system.UiModeManagerImpl
@@ -57,6 +57,15 @@ import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.Executor
 import javax.inject.Qualifier
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+
+/** Qualifier for main thread [CoroutineDispatcher] bound to app lifecycle. */
+@Qualifier annotation class MainDispatcher
+
+/** Qualifier for background thread [CoroutineDispatcher] for long running and blocking tasks. */
+@Qualifier annotation class BackgroundDispatcher
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -68,13 +77,7 @@ abstract class SharedAppModule {
 
     @Binds
     @Singleton
-    abstract fun bindCategoryInteractor(impl: CategoryInteractorImpl): CategoryInteractor
-
-    @Binds
-    @Singleton
-    abstract fun bindCreativeCategoryInteractor(
-        impl: CreativeCategoryInteractorImpl,
-    ): CreativeCategoryInteractor
+    abstract fun bindLiveWallpapersClient(impl: LiveWallpapersClientImpl): LiveWallpapersClient
 
     @Binds
     @Singleton
@@ -87,6 +90,12 @@ abstract class SharedAppModule {
     ): NetworkStatusNotifier
 
     @Binds @Singleton abstract fun bindRequester(impl: WallpaperRequester): Requester
+
+    @Binds
+    @Singleton
+    abstract fun bindThirdPartyCategoryInteractor(
+        impl: ThirdPartyCategoryInteractorImpl,
+    ): ThirdPartyCategoryInteractor
 
     @Binds
     @Singleton
@@ -118,6 +127,14 @@ abstract class SharedAppModule {
         private const val BROADCAST_SLOW_DISPATCH_THRESHOLD = 1000L
         private const val BROADCAST_SLOW_DELIVERY_THRESHOLD = 1000L
 
+        @Provides
+        @BackgroundDispatcher
+        fun provideBackgroundDispatcher(): CoroutineDispatcher = Dispatchers.IO
+
+        @Provides
+        @BackgroundDispatcher
+        fun provideBackgroundScope(): CoroutineScope = CoroutineScope(Dispatchers.IO)
+
         /** Provide a BroadcastRunning Executor (for sending and receiving broadcasts). */
         @Provides
         @Singleton
@@ -144,6 +161,14 @@ abstract class SharedAppModule {
                 }
                 .looper
         }
+
+        @Provides
+        @MainDispatcher
+        fun provideMainDispatcher(): CoroutineDispatcher = Dispatchers.Main
+
+        @Provides
+        @MainDispatcher
+        fun provideMainScope(): CoroutineScope = CoroutineScope(Dispatchers.Main)
 
         @Provides
         @Singleton
