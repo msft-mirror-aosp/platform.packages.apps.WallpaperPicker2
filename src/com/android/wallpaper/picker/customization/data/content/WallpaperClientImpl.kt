@@ -44,11 +44,13 @@ import com.android.wallpaper.asset.StreamableAsset
 import com.android.wallpaper.model.CreativeCategory
 import com.android.wallpaper.model.CreativeWallpaperInfo
 import com.android.wallpaper.model.LiveWallpaperPrefMetadata
+import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.StaticWallpaperPrefMetadata
 import com.android.wallpaper.model.WallpaperInfo
 import com.android.wallpaper.model.WallpaperModelsPair
 import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.module.WallpaperPreferences
+import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination.BOTH
@@ -86,6 +88,7 @@ constructor(
     private val wallpaperManager: WallpaperManager,
     private val wallpaperPreferences: WallpaperPreferences,
     private val wallpaperModelFactory: WallpaperModelFactory,
+    private val logger: UserEventLogger,
 ) : WallpaperClient {
 
     private var recentsContentProviderAvailable: Boolean? = null
@@ -180,6 +183,17 @@ constructor(
             wallpaperPreferences.setStaticWallpaperMetadata(
                 metadata = wallpaperModel.getMetadata(bitmap, managerId),
                 destination = destination,
+            )
+
+            logger.logWallpaperApplied(
+                collectionId = wallpaperModel.commonWallpaperData.id.collectionId,
+                wallpaperId = wallpaperModel.commonWallpaperData.id.wallpaperId,
+                effects = null,
+                setWallpaperEntryPoint = setWallpaperEntryPoint,
+                destination =
+                    UserEventLogger.toWallpaperDestinationForLogging(
+                        destination.toDestinationInt()
+                    ),
             )
 
             // Save the static wallpaper to recent wallpapers
@@ -298,6 +312,17 @@ constructor(
             wallpaperPreferences.setLiveWallpaperMetadata(
                 metadata = updatedWallpaperModel.getMetadata(managerId),
                 destination = destination,
+            )
+
+            logger.logWallpaperApplied(
+                collectionId = wallpaperModel.commonWallpaperData.id.collectionId,
+                wallpaperId = wallpaperModel.commonWallpaperData.id.wallpaperId,
+                effects = wallpaperModel.liveWallpaperData.effectNames,
+                setWallpaperEntryPoint = setWallpaperEntryPoint,
+                destination =
+                    UserEventLogger.toWallpaperDestinationForLogging(
+                        destination.toDestinationInt()
+                    ),
             )
 
             wallpaperPreferences.addLiveWallpaperToRecentWallpapers(
@@ -632,6 +657,16 @@ constructor(
         cropHints: Map<Point, Rect>?
     ): WallpaperColors? {
         return wallpaperManager.getWallpaperColors(bitmap, cropHints)
+    }
+
+    override fun getWallpaperColors(screen: Screen): WallpaperColors? {
+        return wallpaperManager.getWallpaperColors(
+            if (screen == Screen.LOCK_SCREEN) {
+                FLAG_LOCK
+            } else {
+                FLAG_SYSTEM
+            }
+        )
     }
 
     fun WallpaperDestination.asString(): String {
