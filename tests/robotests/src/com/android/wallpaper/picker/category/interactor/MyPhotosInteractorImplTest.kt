@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.picker.interactor
+package com.android.wallpaper.picker.category.interactor
 
 import android.content.Context
 import com.android.wallpaper.picker.category.domain.interactor.implementations.MyPhotosInteractorImpl

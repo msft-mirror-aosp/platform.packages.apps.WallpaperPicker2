@@ -16,17 +16,18 @@
 
 package com.android.wallpaper.picker.category.domain.interactor.implementations
 
+import com.android.wallpaper.picker.category.data.repository.WallpaperCategoryRepository
 import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
 import com.android.wallpaper.picker.data.category.CategoryModel
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 
 @Singleton
-class ThirdPartyCategoryInteractorImpl @Inject constructor() : ThirdPartyCategoryInteractor {
-    override val categories: Flow<List<CategoryModel>> = flow {
-        // TODO(b/355704785): to provide actual implementation
-        emit(listOf())
-    }
+class ThirdPartyCategoryInteractorImpl
+@Inject
+constructor(wallpaperCategoryRepository: WallpaperCategoryRepository) :
+    ThirdPartyCategoryInteractor {
+    override val categories: Flow<List<CategoryModel>> =
+        wallpaperCategoryRepository.thirdPartyAppCategory
 }
