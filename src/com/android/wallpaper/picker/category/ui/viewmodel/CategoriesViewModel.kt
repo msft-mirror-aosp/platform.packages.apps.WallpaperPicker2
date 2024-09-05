@@ -26,7 +26,9 @@ import com.android.wallpaper.picker.category.domain.interactor.CategoryInteracto
 import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.MyPhotosInteractor
 import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
+import com.android.wallpaper.picker.category.ui.view.SectionCardinality
 import com.android.wallpaper.picker.data.WallpaperModel
+import com.android.wallpaper.picker.data.category.CategoryModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -34,6 +36,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.zip
 import kotlinx.coroutines.launch
@@ -44,7 +47,7 @@ class CategoriesViewModel
 @Inject
 constructor(
     private val singleCategoryInteractor: CategoryInteractor,
-    private val creativeWallpaperInteractor: CreativeCategoryInteractor,
+    private val creativeCategoryInteractor: CreativeCategoryInteractor,
     private val myPhotosInteractor: MyPhotosInteractor,
     private val thirdPartyCategoryInteractor: ThirdPartyCategoryInteractor,
     private val loadindStatusInteractor: CategoriesLoadingStatusInteractor,
@@ -54,15 +57,22 @@ constructor(
     private val _navigationEvents = MutableSharedFlow<NavigationEvent>()
     val navigationEvents = _navigationEvents.asSharedFlow()
 
-    private fun navigateToWallpaperCollection(collectionId: String) {
+    private fun navigateToWallpaperCollection(collectionId: String, categoryType: CategoryType) {
         viewModelScope.launch {
-            _navigationEvents.emit(NavigationEvent.NavigateToWallpaperCollection(collectionId))
+            _navigationEvents.emit(
+                NavigationEvent.NavigateToWallpaperCollection(collectionId, categoryType)
+            )
         }
     }
 
-    private fun navigateToPreviewScreen(wallpaperModel: WallpaperModel) {
+    private fun navigateToPreviewScreen(
+        wallpaperModel: WallpaperModel,
+        categoryType: CategoryType
+    ) {
         viewModelScope.launch {
-            _navigationEvents.emit(NavigationEvent.NavigateToPreviewScreen(wallpaperModel))
+            _navigationEvents.emit(
+                NavigationEvent.NavigateToPreviewScreen(wallpaperModel, categoryType)
+            )
         }
     }
 
@@ -76,85 +86,109 @@ constructor(
         }
     }
 
-    private val thirdPartyCategorySections: Flow<List<SectionViewModel>> =
-        thirdPartyCategoryInteractor.categories.map { categories ->
-            return@map categories.map { category ->
-                SectionViewModel(
-                    tileViewModels =
-                        listOf(
-                            TileViewModel(null, null, category.commonCategoryData.title) {
-                                category.thirdPartyCategoryData?.resolveInfo?.let {
-                                    navigateToThirdPartyApp(it)
-                                }
-                            }
-                        ),
-                    columnCount = 1,
-                    sectionTitle = null
-                )
+    val categoryModelListDifferentiator =
+        { oldList: List<CategoryModel>, newList: List<CategoryModel> ->
+            if (oldList.size != newList.size) {
+                false
+            } else {
+                !oldList.containsAll(newList)
             }
         }
 
-    private val defaultCategorySections: Flow<List<SectionViewModel>> =
-        singleCategoryInteractor.categories.map { categories ->
-            return@map categories.map { category ->
-                SectionViewModel(
-                    tileViewModels =
-                        listOf(
-                            TileViewModel(
-                                defaultDrawable = null,
-                                thumbnailAsset = category.collectionCategoryData?.thumbAsset,
-                                text = category.commonCategoryData.title,
-                            ) {
-                                if (
-                                    category.collectionCategoryData?.isSingleWallpaperCategory ==
-                                        true
-                                ) {
-                                    navigateToPreviewScreen(
-                                        category.collectionCategoryData.wallpaperModels[0]
-                                    )
-                                } else {
-                                    navigateToWallpaperCollection(
-                                        category.commonCategoryData.collectionId
-                                    )
+    private val thirdPartyCategorySections: Flow<List<SectionViewModel>> =
+        thirdPartyCategoryInteractor.categories
+            .distinctUntilChanged { old, new -> categoryModelListDifferentiator(old, new) }
+            .map { categories ->
+                return@map categories.map { category ->
+                    SectionViewModel(
+                        tileViewModels =
+                            listOf(
+                                TileViewModel(null, null, category.commonCategoryData.title) {
+                                    category.thirdPartyCategoryData?.resolveInfo?.let {
+                                        navigateToThirdPartyApp(it)
+                                    }
                                 }
-                            }
-                        ),
-                    columnCount = 1,
-                    sectionTitle = null
-                )
+                            ),
+                        columnCount = 1,
+                        sectionTitle = null
+                    )
+                }
             }
-        }
+
+    private val defaultCategorySections: Flow<List<SectionViewModel>> =
+        singleCategoryInteractor.categories
+            .distinctUntilChanged { old, new -> categoryModelListDifferentiator(old, new) }
+            .map { categories ->
+                return@map categories.map { category ->
+                    SectionViewModel(
+                        tileViewModels =
+                            listOf(
+                                TileViewModel(
+                                    defaultDrawable = null,
+                                    thumbnailAsset = category.collectionCategoryData?.thumbAsset,
+                                    text = category.commonCategoryData.title,
+                                ) {
+                                    if (
+                                        category.collectionCategoryData
+                                            ?.isSingleWallpaperCategory == true
+                                    ) {
+                                        navigateToPreviewScreen(
+                                            category.collectionCategoryData.wallpaperModels[0],
+                                            CategoryType.DefaultCategories
+                                        )
+                                    } else {
+                                        navigateToWallpaperCollection(
+                                            category.commonCategoryData.collectionId,
+                                            CategoryType.DefaultCategories
+                                        )
+                                    }
+                                }
+                            ),
+                        columnCount = 1,
+                        sectionTitle = null
+                    )
+                }
+            }
 
     private val individualSectionViewModels: Flow<List<SectionViewModel>> =
         defaultCategorySections.zip(thirdPartyCategorySections) { list1, list2 -> list1 + list2 }
 
     private val creativeSectionViewModel: Flow<SectionViewModel> =
-        creativeWallpaperInteractor.categories.map { categories ->
-            val tiles =
-                categories.map { category ->
-                    TileViewModel(
-                        defaultDrawable = null,
-                        thumbnailAsset = category.collectionCategoryData?.thumbAsset,
-                        text = category.commonCategoryData.title,
-                    ) {
-                        if (category.collectionCategoryData?.isSingleWallpaperCategory == true) {
-                            navigateToPreviewScreen(
-                                category.collectionCategoryData.wallpaperModels[0]
-                            )
-                        } else {
-                            navigateToWallpaperCollection(category.commonCategoryData.collectionId)
+        creativeCategoryInteractor.categories
+            .distinctUntilChanged { old, new -> categoryModelListDifferentiator(old, new) }
+            .map { categories ->
+                val tiles =
+                    categories.map { category ->
+                        TileViewModel(
+                            defaultDrawable = null,
+                            thumbnailAsset = category.collectionCategoryData?.thumbAsset,
+                            text = category.commonCategoryData.title,
+                            maxCategoriesInRow = SectionCardinality.Triple,
+                        ) {
+                            if (
+                                category.collectionCategoryData?.isSingleWallpaperCategory == true
+                            ) {
+                                navigateToPreviewScreen(
+                                    category.collectionCategoryData.wallpaperModels[0],
+                                    CategoryType.CreativeCategories
+                                )
+                            } else {
+                                navigateToWallpaperCollection(
+                                    category.commonCategoryData.collectionId,
+                                    CategoryType.CreativeCategories
+                                )
+                            }
                         }
                     }
-                }
-            return@map SectionViewModel(
-                tileViewModels = tiles,
-                columnCount = 3,
-                sectionTitle = context.getString(R.string.creative_wallpaper_title)
-            )
-        }
+                return@map SectionViewModel(
+                    tileViewModels = tiles,
+                    columnCount = 3,
+                    sectionTitle = context.getString(R.string.creative_wallpaper_title)
+                )
+            }
 
     private val myPhotosSectionViewModel: Flow<SectionViewModel> =
-        myPhotosInteractor.category.map { category ->
+        myPhotosInteractor.category.distinctUntilChanged().map { category ->
             SectionViewModel(
                 tileViewModels =
                     listOf(
@@ -162,6 +196,7 @@ constructor(
                             defaultDrawable = category.imageCategoryData?.defaultDrawable,
                             thumbnailAsset = category.imageCategoryData?.thumbnailAsset,
                             text = category.commonCategoryData.title,
+                            maxCategoriesInRow = SectionCardinality.Single,
                         ) {
                             // TODO(b/352081782): trigger the effect with effect controller
                             navigateToPhotosPicker()
@@ -191,10 +226,30 @@ constructor(
         myPhotosInteractor.updateMyPhotos()
     }
 
-    sealed class NavigationEvent {
-        data class NavigateToWallpaperCollection(val categoryId: String) : NavigationEvent()
+    /** This method updates the specified category */
+    fun refreshCategory() {
+        // update creative categories at this time only
+        creativeCategoryInteractor.updateCreativeCategories()
+    }
 
-        data class NavigateToPreviewScreen(val wallpaperModel: WallpaperModel) : NavigationEvent()
+    enum class CategoryType {
+        ThirdPartyCategories,
+        DefaultCategories,
+        CreativeCategories,
+        MyPhotosCategories,
+        Default
+    }
+
+    sealed class NavigationEvent {
+        data class NavigateToWallpaperCollection(
+            val categoryId: String,
+            val categoryType: CategoryType
+        ) : NavigationEvent()
+
+        data class NavigateToPreviewScreen(
+            val wallpaperModel: WallpaperModel,
+            val categoryType: CategoryType
+        ) : NavigationEvent()
 
         object NavigateToPhotosPicker : NavigationEvent()
 
