@@ -67,6 +67,16 @@ class CategoriesFragment : Hilt_CategoriesFragment() {
         val view =
             inflater.inflate(R.layout.categories_fragment, container, /* attachToRoot= */ false)
 
+        getCategorySelectorFragmentHost()?.let { fragmentHost ->
+            if (fragmentHost.isHostToolbarShown) {
+                view.findViewById<View>(R.id.header_bar).visibility = View.GONE
+                fragmentHost.setToolbarTitle(getText(R.string.wallpaper_title))
+            } else {
+                setUpToolbar(view)
+                setTitle(getText(R.string.wallpaper_title))
+            }
+        }
+
         CategoriesBinder.bind(
             categoriesPage = view.requireViewById<RecyclerView>(R.id.content_parent),
             viewModel = categoriesViewModel,
@@ -77,7 +87,8 @@ class CategoriesFragment : Hilt_CategoriesFragment() {
                 is CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection -> {
                     switchFragment(
                         individualPickerFactory.getIndividualPickerInstance(
-                            navigationEvent.categoryId
+                            navigationEvent.categoryId,
+                            navigationEvent.categoryType
                         )
                     )
                 }
@@ -117,6 +128,9 @@ class CategoriesFragment : Hilt_CategoriesFragment() {
                             isAssetIdPresent = true,
                             isViewAsHome = true,
                             isNewTask = isMultiPanel,
+                            shouldCategoryRefresh =
+                                (navigationEvent.categoryType ==
+                                    CategoriesViewModel.CategoryType.CreativeCategories)
                         )
                     ActivityUtils.startActivityForResultSafely(
                         requireActivity(),
