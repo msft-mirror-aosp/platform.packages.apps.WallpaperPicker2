@@ -26,7 +26,6 @@ import com.android.wallpaper.picker.category.domain.interactor.CategoryInteracto
 import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.MyPhotosInteractor
 import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
-import com.android.wallpaper.picker.category.ui.view.SectionCardinality
 import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.data.category.CategoryModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -163,7 +162,6 @@ constructor(
                             defaultDrawable = null,
                             thumbnailAsset = category.collectionCategoryData?.thumbAsset,
                             text = category.commonCategoryData.title,
-                            maxCategoriesInRow = SectionCardinality.Triple,
                         ) {
                             if (
                                 category.collectionCategoryData?.isSingleWallpaperCategory == true
@@ -196,7 +194,6 @@ constructor(
                             defaultDrawable = category.imageCategoryData?.defaultDrawable,
                             thumbnailAsset = category.imageCategoryData?.thumbnailAsset,
                             text = category.commonCategoryData.title,
-                            maxCategoriesInRow = SectionCardinality.Single,
                         ) {
                             // TODO(b/352081782): trigger the effect with effect controller
                             navigateToPhotosPicker()
