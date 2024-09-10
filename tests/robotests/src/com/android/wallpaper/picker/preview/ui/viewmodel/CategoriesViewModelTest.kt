@@ -21,9 +21,11 @@ import android.content.pm.ActivityInfo
 import androidx.activity.viewModels
 import androidx.test.core.app.ActivityScenario
 import com.android.wallpaper.module.InjectorProvider
+import com.android.wallpaper.module.NetworkStatusNotifier
 import com.android.wallpaper.picker.category.ui.viewmodel.CategoriesViewModel
 import com.android.wallpaper.picker.preview.PreviewTestActivity
 import com.android.wallpaper.testing.TestInjector
+import com.android.wallpaper.testing.TestNetworkStatusNotifier
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -32,6 +34,8 @@ import dagger.hilt.android.testing.HiltAndroidTest
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -55,6 +59,8 @@ class CategoriesViewModelTest {
     @Inject @ApplicationContext lateinit var appContext: Context
 
     @Inject lateinit var testInjector: TestInjector
+
+    @Inject lateinit var networkStatusNotifier: TestNetworkStatusNotifier
 
     @Before
     fun setUp() {
@@ -126,13 +132,128 @@ class CategoriesViewModelTest {
         }
     }
 
+    @Test
+    fun navigationEvents_verifyNavigateToWallpaperCollection() = runTest {
+        val sections = collectLastValue(categoriesViewModel.sections)()
+
+        val individualSections =
+            sections?.subList(EXPECTED_POSITION_SINGLE_CATEGORIES, sections.size)
+
+        individualSections?.let {
+            var sectionViewModel = it[CATEGORY_INDEX_CELESTIAL_DREAMSCAPES]
+
+            // trigger the onClick of the tile and observe that the correct navigation event is
+            // emitted
+            sectionViewModel.tileViewModels[0].onClicked?.let { onClick ->
+                val collectedValues = mutableListOf<CategoriesViewModel.NavigationEvent>()
+                val job =
+                    launch(testDispatcher) {
+                        categoriesViewModel.navigationEvents.collect { collectedValues.add(it) }
+                    }
+
+                onClick()
+
+                testDispatcher.scheduler.advanceUntilIdle()
+                assertThat(collectedValues[0])
+                    .isEqualTo(
+                        CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection(
+                            CATEGORY_ID_CELESTIAL_DREAMSCAPES,
+                            CategoriesViewModel.CategoryType.DefaultCategories
+                        )
+                    )
+
+                job.cancelAndJoin()
+            }
+
+            sectionViewModel = it[CATEGORY_INDEX_CYBERPUNK_CITYSCAPE]
+            sectionViewModel.tileViewModels[0].onClicked?.let { onClick ->
+                val collectedValues = mutableListOf<CategoriesViewModel.NavigationEvent>()
+                val job =
+                    launch(testDispatcher) {
+                        categoriesViewModel.navigationEvents.collect { collectedValues.add(it) }
+                    }
+
+                onClick()
+
+                testDispatcher.scheduler.advanceUntilIdle()
+
+                assertThat(collectedValues[0])
+                    .isEqualTo(
+                        CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection(
+                            CATEGORY_ID_CYBERPUNK_CITYSCAPE,
+                            CategoriesViewModel.CategoryType.DefaultCategories
+                        )
+                    )
+                job.cancelAndJoin()
+            }
+
+            sectionViewModel = it[CATEGORY_INDEX_COSMIC_NEBULA]
+            sectionViewModel.tileViewModels[0].onClicked?.let { onClick ->
+                val collectedValues = mutableListOf<CategoriesViewModel.NavigationEvent>()
+                val job =
+                    launch(testDispatcher) {
+                        categoriesViewModel.navigationEvents.collect { collectedValues.add(it) }
+                    }
+
+                onClick()
+                testDispatcher.scheduler.advanceUntilIdle()
+                assertThat(collectedValues[0])
+                    .isEqualTo(
+                        CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection(
+                            CATEGORY_ID_COSMIC_NEBULA,
+                            CategoriesViewModel.CategoryType.DefaultCategories
+                        )
+                    )
+                job.cancelAndJoin()
+            }
+        }
+    }
+
+    @Test
+    fun navigationEvents_verifyNavigateToMyPhotos() = runTest {
+        val sections = collectLastValue(categoriesViewModel.sections)()
+        val myPhotosSection = sections?.get(EXPECTED_POSITION_MY_PHOTOS_CATEGORY)
+
+        val photoTile = myPhotosSection?.tileViewModels?.get(EXPECTED_POSITION_PHOTO_TILE)
+        photoTile?.onClicked?.let { onClick ->
+            val collectedValues = mutableListOf<CategoriesViewModel.NavigationEvent>()
+            val job =
+                launch(testDispatcher) {
+                    categoriesViewModel.navigationEvents.collect { collectedValues.add(it) }
+                }
+
+            onClick()
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertThat(collectedValues[0])
+                .isEqualTo(CategoriesViewModel.NavigationEvent.NavigateToPhotosPicker)
+            job.cancelAndJoin()
+        }
+    }
+
+    @Test
+    fun networkStatus_verifyStatusOnNetworkChange() = runTest {
+        val collectedValues = mutableListOf<Boolean>()
+        val job =
+            launch(testDispatcher) {
+                categoriesViewModel.isConnectionObtained.collect { collectedValues.add(it) }
+            }
+        networkStatusNotifier.setAndNotifyNetworkStatus(NetworkStatusNotifier.NETWORK_NOT_CONNECTED)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertThat(collectedValues[0]).isFalse()
+
+        networkStatusNotifier.setAndNotifyNetworkStatus(NetworkStatusNotifier.NETWORK_CONNECTED)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertThat(collectedValues[1]).isTrue()
+        job.cancelAndJoin()
+    }
+
     /**
      * These expected values are from fake interactors and thus would not change with device. Once
      * the corresponding real test repositories and interactors are available, these fakes will be
      * replaced with fakes of the repositories or their data sources.
      */
     companion object {
-        const val EXPECTED_NUMBER_OF_SECTIONS = 19
+        const val EXPECTED_NUMBER_OF_SECTIONS = 21
 
         const val EXPECTED_POSITION_CREATIVE_CATEGORY = 0
         const val EXPECTED_SIZE_CREATIVE_CATEGORY = 2
@@ -147,7 +268,15 @@ class CategoriesViewModelTest {
         const val EXPECTED_TITLE_PHOTO_TILE = "Celestial Dreamscape"
 
         const val EXPECTED_POSITION_SINGLE_CATEGORIES = 2
-        const val EXPECTED_SIZE_SINGLE_CATEGORIES = 17
+        const val EXPECTED_SIZE_SINGLE_CATEGORIES = 19
         const val EXPECTED_SIZE_SINGLE_CATEGORY_TILES = 1
+
+        const val CATEGORY_ID_CELESTIAL_DREAMSCAPES = "celestial_dreamscapes"
+        const val CATEGORY_ID_CYBERPUNK_CITYSCAPE = "cyberpunk_cityscape"
+        const val CATEGORY_ID_COSMIC_NEBULA = "cosmic_nebula"
+
+        const val CATEGORY_INDEX_CELESTIAL_DREAMSCAPES = 0
+        const val CATEGORY_INDEX_CYBERPUNK_CITYSCAPE = 6
+        const val CATEGORY_INDEX_COSMIC_NEBULA = 8
     }
 }
