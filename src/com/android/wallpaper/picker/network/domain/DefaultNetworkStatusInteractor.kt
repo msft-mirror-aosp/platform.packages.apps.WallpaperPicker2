@@ -14,27 +14,17 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.picker.common.preview.ui.binder
+package com.android.wallpaper.picker.network.domain
 
-import android.os.Message
-import androidx.lifecycle.LifecycleOwner
-import com.android.wallpaper.model.Screen
-import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationOptionsViewModel
+import com.android.wallpaper.picker.network.data.NetworkStatusRepository
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
 
 @Singleton
-class DefaultWorkspaceCallbackBinder @Inject constructor() : WorkspaceCallbackBinder {
-
-    override fun bind(
-        workspaceCallback: Message,
-        viewModel: CustomizationOptionsViewModel,
-        screen: Screen,
-        lifecycleOwner: LifecycleOwner,
-    ) {}
-
-    companion object {
-        const val MESSAGE_ID_UPDATE_PREVIEW = 1337
-        const val KEY_HIDE_BOTTOM_ROW = "hide_bottom_row"
-    }
+class DefaultNetworkStatusInteractor
+@Inject
+constructor(private val networkStatusRepository: NetworkStatusRepository) :
+    NetworkStatusInteractor {
+    override val isConnectionObtained: Flow<Boolean> = networkStatusRepository.networkStateFlow()
 }
