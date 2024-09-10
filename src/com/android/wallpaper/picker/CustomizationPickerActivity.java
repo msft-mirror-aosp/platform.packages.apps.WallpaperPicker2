@@ -27,6 +27,7 @@ import android.content.res.Configuration;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Window;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -36,6 +37,7 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
 
 import com.android.wallpaper.R;
+import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.model.Category;
 import com.android.wallpaper.model.CustomizationSectionController.CustomizationSectionNavigationController;
 import com.android.wallpaper.model.PermissionRequester;
@@ -61,12 +63,15 @@ import com.android.wallpaper.util.LaunchUtils;
 import com.android.wallpaper.widget.BottomActionBar;
 import com.android.wallpaper.widget.BottomActionBar.BottomActionBarHost;
 
+import dagger.hilt.android.AndroidEntryPoint;
+
 /**
  *  Main Activity allowing containing view sections for the user to switch between the different
  *  Fragments providing customization options.
  */
-public class CustomizationPickerActivity extends FragmentActivity implements AppbarFragmentHost,
-        WallpapersUiContainer, BottomActionBarHost, FragmentTransactionChecker,
+@AndroidEntryPoint(FragmentActivity.class)
+public class CustomizationPickerActivity extends Hilt_CustomizationPickerActivity implements
+        AppbarFragmentHost, WallpapersUiContainer, BottomActionBarHost, FragmentTransactionChecker,
         PermissionRequester, CategorySelectorFragmentHost, IndividualPickerFragmentHost,
         WallpaperPreviewNavigator {
 
@@ -91,8 +96,12 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
         mNetworkStatusNotifier = injector.getNetworkStatusNotifier(this);
         mNetworkStatus = mNetworkStatusNotifier.getNetworkStatus();
         mDisplayUtils = injector.getDisplayUtils(this);
-
         enforcePortraitForHandheldAndFoldedDisplay();
+
+        BaseFlags flags = injector.getFlags();
+        if (flags.isMultiCropEnabled()) {
+            getWindow().requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS);
+        }
 
         // Restore this Activity's state before restoring contained Fragments state.
         super.onCreate(savedInstanceState);

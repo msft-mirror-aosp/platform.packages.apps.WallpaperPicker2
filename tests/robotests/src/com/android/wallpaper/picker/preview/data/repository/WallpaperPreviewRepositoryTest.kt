@@ -17,26 +17,19 @@
 package com.android.wallpaper.picker.preview.data.repository
 
 import android.app.WallpaperInfo
-import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.content.pm.ServiceInfo
-import android.graphics.Color
 import androidx.test.core.app.ApplicationProvider
 import com.android.wallpaper.module.WallpaperPreferences
-import com.android.wallpaper.picker.data.ColorInfo
-import com.android.wallpaper.picker.data.CommonWallpaperData
-import com.android.wallpaper.picker.data.Destination
-import com.android.wallpaper.picker.data.LiveWallpaperData
-import com.android.wallpaper.picker.data.WallpaperId
 import com.android.wallpaper.picker.data.WallpaperModel
-import com.android.wallpaper.picker.preview.data.util.ShadowWallpaperInfo
-import com.android.wallpaper.picker.preview.data.util.TestLiveWallpaperDownloader
+import com.android.wallpaper.picker.preview.data.util.FakeLiveWallpaperDownloader
 import com.android.wallpaper.picker.preview.shared.model.LiveWallpaperDownloadResultCode
 import com.android.wallpaper.picker.preview.shared.model.LiveWallpaperDownloadResultModel
-import com.android.wallpaper.testing.TestAsset
+import com.android.wallpaper.testing.ShadowWallpaperInfo
 import com.android.wallpaper.testing.TestWallpaperPreferences
+import com.android.wallpaper.testing.WallpaperModelUtils
 import com.android.wallpaper.testing.WallpaperModelUtils.Companion.getStaticWallpaperModel
 import com.google.common.truth.Truth.assertThat
 import dagger.hilt.android.testing.HiltTestApplication
@@ -79,7 +72,7 @@ class WallpaperPreviewRepositoryTest {
     fun setWallpaperModel() {
         underTest =
             WallpaperPreviewRepository(
-                liveWallpaperDownloader = TestLiveWallpaperDownloader(null),
+                liveWallpaperDownloader = FakeLiveWallpaperDownloader(),
                 preferences = prefs,
                 bgDispatcher = testDispatcher,
             )
@@ -97,29 +90,56 @@ class WallpaperPreviewRepositoryTest {
     }
 
     @Test
-    fun dismissTooltip() {
-        prefs.setHasPreviewTooltipBeenShown(false)
+    fun dismissSmallTooltip() {
+        prefs.setHasSmallPreviewTooltipBeenShown(false)
+        prefs.setHasFullPreviewTooltipBeenShown(false)
         underTest =
             WallpaperPreviewRepository(
-                liveWallpaperDownloader = TestLiveWallpaperDownloader(null),
+                liveWallpaperDownloader = FakeLiveWallpaperDownloader(),
                 preferences = prefs,
                 bgDispatcher = testDispatcher,
             )
-        assertThat(underTest.hasTooltipBeenShown.value).isFalse()
+        assertThat(underTest.hasSmallPreviewTooltipBeenShown.value).isFalse()
+        assertThat(underTest.hasFullPreviewTooltipBeenShown.value).isFalse()
 
-        underTest.dismissTooltip()
-        assertThat(prefs.getHasPreviewTooltipBeenShown()).isTrue()
-        assertThat(underTest.hasTooltipBeenShown.value).isTrue()
+        underTest.hideSmallPreviewTooltip()
+
+        assertThat(prefs.getHasSmallPreviewTooltipBeenShown()).isTrue()
+        assertThat(underTest.hasSmallPreviewTooltipBeenShown.value).isTrue()
+        assertThat(prefs.getHasFullPreviewTooltipBeenShown()).isFalse()
+        assertThat(underTest.hasFullPreviewTooltipBeenShown.value).isFalse()
+    }
+
+    @Test
+    fun dismissFullTooltip() {
+        prefs.setHasSmallPreviewTooltipBeenShown(false)
+        prefs.setHasFullPreviewTooltipBeenShown(false)
+        underTest =
+            WallpaperPreviewRepository(
+                liveWallpaperDownloader = FakeLiveWallpaperDownloader(),
+                preferences = prefs,
+                bgDispatcher = testDispatcher,
+            )
+        assertThat(underTest.hasSmallPreviewTooltipBeenShown.value).isFalse()
+        assertThat(underTest.hasFullPreviewTooltipBeenShown.value).isFalse()
+
+        underTest.hideFullPreviewTooltip()
+
+        assertThat(prefs.getHasSmallPreviewTooltipBeenShown()).isFalse()
+        assertThat(underTest.hasSmallPreviewTooltipBeenShown.value).isFalse()
+        assertThat(prefs.getHasFullPreviewTooltipBeenShown()).isTrue()
+        assertThat(underTest.hasFullPreviewTooltipBeenShown.value).isTrue()
     }
 
     @Test
     fun downloadWallpaper_fails() {
+        val liveWallpaperDownloader = FakeLiveWallpaperDownloader()
+        liveWallpaperDownloader.setWallpaperDownloadResult(
+            LiveWallpaperDownloadResultModel(LiveWallpaperDownloadResultCode.FAIL, null)
+        )
         underTest =
             WallpaperPreviewRepository(
-                liveWallpaperDownloader =
-                    TestLiveWallpaperDownloader(
-                        LiveWallpaperDownloadResultModel(LiveWallpaperDownloadResultCode.FAIL, null)
-                    ),
+                liveWallpaperDownloader = liveWallpaperDownloader,
                 preferences = prefs,
                 bgDispatcher = testDispatcher,
             )
@@ -136,16 +156,17 @@ class WallpaperPreviewRepositoryTest {
 
     @Test
     fun downloadWallpaper_succeeds() {
+        val liveWallpaperDownloader = FakeLiveWallpaperDownloader()
         val resultWallpaper = getTestLiveWallpaperModel()
+        liveWallpaperDownloader.setWallpaperDownloadResult(
+            LiveWallpaperDownloadResultModel(
+                code = LiveWallpaperDownloadResultCode.SUCCESS,
+                wallpaperModel = resultWallpaper,
+            )
+        )
         underTest =
             WallpaperPreviewRepository(
-                liveWallpaperDownloader =
-                    TestLiveWallpaperDownloader(
-                        LiveWallpaperDownloadResultModel(
-                            code = LiveWallpaperDownloadResultCode.SUCCESS,
-                            wallpaperModel = resultWallpaper,
-                        )
-                    ),
+                liveWallpaperDownloader = liveWallpaperDownloader,
                 preferences = prefs,
                 bgDispatcher = testDispatcher,
             )
@@ -173,32 +194,10 @@ class WallpaperPreviewRepositoryTest {
                     serviceInfo.flags = PackageManager.GET_META_DATA
                 }
             )
-        return WallpaperModel.LiveWallpaperModel(
-            commonWallpaperData =
-                CommonWallpaperData(
-                    id =
-                        WallpaperId(
-                            componentName = ComponentName("package", "class"),
-                            uniqueId = "uniqueId",
-                            collectionId = "collectionId",
-                        ),
-                    title = "title",
-                    attributions = listOf("attr1", "attr2"),
-                    exploreActionUrl = "https://www.google.com/",
-                    thumbAsset = TestAsset(Color.RED, false),
-                    placeholderColorInfo = ColorInfo(null),
-                    destination = Destination.NOT_APPLIED,
-                ),
-            liveWallpaperData =
-                LiveWallpaperData(
-                    groupName = "groupName",
-                    systemWallpaperInfo = wallpaperInfo,
-                    isTitleVisible = false,
-                    isApplied = false,
-                    effectNames = null,
-                ),
-            creativeWallpaperData = null,
-            internalLiveWallpaperData = null,
+        return WallpaperModelUtils.getLiveWallpaperModel(
+            wallpaperId = "uniqueId",
+            collectionId = "collectionId",
+            systemWallpaperInfo = wallpaperInfo
         )
     }
 }

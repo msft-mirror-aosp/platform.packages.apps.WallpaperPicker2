@@ -39,6 +39,7 @@ import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.model.CustomizationSectionController;
 import com.android.wallpaper.model.CustomizationSectionController.CustomizationSectionNavigationController;
 import com.android.wallpaper.model.PermissionRequester;
+import com.android.wallpaper.model.Screen;
 import com.android.wallpaper.model.WallpaperPreviewNavigator;
 import com.android.wallpaper.module.CustomizationSections;
 import com.android.wallpaper.module.FragmentFactory;
@@ -50,11 +51,13 @@ import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPick
 import com.android.wallpaper.util.ActivityUtils;
 import com.android.wallpaper.util.DisplayUtils;
 
+import com.google.android.material.appbar.AppBarLayout;
+
+import kotlinx.coroutines.DisposableHandle;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import kotlinx.coroutines.DisposableHandle;
 
 /** The Fragment UI for customization sections. */
 public class CustomizationPickerFragment extends AppbarFragment implements
@@ -95,9 +98,9 @@ public class CustomizationPickerFragment extends AppbarFragment implements
         final View view = inflater.inflate(layoutId, container, false);
         if (ActivityUtils.isLaunchedFromSettingsRelated(getActivity().getIntent())) {
             setUpToolbar(view, !ActivityEmbeddingUtils.shouldHideNavigateUpButton(
-                    getActivity(), /* isSecondLayerPage= */ true));
+                    getActivity(), /* isSecondLayerPage= */ true), false);
         } else {
-            setUpToolbar(view, /* upArrow= */ false);
+            setUpToolbar(view, /* upArrow= */ false, false);
         }
 
         final Injector injector = InjectorProvider.getInjector();
@@ -121,11 +124,9 @@ public class CustomizationPickerFragment extends AppbarFragment implements
             mBinding.dispose();
         }
         final List<CustomizationSectionController<?>> lockSectionControllers =
-                getSectionControllers(CustomizationSections.Screen.LOCK_SCREEN,
-                        finalSavedInstanceState);
+                getSectionControllers(Screen.LOCK_SCREEN, finalSavedInstanceState);
         final List<CustomizationSectionController<?>> homeSectionControllers =
-                getSectionControllers(CustomizationSections.Screen.HOME_SCREEN,
-                        finalSavedInstanceState);
+                getSectionControllers(Screen.HOME_SCREEN, finalSavedInstanceState);
         mSectionControllers.addAll(lockSectionControllers);
         mSectionControllers.addAll(homeSectionControllers);
         mBinding = CustomizationPickerBinder.bind(
@@ -144,14 +145,15 @@ public class CustomizationPickerFragment extends AppbarFragment implements
 
         mHomeScrollContainer = view.findViewById(R.id.home_scroll_container);
         mLockScrollContainer = view.findViewById(R.id.lock_scroll_container);
+        AppBarLayout appBarLayout = view.findViewById(R.id.app_bar);
 
         mHomeScrollContainer.setOnScrollChangeListener(
                 (NestedScrollView.OnScrollChangeListener) (scrollView, scrollX, scrollY,
                         oldScrollX, oldScrollY) -> {
                     if (scrollY == 0) {
-                        setToolbarColor(android.R.color.transparent);
+                        appBarLayout.setLifted(false);
                     } else {
-                        setToolbarColor(R.color.system_surface_container_highest);
+                        appBarLayout.setLifted(true);
                     }
                 }
         );
@@ -159,9 +161,9 @@ public class CustomizationPickerFragment extends AppbarFragment implements
                 (NestedScrollView.OnScrollChangeListener) (scrollView, scrollX, scrollY,
                         oldScrollX, oldScrollY) -> {
                     if (scrollY == 0) {
-                        setToolbarColor(android.R.color.transparent);
+                        appBarLayout.setLifted(false);
                     } else {
-                        setToolbarColor(R.color.system_surface_container_highest);
+                        appBarLayout.setLifted(true);
                     }
                 }
         );
@@ -193,11 +195,6 @@ public class CustomizationPickerFragment extends AppbarFragment implements
     @Override
     protected int getToolbarId() {
         return R.id.toolbar;
-    }
-
-    @Override
-    protected int getToolbarColorId() {
-        return android.R.color.transparent;
     }
 
     @Override
@@ -325,7 +322,7 @@ public class CustomizationPickerFragment extends AppbarFragment implements
     }
 
     private List<CustomizationSectionController<?>> getSectionControllers(
-            @Nullable CustomizationSections.Screen screen,
+            @Nullable Screen screen,
             @Nullable Bundle savedInstanceState) {
         final Injector injector = InjectorProvider.getInjector();
         ComponentActivity activity = requireActivity();

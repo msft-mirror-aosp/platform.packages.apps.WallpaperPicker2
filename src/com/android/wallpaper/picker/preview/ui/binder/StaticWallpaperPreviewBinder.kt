@@ -25,19 +25,21 @@ import android.view.View
 import android.view.animation.Interpolator
 import android.view.animation.PathInterpolator
 import android.widget.ImageView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
+import androidx.core.view.doOnLayout
+import androidx.core.view.isVisible
+import com.android.app.tracing.TraceUtils.trace
+import com.android.wallpaper.picker.preview.shared.model.CropSizeModel
 import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 import com.android.wallpaper.picker.preview.ui.util.FullResImageViewUtil
-import com.android.wallpaper.picker.preview.ui.view.SystemScaledWallpaperPreviewSurfaceView
 import com.android.wallpaper.picker.preview.ui.viewmodel.StaticWallpaperPreviewViewModel
 import com.android.wallpaper.util.RtlUtils
 import com.android.wallpaper.util.WallpaperCropUtils
 import com.android.wallpaper.util.WallpaperSurfaceCallback.LOW_RES_BITMAP_BLUR_RADIUS
 import com.davemorrissey.labs.subscaleview.ImageSource
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
+import kotlin.math.max
+import kotlin.math.min
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 object StaticWallpaperPreviewBinder {
@@ -50,18 +52,28 @@ object StaticWallpaperPreviewBinder {
         fullResImageView: SubsamplingScaleImageView,
         viewModel: StaticWallpaperPreviewViewModel,
         displaySize: Point,
-        viewLifecycleOwner: LifecycleOwner,
-        shouldCalibrateWithSystemScale: Boolean = false,
+        parentCoroutineScope: CoroutineScope,
+        isFullScreen: Boolean = false,
     ) {
         lowResImageView.initLowResImageView()
         fullResImageView.initFullResImageView()
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { viewModel.lowResBitmap.collect { lowResImageView.setImageBitmap(it) } }
-
+        parentCoroutineScope.launch {
+            // Show low res image only for small preview with supported wallpaper
+            if (!isFullScreen) {
                 launch {
-                    viewModel.subsamplingScaleImageViewModel.collect { imageModel ->
+                    viewModel.lowResBitmap.collect {
+                        it?.let {
+                            lowResImageView.setImageBitmap(it)
+                            lowResImageView.isVisible = true
+                        }
+                    }
+                }
+            }
+
+            launch {
+                viewModel.subsamplingScaleImageViewModel.collect { imageModel ->
+                    trace(TAG) {
                         val cropHint = imageModel.fullPreviewCropModels?.get(displaySize)?.cropHint
                         fullResImageView.setFullResImage(
                             ImageSource.cachedBitmap(imageModel.rawWallpaperBitmap),
@@ -69,27 +81,43 @@ object StaticWallpaperPreviewBinder {
                             displaySize,
                             cropHint,
                             RtlUtils.isRtl(lowResImageView.context),
-                            shouldCalibrateWithSystemScale,
+                            isFullScreen,
                         )
 
-                        // Fill in the default crop region if the displaySize for this preview is
-                        // missing.
-                        viewModel.fullPreviewCropModels.putIfAbsent(
+                        // Fill in the default crop region if the displaySize for this preview
+                        // is missing.
+                        val imageSize = Point(fullResImageView.width, fullResImageView.height)
+                        viewModel.updateDefaultPreviewCropModel(
                             displaySize,
                             FullPreviewCropModel(
                                 cropHint =
                                     WallpaperCropUtils.calculateVisibleRect(
                                         imageModel.rawWallpaperSize,
-                                        Point(
-                                            fullResImageView.measuredWidth,
-                                            fullResImageView.measuredHeight
-                                        )
+                                        imageSize,
                                     ),
-                                cropSizeModel = null,
-                            )
+                                cropSizeModel =
+                                    CropSizeModel(
+                                        wallpaperZoom =
+                                            WallpaperCropUtils.calculateMinZoom(
+                                                imageModel.rawWallpaperSize,
+                                                imageSize,
+                                            ),
+                                        hostViewSize = imageSize,
+                                        cropViewSize =
+                                            WallpaperCropUtils.calculateCropSurfaceSize(
+                                                fullResImageView.resources,
+                                                max(imageSize.x, imageSize.y),
+                                                min(imageSize.x, imageSize.y),
+                                                imageSize.x,
+                                                imageSize.y,
+                                            ),
+                                    ),
+                            ),
                         )
 
-                        crossFadeInFullResImageView(lowResImageView, fullResImageView)
+                        if (lowResImageView.isVisible) {
+                            crossFadeInFullResImageView(lowResImageView, fullResImageView)
+                        }
                     }
                 }
             }
@@ -111,42 +139,37 @@ object StaticWallpaperPreviewBinder {
         setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
     }
 
-    /**
-     * @param shouldCalibrateWithSystemScale This flag should be true for rendering small previews.
-     *   Unlikely full wallpaper preview for static wallpapers, small wallpaper preview does not
-     *   scale up the surface view larger than the display view to conform with the system's actual
-     *   wallpaper scale (see [SystemScaledWallpaperPreviewSurfaceView]). Instead we need to apply
-     *   this system scale to [SubsamplingScaleImageView].
-     */
     private fun SubsamplingScaleImageView.setFullResImage(
         imageSource: ImageSource,
         rawWallpaperSize: Point,
         displaySize: Point,
         cropHint: Rect?,
         isRtl: Boolean,
-        shouldCalibrateWithSystemScale: Boolean = false,
+        isFullScreen: Boolean,
     ) {
         // Set the full res image
         setImage(imageSource)
         // Calculate the scale and the center point for the full res image
-        FullResImageViewUtil.getScaleAndCenter(
-                Point(measuredWidth, measuredHeight),
-                rawWallpaperSize,
-                displaySize,
-                cropHint,
-                isRtl,
-            )
-            .let { scaleAndCenter ->
-                minScale = scaleAndCenter.minScale
-                maxScale = scaleAndCenter.maxScale
-                val scale =
-                    if (shouldCalibrateWithSystemScale)
-                        WallpaperCropUtils.getSystemWallpaperMaximumScale(
-                            context.applicationContext
-                        )
-                    else 1F
-                setScaleAndCenter(scaleAndCenter.defaultScale * scale, scaleAndCenter.center)
-            }
+        doOnLayout {
+            FullResImageViewUtil.getScaleAndCenter(
+                    Point(measuredWidth, measuredHeight),
+                    rawWallpaperSize,
+                    displaySize,
+                    cropHint,
+                    isRtl,
+                    systemScale =
+                        if (isFullScreen) 1f
+                        else
+                            WallpaperCropUtils.getSystemWallpaperMaximumScale(
+                                context.applicationContext,
+                            ),
+                )
+                .let { scaleAndCenter ->
+                    minScale = scaleAndCenter.minScale
+                    maxScale = scaleAndCenter.maxScale
+                    setScaleAndCenter(scaleAndCenter.defaultScale, scaleAndCenter.center)
+                }
+        }
     }
 
     private fun crossFadeInFullResImageView(lowResImageView: ImageView, fullResImageView: View) {
@@ -164,4 +187,6 @@ object StaticWallpaperPreviewBinder {
                 }
             )
     }
+
+    private const val TAG = "StaticWallpaperPreviewBinder"
 }

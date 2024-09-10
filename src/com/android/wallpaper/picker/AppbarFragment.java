@@ -19,17 +19,22 @@ import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
 
 import android.annotation.MenuRes;
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.TextView;
 import android.widget.Toolbar;
 import android.widget.Toolbar.OnMenuItemClickListener;
 
 import androidx.annotation.Nullable;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.android.wallpaper.R;
 import com.android.wallpaper.config.BaseFlags;
@@ -111,7 +116,7 @@ public abstract class AppbarFragment extends BottomActionBarFragment
      * Default upArrow value is true.
      */
     public void setUpToolbar(View rootView) {
-        setUpToolbar(rootView, /* upArrow= */ true);
+        setUpToolbar(rootView, /* upArrow= */ true, false);
     }
 
     /**
@@ -120,15 +125,18 @@ public abstract class AppbarFragment extends BottomActionBarFragment
      *
      * @param rootView given root view.
      * @param upArrow  true to enable up arrow feature.
+     * @param transparentToolbar whether the toolbar should be transparent
      */
-    protected void setUpToolbar(View rootView, boolean upArrow) {
+    protected void setUpToolbar(View rootView, boolean upArrow, boolean transparentToolbar) {
         mUpArrowEnabled = upArrow;
         mToolbar = rootView.findViewById(getToolbarId());
 
         mTitleView = mToolbar.findViewById(R.id.custom_toolbar_title);
 
-        // Update toolbar and status bar color.
-        setToolbarColor(getToolbarColorId());
+        if (transparentToolbar) {
+            setToolbarColor(android.R.color.transparent);
+        }
+        setUpStatusBar(isStatusBarLightText());
 
         CharSequence title;
         if (getArguments() != null) {
@@ -164,8 +172,19 @@ public abstract class AppbarFragment extends BottomActionBarFragment
         return R.id.toolbar;
     }
 
-    protected int getToolbarColorId() {
-        return R.color.toolbar_color;
+    protected void setUpStatusBar(boolean shouldUseLightText) {
+        Activity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+        Window window = activity.getWindow();
+        WindowInsetsControllerCompat windowInsetsController =
+                WindowCompat.getInsetsController(window, window.getDecorView());
+        windowInsetsController.setAppearanceLightStatusBars(!shouldUseLightText);
+    }
+
+    protected boolean isStatusBarLightText() {
+        return getResources().getBoolean(R.bool.isFragmentStatusBarLightText);
     }
 
     protected int getToolbarTextColor() {
@@ -205,8 +224,7 @@ public abstract class AppbarFragment extends BottomActionBarFragment
 
     protected void setToolbarColor(int colorId) {
         mToolbar.setBackgroundResource(colorId);
-        getActivity().getWindow().setStatusBarColor(
-                getActivity().getResources().getColor(colorId));
+        ((ViewGroup) mToolbar.getParent()).setBackgroundResource(colorId);
     }
 
     /**

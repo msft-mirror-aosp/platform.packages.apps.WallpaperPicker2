@@ -19,72 +19,42 @@ import android.content.Context
 import android.graphics.Point
 import android.view.View
 import androidx.lifecycle.LifecycleOwner
-import androidx.viewpager.widget.ViewPager
+import androidx.transition.Transition
 import androidx.viewpager2.widget.ViewPager2
+import com.android.wallpaper.picker.preview.ui.view.PreviewTabs
+import com.android.wallpaper.picker.preview.ui.viewmodel.FullPreviewConfigViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
-import kotlinx.coroutines.CoroutineScope
 
 /** Binds and synchronizes the tab and preview view pagers. */
 object PreviewSelectorBinder {
 
     fun bind(
-        tabsViewPager: ViewPager,
+        tabs: PreviewTabs,
         previewsViewPager: ViewPager2,
         previewDisplaySize: Point,
         wallpaperPreviewViewModel: WallpaperPreviewViewModel,
         applicationContext: Context,
         viewLifecycleOwner: LifecycleOwner,
-        mainScope: CoroutineScope,
         currentNavDestId: Int,
+        transition: Transition?,
+        transitionConfig: FullPreviewConfigViewModel?,
+        isFirstBinding: Boolean,
         navigate: (View) -> Unit,
     ) {
-        // set up tabs view pager
-        TabPagerBinder.bind(tabsViewPager)
-
         // set up previews view pager
         PreviewPagerBinder.bind(
             applicationContext,
             viewLifecycleOwner,
-            mainScope,
             previewsViewPager,
             wallpaperPreviewViewModel,
             previewDisplaySize,
             currentNavDestId,
+            transition,
+            transitionConfig,
+            isFirstBinding,
             navigate,
         )
 
-        // synchronize the two pagers
-        synchronizePreviewAndTabsPager(tabsViewPager, previewsViewPager)
-    }
-
-    private fun synchronizePreviewAndTabsPager(
-        tabsViewPager: ViewPager,
-        previewsViewPager: ViewPager2,
-    ) {
-        val onPageChangeListener =
-            object : ViewPager.OnPageChangeListener {
-                override fun onPageSelected(position: Int) {
-                    previewsViewPager.setCurrentItem(position, true)
-                }
-
-                override fun onPageScrolled(
-                    position: Int,
-                    positionOffset: Float,
-                    positionOffsetPixels: Int
-                ) {}
-
-                override fun onPageScrollStateChanged(state: Int) {}
-            }
-
-        tabsViewPager.addOnPageChangeListener(onPageChangeListener)
-
-        previewsViewPager.registerOnPageChangeCallback(
-            object : ViewPager2.OnPageChangeCallback() {
-                override fun onPageSelected(position: Int) {
-                    super.onPageSelected(position)
-                    tabsViewPager.setCurrentItem(position, true)
-                }
-            }
-        )
+        TabsBinder.bind(tabs, wallpaperPreviewViewModel, viewLifecycleOwner)
     }
 }
