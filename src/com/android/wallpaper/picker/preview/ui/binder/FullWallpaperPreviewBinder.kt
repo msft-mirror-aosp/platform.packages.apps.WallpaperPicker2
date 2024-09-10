@@ -50,10 +50,11 @@ import com.android.wallpaper.util.SurfaceViewUtils
 import com.android.wallpaper.util.SurfaceViewUtils.attachView
 import com.android.wallpaper.util.WallpaperCropUtils
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
-import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.shouldEnforceSingleEngine
+import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.Companion.shouldEnforceSingleEngine
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import java.lang.Integer.min
 import kotlin.math.max
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DisposableHandle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -69,7 +70,8 @@ object FullWallpaperPreviewBinder {
         displayUtils: DisplayUtils,
         lifecycleOwner: LifecycleOwner,
         savedInstanceState: Bundle?,
-        isFirstBinding: Boolean,
+        wallpaperConnectionUtils: WallpaperConnectionUtils,
+        isFirstBindingDeferred: CompletableDeferred<Boolean>,
         onWallpaperLoaded: ((Boolean) -> Unit)? = null,
     ) {
         val wallpaperPreviewCrop: FullPreviewFrameLayout =
@@ -171,7 +173,8 @@ object FullWallpaperPreviewBinder {
                         surfaceTouchForwardingLayout = surfaceTouchForwardingLayout,
                         viewModel = viewModel,
                         lifecycleOwner = lifecycleOwner,
-                        isFirstBinding = isFirstBinding,
+                        wallpaperConnectionUtils = wallpaperConnectionUtils,
+                        isFirstBindingDeferred = isFirstBindingDeferred,
                     )
                 surfaceView.setZOrderMediaOverlay(true)
                 surfaceView.holder.addCallback(surfaceCallback)
@@ -195,7 +198,8 @@ object FullWallpaperPreviewBinder {
         surfaceTouchForwardingLayout: TouchForwardingLayout,
         viewModel: WallpaperPreviewViewModel,
         lifecycleOwner: LifecycleOwner,
-        isFirstBinding: Boolean,
+        wallpaperConnectionUtils: WallpaperConnectionUtils,
+        isFirstBindingDeferred: CompletableDeferred<Boolean>,
     ): SurfaceViewUtils.SurfaceCallback {
         return object : SurfaceViewUtils.SurfaceCallback {
 
@@ -214,25 +218,25 @@ object FullWallpaperPreviewBinder {
                             (wallpaper, config, displaySize, allowUserCropping, whichPreview) ->
                             if (wallpaper is WallpaperModel.LiveWallpaperModel) {
                                 val engineRenderingConfig =
-                                    WallpaperConnectionUtils.EngineRenderingConfig(
+                                    WallpaperConnectionUtils.Companion.EngineRenderingConfig(
                                         wallpaper.shouldEnforceSingleEngine(),
                                         config.deviceDisplayType,
                                         viewModel.smallerDisplaySize,
                                         displaySize,
                                     )
-                                WallpaperConnectionUtils.connect(
+                                wallpaperConnectionUtils.connect(
                                     applicationContext,
                                     wallpaper,
                                     whichPreview,
                                     viewModel.getWallpaperPreviewSource().toFlag(),
                                     surfaceView,
                                     engineRenderingConfig,
-                                    isFirstBinding,
+                                    isFirstBindingDeferred,
                                 )
                                 surfaceTouchForwardingLayout.initTouchForwarding(surfaceView)
                                 surfaceView.setOnTouchListener { _, event ->
                                     lifecycleOwner.lifecycleScope.launch {
-                                        WallpaperConnectionUtils.dispatchTouchEvent(
+                                        wallpaperConnectionUtils.dispatchTouchEvent(
                                             wallpaper,
                                             engineRenderingConfig,
                                             event,

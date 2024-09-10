@@ -21,9 +21,11 @@ import android.content.pm.ActivityInfo
 import androidx.activity.viewModels
 import androidx.test.core.app.ActivityScenario
 import com.android.wallpaper.module.InjectorProvider
+import com.android.wallpaper.module.NetworkStatusNotifier
 import com.android.wallpaper.picker.category.ui.viewmodel.CategoriesViewModel
 import com.android.wallpaper.picker.preview.PreviewTestActivity
 import com.android.wallpaper.testing.TestInjector
+import com.android.wallpaper.testing.TestNetworkStatusNotifier
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -57,6 +59,8 @@ class CategoriesViewModelTest {
     @Inject @ApplicationContext lateinit var appContext: Context
 
     @Inject lateinit var testInjector: TestInjector
+
+    @Inject lateinit var networkStatusNotifier: TestNetworkStatusNotifier
 
     @Before
     fun setUp() {
@@ -153,7 +157,8 @@ class CategoriesViewModelTest {
                 assertThat(collectedValues[0])
                     .isEqualTo(
                         CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection(
-                            CATEGORY_ID_CELESTIAL_DREAMSCAPES
+                            CATEGORY_ID_CELESTIAL_DREAMSCAPES,
+                            CategoriesViewModel.CategoryType.DefaultCategories
                         )
                     )
 
@@ -175,7 +180,8 @@ class CategoriesViewModelTest {
                 assertThat(collectedValues[0])
                     .isEqualTo(
                         CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection(
-                            CATEGORY_ID_CYBERPUNK_CITYSCAPE
+                            CATEGORY_ID_CYBERPUNK_CITYSCAPE,
+                            CategoriesViewModel.CategoryType.DefaultCategories
                         )
                     )
                 job.cancelAndJoin()
@@ -194,7 +200,8 @@ class CategoriesViewModelTest {
                 assertThat(collectedValues[0])
                     .isEqualTo(
                         CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection(
-                            CATEGORY_ID_COSMIC_NEBULA
+                            CATEGORY_ID_COSMIC_NEBULA,
+                            CategoriesViewModel.CategoryType.DefaultCategories
                         )
                     )
                 job.cancelAndJoin()
@@ -223,13 +230,30 @@ class CategoriesViewModelTest {
         }
     }
 
+    @Test
+    fun networkStatus_verifyStatusOnNetworkChange() = runTest {
+        val collectedValues = mutableListOf<Boolean>()
+        val job =
+            launch(testDispatcher) {
+                categoriesViewModel.isConnectionObtained.collect { collectedValues.add(it) }
+            }
+        networkStatusNotifier.setAndNotifyNetworkStatus(NetworkStatusNotifier.NETWORK_NOT_CONNECTED)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertThat(collectedValues[0]).isFalse()
+
+        networkStatusNotifier.setAndNotifyNetworkStatus(NetworkStatusNotifier.NETWORK_CONNECTED)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertThat(collectedValues[1]).isTrue()
+        job.cancelAndJoin()
+    }
+
     /**
      * These expected values are from fake interactors and thus would not change with device. Once
      * the corresponding real test repositories and interactors are available, these fakes will be
      * replaced with fakes of the repositories or their data sources.
      */
     companion object {
-        const val EXPECTED_NUMBER_OF_SECTIONS = 19
+        const val EXPECTED_NUMBER_OF_SECTIONS = 21
 
         const val EXPECTED_POSITION_CREATIVE_CATEGORY = 0
         const val EXPECTED_SIZE_CREATIVE_CATEGORY = 2
@@ -244,7 +268,7 @@ class CategoriesViewModelTest {
         const val EXPECTED_TITLE_PHOTO_TILE = "Celestial Dreamscape"
 
         const val EXPECTED_POSITION_SINGLE_CATEGORIES = 2
-        const val EXPECTED_SIZE_SINGLE_CATEGORIES = 17
+        const val EXPECTED_SIZE_SINGLE_CATEGORIES = 19
         const val EXPECTED_SIZE_SINGLE_CATEGORY_TILES = 1
 
         const val CATEGORY_ID_CELESTIAL_DREAMSCAPES = "celestial_dreamscapes"
