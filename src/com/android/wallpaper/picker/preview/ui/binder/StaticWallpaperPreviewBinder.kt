@@ -26,7 +26,6 @@ import android.view.animation.Interpolator
 import android.view.animation.PathInterpolator
 import android.widget.ImageView
 import androidx.core.view.doOnLayout
-import androidx.core.view.isVisible
 import com.android.app.tracing.TraceUtils.trace
 import com.android.wallpaper.picker.preview.shared.model.CropSizeModel
 import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
@@ -59,17 +58,7 @@ object StaticWallpaperPreviewBinder {
         fullResImageView.initFullResImageView()
 
         parentCoroutineScope.launch {
-            // Show low res image only for small preview with supported wallpaper
-            if (!isFullScreen) {
-                launch {
-                    viewModel.lowResBitmap.collect {
-                        it?.let {
-                            lowResImageView.setImageBitmap(it)
-                            lowResImageView.isVisible = true
-                        }
-                    }
-                }
-            }
+            launch { viewModel.lowResBitmap.collect { lowResImageView.setImageBitmap(it) } }
 
             launch {
                 viewModel.subsamplingScaleImageViewModel.collect { imageModel ->
@@ -115,9 +104,7 @@ object StaticWallpaperPreviewBinder {
                             ),
                         )
 
-                        if (lowResImageView.isVisible) {
-                            crossFadeInFullResImageView(lowResImageView, fullResImageView)
-                        }
+                        crossFadeInFullResImageView(lowResImageView, fullResImageView)
                     }
                 }
             }
