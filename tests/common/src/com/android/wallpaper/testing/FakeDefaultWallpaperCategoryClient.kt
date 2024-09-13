@@ -27,13 +27,23 @@ class FakeDefaultWallpaperCategoryClient @Inject constructor() : DefaultWallpape
 
     private var fakeSystemCategories: List<Category> = emptyList()
     private var fakeOnDeviceCategory: Category? = null
+    private var fakeThirdPartyAppCategories: List<Category> = emptyList()
+    private var fakeThirdPartyLiveWallpaperCategories: List<Category> = emptyList()
 
     fun setOnDeviceCategory(category: Category?) {
         fakeOnDeviceCategory = category
     }
 
+    fun setThirdPartyLiveWallpaperCategories(categories: List<Category>) {
+        fakeThirdPartyLiveWallpaperCategories = categories
+    }
+
     fun setSystemCategories(categories: List<Category>) {
         fakeSystemCategories = categories
+    }
+
+    fun setThirdPartyAppCategories(categories: List<Category>) {
+        fakeThirdPartyAppCategories = categories
     }
 
     override suspend fun getMyPhotosCategory(): Category {
@@ -51,5 +61,27 @@ class FakeDefaultWallpaperCategoryClient @Inject constructor() : DefaultWallpape
 
     override suspend fun getOnDeviceCategory(): Category? {
         return fakeOnDeviceCategory
+    }
+
+    override suspend fun getThirdPartyCategory(excludedPackageNames: List<String>): List<Category> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getExcludedThirdPartyPackageNames(): List<String> {
+        TODO("Not yet implemented")
+    }
+
+    suspend fun getThirdPartyCategory(): List<Category> {
+        return fakeThirdPartyAppCategories
+    }
+
+    override suspend fun getThirdPartyLiveWallpaperCategory(
+        excludedPackageNames: Set<String>
+    ): List<Category> {
+        return fakeThirdPartyLiveWallpaperCategories
+    }
+
+    override fun getExcludedLiveWallpaperPackageNames(): Set<String> {
+        TODO("Not yet implemented")
     }
 }

@@ -33,8 +33,9 @@ import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewMod
 import com.android.wallpaper.util.SurfaceViewUtils
 import com.android.wallpaper.util.SurfaceViewUtils.attachView
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
-import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.shouldEnforceSingleEngine
+import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.Companion.shouldEnforceSingleEngine
 import com.android.wallpaper.util.wallpaperconnection.WallpaperEngineConnection.WallpaperEngineConnectionListener
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -55,7 +56,8 @@ object SmallWallpaperPreviewBinder {
         applicationContext: Context,
         viewLifecycleOwner: LifecycleOwner,
         deviceDisplayType: DeviceDisplayType,
-        isFirstBinding: Boolean,
+        wallpaperConnectionUtils: WallpaperConnectionUtils,
+        isFirstBindingDeferred: CompletableDeferred<Boolean>,
     ) {
         var surfaceCallback: SurfaceViewUtils.SurfaceCallback? = null
         viewLifecycleOwner.lifecycleScope.launch {
@@ -68,7 +70,8 @@ object SmallWallpaperPreviewBinder {
                         deviceDisplayType = deviceDisplayType,
                         displaySize = displaySize,
                         lifecycleOwner = viewLifecycleOwner,
-                        isFirstBinding
+                        wallpaperConnectionUtils = wallpaperConnectionUtils,
+                        isFirstBindingDeferred,
                     )
                 surface.setZOrderMediaOverlay(true)
                 surfaceCallback?.let { surface.holder.addCallback(it) }
@@ -93,7 +96,8 @@ object SmallWallpaperPreviewBinder {
         deviceDisplayType: DeviceDisplayType,
         displaySize: Point,
         lifecycleOwner: LifecycleOwner,
-        isFirstBinding: Boolean,
+        wallpaperConnectionUtils: WallpaperConnectionUtils,
+        isFirstBindingDeferred: CompletableDeferred<Boolean>,
     ): SurfaceViewUtils.SurfaceCallback {
 
         return object : SurfaceViewUtils.SurfaceCallback {
@@ -106,19 +110,19 @@ object SmallWallpaperPreviewBinder {
                     lifecycleOwner.lifecycleScope.launch {
                         viewModel.smallWallpaper.collect { (wallpaper, whichPreview) ->
                             if (wallpaper is WallpaperModel.LiveWallpaperModel) {
-                                WallpaperConnectionUtils.connect(
+                                wallpaperConnectionUtils.connect(
                                     applicationContext,
                                     wallpaper,
                                     whichPreview,
                                     viewModel.getWallpaperPreviewSource().toFlag(),
                                     surface,
-                                    WallpaperConnectionUtils.EngineRenderingConfig(
+                                    WallpaperConnectionUtils.Companion.EngineRenderingConfig(
                                         wallpaper.shouldEnforceSingleEngine(),
                                         deviceDisplayType = deviceDisplayType,
                                         viewModel.smallerDisplaySize,
                                         viewModel.wallpaperDisplaySize.value,
                                     ),
-                                    isFirstBinding,
+                                    isFirstBindingDeferred,
                                     object : WallpaperEngineConnectionListener {
                                         override fun onWallpaperColorsChanged(
                                             colors: WallpaperColors?,
@@ -134,7 +138,16 @@ object SmallWallpaperPreviewBinder {
                                 val staticPreviewView =
                                     LayoutInflater.from(applicationContext)
                                         .inflate(R.layout.fullscreen_wallpaper_preview, null)
-                                surface.attachView(staticPreviewView)
+                                // surfaceView.width and surfaceFrame.width here can be different,
+                                // one represents the size of the view and the other represents the
+                                // size of the surface. When setting a view to the surface host,
+                                // we want to set it based on the surface's size not the view's size
+                                val surfacePosition = surface.holder.surfaceFrame
+                                surface.attachView(
+                                    staticPreviewView,
+                                    surfacePosition.width(),
+                                    surfacePosition.height(),
+                                )
                                 // Bind static wallpaper
                                 StaticWallpaperPreviewBinder.bind(
                                     lowResImageView =
@@ -147,7 +160,7 @@ object SmallWallpaperPreviewBinder {
                                 )
                                 // This is to possibly shut down all live wallpaper services
                                 // if they exist; otherwise static wallpaper can not show up.
-                                WallpaperConnectionUtils.disconnectAllServices(applicationContext)
+                                wallpaperConnectionUtils.disconnectAllServices(applicationContext)
 
                                 loadingAnimationBinding =
                                     PreviewEffectsLoadingBinder.bind(

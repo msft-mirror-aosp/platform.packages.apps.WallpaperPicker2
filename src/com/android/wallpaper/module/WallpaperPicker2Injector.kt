@@ -42,12 +42,13 @@ import com.android.wallpaper.picker.MyPhotosStarter
 import com.android.wallpaper.picker.PreviewActivity
 import com.android.wallpaper.picker.PreviewFragment
 import com.android.wallpaper.picker.ViewOnlyPreviewActivity
+import com.android.wallpaper.picker.category.wrapper.WallpaperCategoryWrapper
 import com.android.wallpaper.picker.customization.data.content.WallpaperClient
 import com.android.wallpaper.picker.customization.data.repository.WallpaperColorsRepository
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperSnapshotRestorer
 import com.android.wallpaper.picker.di.modules.MainDispatcher
-import com.android.wallpaper.picker.individual.IndividualPickerFragment
+import com.android.wallpaper.picker.individual.IndividualPickerFragment2
 import com.android.wallpaper.picker.undo.data.repository.UndoRepository
 import com.android.wallpaper.picker.undo.domain.interactor.UndoInteractor
 import com.android.wallpaper.system.UiModeManagerWrapper
@@ -60,9 +61,7 @@ import kotlinx.coroutines.CoroutineScope
 @Singleton
 open class WallpaperPicker2Injector
 @Inject
-constructor(
-    @MainDispatcher private val mainScope: CoroutineScope,
-) : Injector {
+constructor(@MainDispatcher private val mainScope: CoroutineScope) : Injector {
     private var alarmManagerWrapper: AlarmManagerWrapper? = null
     private var bitmapCropper: BitmapCropper? = null
     private var categoryProvider: CategoryProvider? = null
@@ -98,8 +97,14 @@ constructor(
     @Inject lateinit var prefs: Lazy<WallpaperPreferences>
     @Inject lateinit var wallpaperColorsRepository: Lazy<WallpaperColorsRepository>
 
+    @Inject lateinit var defaultWallpaperCategoryWrapper: Lazy<WallpaperCategoryWrapper>
+
     override fun getApplicationCoroutineScope(): CoroutineScope {
         return mainScope
+    }
+
+    override fun getWallpaperCategoryWrapper(): WallpaperCategoryWrapper {
+        return defaultWallpaperCategoryWrapper.get()
     }
 
     @Synchronized
@@ -156,9 +161,7 @@ constructor(
             ?: DefaultDrawableLayerResolver().also { drawableLayerResolver = it }
     }
 
-    override fun getEffectsController(
-        context: Context,
-    ): EffectsController? {
+    override fun getEffectsController(context: Context): EffectsController? {
         return null
     }
 
@@ -171,7 +174,7 @@ constructor(
     }
 
     override fun getIndividualPickerFragment(context: Context, collectionId: String): Fragment {
-        return IndividualPickerFragment.newInstance(collectionId)
+        return IndividualPickerFragment2.newInstance(collectionId)
     }
 
     override fun getLiveWallpaperInfoFactory(context: Context): LiveWallpaperInfoFactory {
@@ -274,7 +277,7 @@ constructor(
     override fun getWallpaperStatusChecker(context: Context): WallpaperStatusChecker {
         return wallpaperStatusChecker
             ?: DefaultWallpaperStatusChecker(
-                    wallpaperManager = WallpaperManager.getInstance(context.applicationContext),
+                    wallpaperManager = WallpaperManager.getInstance(context.applicationContext)
                 )
                 .also { wallpaperStatusChecker = it }
     }
@@ -285,7 +288,7 @@ constructor(
 
     override fun getUndoInteractor(
         context: Context,
-        lifecycleOwner: LifecycleOwner
+        lifecycleOwner: LifecycleOwner,
     ): UndoInteractor {
         return undoInteractor
             ?: UndoInteractor(
@@ -319,7 +322,7 @@ constructor(
 
     override fun getWallpaperColorResources(
         wallpaperColors: WallpaperColors,
-        context: Context
+        context: Context,
     ): WallpaperColorResources {
         return DefaultWallpaperColorResources(wallpaperColors)
     }

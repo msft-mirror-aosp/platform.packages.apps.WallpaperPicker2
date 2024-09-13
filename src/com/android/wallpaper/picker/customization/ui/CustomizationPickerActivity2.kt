@@ -16,14 +16,21 @@
 
 package com.android.wallpaper.picker.customization.ui
 
+import android.annotation.TargetApi
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Point
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
+import android.view.ViewGroup.MarginLayoutParams
+import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.Toolbar
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.motion.widget.MotionLayout
@@ -37,30 +44,37 @@ import androidx.core.view.doOnLayout
 import androidx.core.view.doOnPreDraw
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import com.android.customization.picker.clock.ui.view.ClockViewFactory
 import com.android.wallpaper.R
 import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.Screen.HOME_SCREEN
 import com.android.wallpaper.model.Screen.LOCK_SCREEN
+import com.android.wallpaper.module.LargeScreenMultiPanesChecker
 import com.android.wallpaper.module.MultiPanesChecker
+import com.android.wallpaper.picker.common.preview.data.repository.PersistentWallpaperModelRepository
 import com.android.wallpaper.picker.common.preview.ui.binder.BasePreviewBinder
+import com.android.wallpaper.picker.common.preview.ui.binder.WorkspaceCallbackBinder
+import com.android.wallpaper.picker.customization.ui.binder.ColorUpdateBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationPickerBinder2
+import com.android.wallpaper.picker.customization.ui.binder.ToolbarBinder
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil.CustomizationOption
 import com.android.wallpaper.picker.customization.ui.view.adapter.PreviewPagerAdapter
 import com.android.wallpaper.picker.customization.ui.view.transformer.PreviewPagerPageTransformer
+import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
-import com.android.wallpaper.picker.preview.data.repository.WallpaperPreviewRepository
+import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity
 import com.android.wallpaper.util.ActivityUtils
 import com.android.wallpaper.util.DisplayUtils
 import com.android.wallpaper.util.WallpaperConnection
 import com.android.wallpaper.util.converter.WallpaperModelFactory
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
-import com.google.android.material.appbar.AppBarLayout
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -70,17 +84,26 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
     @Inject lateinit var multiPanesChecker: MultiPanesChecker
     @Inject lateinit var customizationOptionUtil: CustomizationOptionUtil
     @Inject lateinit var customizationOptionsBinder: CustomizationOptionsBinder
+    @Inject lateinit var workspaceCallbackBinder: WorkspaceCallbackBinder
+    @Inject lateinit var toolbarBinder: ToolbarBinder
     @Inject lateinit var wallpaperModelFactory: WallpaperModelFactory
-    @Inject lateinit var wallpaperPreviewRepository: WallpaperPreviewRepository
+    @Inject lateinit var persistentWallpaperModelRepository: PersistentWallpaperModelRepository
     @Inject lateinit var displayUtils: DisplayUtils
     @Inject @BackgroundDispatcher lateinit var backgroundScope: CoroutineScope
     @Inject @MainDispatcher lateinit var mainScope: CoroutineScope
+    @Inject lateinit var wallpaperConnectionUtils: WallpaperConnectionUtils
+    @Inject lateinit var colorUpdateViewModel: ColorUpdateViewModel
+    @Inject lateinit var clockViewFactory: ClockViewFactory
 
     private var fullyCollapsed = false
     private var navBarHeight: Int = 0
 
     private val customizationPickerViewModel: CustomizationPickerViewModel2 by viewModels()
     private var customizationOptionFloatingSheetViewMap: Map<CustomizationOption, View>? = null
+    private var configuration: Configuration? = null
+
+    private val startForResult =
+        this.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,10 +126,24 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
             return
         }
 
+        configuration = Configuration(resources.configuration)
+
         setContentView(R.layout.activity_cusomization_picker2)
         WindowCompat.setDecorFitsSystemWindows(window, ActivityUtils.isSUWMode(this))
 
-        setupToolbar(requireViewById(R.id.toolbar_container))
+        setupToolbar(
+            requireViewById(R.id.nav_button),
+            requireViewById(R.id.toolbar),
+            requireViewById(R.id.apply_button),
+        )
+
+        val view = requireViewById<View>(R.id.root_view)
+        ColorUpdateBinder.bind(
+            setColor = { color -> view.setBackgroundColor(color) },
+            color = colorUpdateViewModel.colorSurfaceContainer,
+            shouldAnimate = { true },
+            lifecycleOwner = this,
+        )
 
         val rootView = requireViewById<MotionLayout>(R.id.picker_motion_layout)
         ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, windowInsets ->
@@ -114,6 +151,9 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
             navBarHeight = insets.bottom
             requireViewById<FrameLayout>(R.id.customization_option_floating_sheet_container)
                 .setPaddingRelative(0, 0, 0, navBarHeight)
+            val statusBarHeight = insets.top
+            val params = requireViewById<Toolbar>(R.id.toolbar).layoutParams as MarginLayoutParams
+            params.setMargins(0, statusBarHeight, 0, 0)
             WindowInsetsCompat.CONSUMED
         }
 
@@ -162,37 +202,38 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
             }
         }
 
-        val onBackPressed =
-            CustomizationPickerBinder2.bind(
-                view = rootView,
-                lockScreenCustomizationOptionEntries = initCustomizationOptionEntries(LOCK_SCREEN),
-                homeScreenCustomizationOptionEntries = initCustomizationOptionEntries(HOME_SCREEN),
-                customizationOptionFloatingSheetViewMap = customizationOptionFloatingSheetViewMap,
-                viewModel = customizationPickerViewModel,
-                customizationOptionsBinder = customizationOptionsBinder,
-                lifecycleOwner = this,
-                navigateToPrimary = {
-                    if (rootView.currentState == R.id.secondary) {
-                        rootView.transitionToState(
-                            if (fullyCollapsed) R.id.collapsed_header_primary
-                            else R.id.expanded_header_primary
-                        )
+        CustomizationPickerBinder2.bind(
+            view = rootView,
+            lockScreenCustomizationOptionEntries = initCustomizationOptionEntries(LOCK_SCREEN),
+            homeScreenCustomizationOptionEntries = initCustomizationOptionEntries(HOME_SCREEN),
+            customizationOptionFloatingSheetViewMap = customizationOptionFloatingSheetViewMap,
+            viewModel = customizationPickerViewModel,
+            colorUpdateViewModel = colorUpdateViewModel,
+            customizationOptionsBinder = customizationOptionsBinder,
+            lifecycleOwner = this,
+            navigateToPrimary = {
+                if (rootView.currentState == R.id.secondary) {
+                    rootView.transitionToState(
+                        if (fullyCollapsed) R.id.collapsed_header_primary
+                        else R.id.expanded_header_primary
+                    )
+                }
+            },
+            navigateToSecondary = { screen ->
+                if (rootView.currentState != R.id.secondary) {
+                    setCustomizationOptionFloatingSheet(rootView, screen) {
+                        fullyCollapsed = rootView.progress == 1.0f
+                        rootView.transitionToState(R.id.secondary)
                     }
-                },
-                navigateToSecondary = { screen ->
-                    if (rootView.currentState != R.id.secondary) {
-                        setCustomizationOptionFloatingSheet(rootView, screen) {
-                            fullyCollapsed = rootView.progress == 1.0f
-                            rootView.transitionToState(R.id.secondary)
-                        }
-                    }
-                },
-            )
+                }
+            },
+        )
 
         onBackPressedDispatcher.addCallback(
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    val isOnBackPressedHandled = onBackPressed()
+                    val isOnBackPressedHandled =
+                        customizationPickerViewModel.customizationOptionsViewModel.deselectOption()
                     if (!isOnBackPressedHandled) {
                         remove()
                         onBackPressedDispatcher.onBackPressed()
@@ -202,15 +243,20 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         )
     }
 
-    private fun setupToolbar(toolbarContainer: AppBarLayout) {
-        toolbarContainer.setBackgroundColor(Color.TRANSPARENT)
-        val toolbar = toolbarContainer.requireViewById<Toolbar>(R.id.toolbar)
+    private fun setupToolbar(navButton: FrameLayout, toolbar: Toolbar, applyButton: Button) {
         toolbar.title = getString(R.string.app_name)
         toolbar.setBackgroundColor(Color.TRANSPARENT)
+        toolbarBinder.bind(
+            navButton,
+            toolbar,
+            applyButton,
+            customizationPickerViewModel.customizationOptionsViewModel,
+            this,
+        )
     }
 
     private fun initCustomizationOptionEntries(
-        screen: Screen,
+        screen: Screen
     ): List<Pair<CustomizationOption, View>> {
         val optionEntriesContainer =
             requireViewById<LinearLayout>(
@@ -240,22 +286,64 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         pager.apply {
             adapter = PreviewPagerAdapter { viewHolder, position ->
                 val previewCard = viewHolder.itemView.requireViewById<View>(R.id.preview_card)
+                val screen =
+                    if (position == 0) {
+                        LOCK_SCREEN
+                    } else {
+                        HOME_SCREEN
+                    }
+
+                if (screen == LOCK_SCREEN) {
+                    val clockHostView =
+                        (previewCard.parent as? ViewGroup)?.let {
+                            customizationOptionUtil.createClockPreviewAndAddToParent(
+                                it,
+                                layoutInflater,
+                            )
+                        }
+                    if (clockHostView != null) {
+                        customizationOptionsBinder.bindClockPreview(
+                            clockHostView = clockHostView,
+                            viewModel = customizationPickerViewModel,
+                            lifecycleOwner = this@CustomizationPickerActivity2,
+                            clockViewFactory = clockViewFactory,
+                        )
+                    }
+                }
 
                 BasePreviewBinder.bind(
                     applicationContext = applicationContext,
                     view = previewCard,
-                    viewModel = previewViewModel,
-                    screen =
-                        if (position == 0) {
-                            LOCK_SCREEN
-                        } else {
-                            HOME_SCREEN
-                        },
+                    viewModel = customizationPickerViewModel,
+                    workspaceCallbackBinder = workspaceCallbackBinder,
+                    screen = screen,
                     deviceDisplayType =
                         displayUtils.getCurrentDisplayType(this@CustomizationPickerActivity2),
-                    displaySize = previewViewModel.wallpaperDisplaySize.value,
+                    displaySize =
+                        if (displayUtils.isOnWallpaperDisplay(this@CustomizationPickerActivity2))
+                            previewViewModel.wallpaperDisplaySize.value
+                        else previewViewModel.smallerDisplaySize,
                     lifecycleOwner = this@CustomizationPickerActivity2,
-                    isFirstBinding = isFirstBinding,
+                    wallpaperConnectionUtils = wallpaperConnectionUtils,
+                    isFirstBindingDeferred = CompletableDeferred(isFirstBinding),
+                    onClick = {
+                        previewViewModel.wallpapers.value?.let {
+                            val wallpaper =
+                                if (screen == HOME_SCREEN) it.homeWallpaper
+                                else it.lockWallpaper ?: it.homeWallpaper
+                            persistentWallpaperModelRepository.setWallpaperModel(wallpaper)
+                        }
+                        val multiPanesChecker = LargeScreenMultiPanesChecker()
+                        val isMultiPanel = multiPanesChecker.isMultiPanesEnabled(applicationContext)
+                        startForResult.launch(
+                            WallpaperPreviewActivity.newIntent(
+                                context = applicationContext,
+                                isAssetIdPresent = false,
+                                isViewAsHome = screen == HOME_SCREEN,
+                                isNewTask = isMultiPanel,
+                            )
+                        )
+                    },
                 )
             }
             // Disable over scroll
@@ -288,7 +376,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
     private fun setCustomizationOptionFloatingSheet(
         motionContainer: MotionLayout,
         option: CustomizationOption,
-        onComplete: () -> Unit
+        onComplete: () -> Unit,
     ) {
         val view = customizationOptionFloatingSheetViewMap?.get(option) ?: return
 
@@ -305,14 +393,14 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
             motionContainer.getConstraintSet(R.id.expanded_header_primary)?.apply {
                 setTranslationY(
                     R.id.customization_option_floating_sheet_container,
-                    height.toFloat()
+                    height.toFloat(),
                 )
                 setAlpha(R.id.customization_option_floating_sheet_container, 0.0f)
                 connect(
                     R.id.customization_option_floating_sheet_container,
                     ConstraintSet.BOTTOM,
                     R.id.picker_motion_layout,
-                    ConstraintSet.BOTTOM
+                    ConstraintSet.BOTTOM,
                 )
                 constrainHeight(
                     R.id.customization_option_floating_sheet_container,
@@ -322,14 +410,14 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
             motionContainer.getConstraintSet(R.id.collapsed_header_primary)?.apply {
                 setTranslationY(
                     R.id.customization_option_floating_sheet_container,
-                    height.toFloat()
+                    height.toFloat(),
                 )
                 setAlpha(R.id.customization_option_floating_sheet_container, 0.0f)
                 connect(
                     R.id.customization_option_floating_sheet_container,
                     ConstraintSet.BOTTOM,
                     R.id.picker_motion_layout,
-                    ConstraintSet.BOTTOM
+                    ConstraintSet.BOTTOM,
                 )
                 constrainHeight(
                     R.id.customization_option_floating_sheet_container,
@@ -337,10 +425,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
                 )
             }
             motionContainer.getConstraintSet(R.id.secondary)?.apply {
-                setTranslationY(
-                    R.id.customization_option_floating_sheet_container,
-                    0.0f,
-                )
+                setTranslationY(R.id.customization_option_floating_sheet_container, 0.0f)
                 setAlpha(R.id.customization_option_floating_sheet_container, 1.0f)
                 constrainHeight(
                     R.id.customization_option_floating_sheet_container,
@@ -358,9 +443,22 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
         // TODO(b/328302105): MainScope ensures the job gets done non-blocking even if the
         //   activity has been destroyed already. Consider making this part of
         //   WallpaperConnectionUtils.
-        mainScope.launch { WallpaperConnectionUtils.disconnectAll(applicationContext) }
+        mainScope.launch { wallpaperConnectionUtils.disconnectAll(applicationContext) }
 
         super.onDestroy()
+    }
+
+    @TargetApi(36)
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        configuration?.let {
+            val diff = newConfig.diff(it)
+            val isAssetsPathsChange = diff and ActivityInfo.CONFIG_ASSETS_PATHS != 0
+            if (isAssetsPathsChange) {
+                colorUpdateViewModel.updateColors()
+            }
+        }
+        configuration?.setTo(newConfig)
     }
 
     interface EmptyTransitionListener : TransitionListener {
@@ -372,7 +470,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
             motionLayout: MotionLayout?,
             startId: Int,
             endId: Int,
-            progress: Float
+            progress: Float,
         ) {
             // Do nothing intended
         }
@@ -385,7 +483,7 @@ class CustomizationPickerActivity2 : Hilt_CustomizationPickerActivity2() {
             motionLayout: MotionLayout?,
             triggerId: Int,
             positive: Boolean,
-            progress: Float
+            progress: Float,
         ) {
             // Do nothing intended
         }

@@ -36,9 +36,11 @@ import com.android.wallpaper.picker.preview.ui.transition.ChangeScaleAndPosition
 import com.android.wallpaper.picker.preview.ui.util.AnimationUtil
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.android.wallpaper.util.DisplayUtils
+import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.CompletableDeferred
 
 /** Shows full preview of user selected wallpaper for cropping, zooming and positioning. */
 @AndroidEntryPoint(AppbarFragment::class)
@@ -46,10 +48,13 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
 
     @Inject @ApplicationContext lateinit var appContext: Context
     @Inject lateinit var displayUtils: DisplayUtils
+    @Inject lateinit var wallpaperConnectionUtils: WallpaperConnectionUtils
 
     private lateinit var currentView: View
 
     private val wallpaperPreviewViewModel by activityViewModels<WallpaperPreviewViewModel>()
+    private val isFirstBindingDeferred = CompletableDeferred<Boolean>()
+
     private var useLightToolbar = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,16 +67,31 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
+        savedInstanceState: Bundle?,
+    ): View {
         currentView = inflater.inflate(R.layout.fragment_full_preview, container, false)
         setUpToolbar(currentView, true, true)
 
         val previewCard: CardView = currentView.requireViewById(R.id.preview_card)
         ViewCompat.setTransitionName(
             previewCard,
-            SmallPreviewFragment.FULL_PREVIEW_SHARED_ELEMENT_ID
+            SmallPreviewFragment.FULL_PREVIEW_SHARED_ELEMENT_ID,
         )
+
+        FullWallpaperPreviewBinder.bind(
+            applicationContext = appContext,
+            view = currentView,
+            viewModel = wallpaperPreviewViewModel,
+            transition = sharedElementEnterTransition as? Transition,
+            displayUtils = displayUtils,
+            lifecycleOwner = viewLifecycleOwner,
+            savedInstanceState = savedInstanceState,
+            wallpaperConnectionUtils = wallpaperConnectionUtils,
+            isFirstBindingDeferred = isFirstBindingDeferred,
+        ) { isFullScreen ->
+            useLightToolbar = isFullScreen
+            setUpToolbar(view)
+        }
 
         CropWallpaperButtonBinder.bind(
             button = currentView.requireViewById(R.id.crop_wallpaper_button),
@@ -88,7 +108,7 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
         )
 
         PreviewTooltipBinder.bindFullPreviewTooltip(
-            tooltipStub = currentView.requireViewById(R.id.tooltip_stub),
+            tooltipStub = currentView.requireViewById(R.id.full_preview_tooltip_stub),
             viewModel = wallpaperPreviewViewModel.fullTooltipViewModel,
             lifecycleOwner = viewLifecycleOwner,
         )
@@ -98,24 +118,7 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
 
     override fun onViewStateRestored(savedInstanceState: Bundle?) {
         super.onViewStateRestored(savedInstanceState)
-        var isFirstBinding = false
-        if (savedInstanceState == null) {
-            isFirstBinding = true
-        }
-
-        FullWallpaperPreviewBinder.bind(
-            applicationContext = appContext,
-            view = currentView,
-            viewModel = wallpaperPreviewViewModel,
-            transition = sharedElementEnterTransition as? Transition,
-            displayUtils = displayUtils,
-            lifecycleOwner = viewLifecycleOwner,
-            savedInstanceState = savedInstanceState,
-            isFirstBinding = isFirstBinding,
-        ) { isFullScreen ->
-            useLightToolbar = isFullScreen
-            setUpToolbar(view)
-        }
+        isFirstBindingDeferred.complete(savedInstanceState == null)
     }
 
     // TODO(b/291761856): Use real string
