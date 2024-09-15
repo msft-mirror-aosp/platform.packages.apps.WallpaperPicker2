@@ -18,9 +18,9 @@ package com.android.wallpaper.picker.preview.ui
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
-import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
+import android.view.Window
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -28,11 +28,15 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.NavHostFragment
 import com.android.wallpaper.R
+import com.android.wallpaper.model.ImageWallpaperInfo
 import com.android.wallpaper.model.WallpaperInfo
+import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.picker.AppbarFragment
 import com.android.wallpaper.picker.BasePreviewActivity
 import com.android.wallpaper.picker.data.WallpaperModel
-import com.android.wallpaper.picker.preview.data.repository.EffectsRepository
+import com.android.wallpaper.picker.di.modules.MainDispatcher
+import com.android.wallpaper.picker.preview.data.repository.CreativeEffectsRepository
+import com.android.wallpaper.picker.preview.data.repository.ImageEffectsRepository
 import com.android.wallpaper.picker.preview.data.repository.WallpaperPreviewRepository
 import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
 import com.android.wallpaper.picker.preview.ui.fragment.SmallPreviewFragment
@@ -47,8 +51,8 @@ import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 /** This activity holds the flow for the preview screen. */
 @AndroidEntryPoint(BasePreviewActivity::class)
@@ -58,26 +62,50 @@ class WallpaperPreviewActivity :
     @Inject lateinit var displayUtils: DisplayUtils
     @Inject lateinit var wallpaperModelFactory: WallpaperModelFactory
     @Inject lateinit var wallpaperPreviewRepository: WallpaperPreviewRepository
-    @Inject lateinit var effectsRepository: EffectsRepository
+    @Inject lateinit var imageEffectsRepository: ImageEffectsRepository
+    @Inject lateinit var creativeEffectsRepository: CreativeEffectsRepository
     @Inject lateinit var liveWallpaperDownloader: LiveWallpaperDownloader
+    @MainDispatcher @Inject lateinit var mainScope: CoroutineScope
 
     private val wallpaperPreviewViewModel: WallpaperPreviewViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        window.requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS)
         super.onCreate(savedInstanceState)
         enforcePortraitForHandheldAndFoldedDisplay()
+        wallpaperPreviewViewModel.updateDisplayConfiguration()
+        wallpaperPreviewViewModel.setIsWallpaperColorPreviewEnabled(
+            !InjectorProvider.getInjector().isCurrentSelectedColorPreset(appContext)
+        )
         window.navigationBarColor = Color.TRANSPARENT
         window.statusBarColor = Color.TRANSPARENT
         setContentView(R.layout.activity_wallpaper_preview)
+        val wallpaper =
+            checkNotNull(intent.getParcelableExtra(EXTRA_WALLPAPER_INFO, WallpaperInfo::class.java))
+                .convertToWallpaperModel()
+        val navController =
+            (supportFragmentManager.findFragmentById(R.id.wallpaper_preview_nav_host)
+                    as NavHostFragment)
+                .navController
+        val graph = navController.navInflater.inflate(R.navigation.wallpaper_preview_nav_graph)
+        val startDestinationArgs: Bundle? =
+            (wallpaper as? WallpaperModel.LiveWallpaperModel)
+                ?.let {
+                    if (it.isNewCreativeWallpaper()) it.getNewCreativeWallpaperArgs() else null
+                }
+                ?.also {
+                    // For creating a new creative wallpaper, replace the default start destination
+                    // with CreativeEditPreviewFragment.
+                    graph.setStartDestination(R.id.creativeEditPreviewFragment)
+                }
+        navController.setGraph(graph, startDestinationArgs)
         // Fits screen to navbar and statusbar
         WindowCompat.setDecorFitsSystemWindows(window, ActivityUtils.isSUWMode(this))
         val isAssetIdPresent = intent.getBooleanExtra(IS_ASSET_ID_PRESENT, false)
         wallpaperPreviewViewModel.isNewTask = intent.getBooleanExtra(IS_NEW_TASK, false)
-        wallpaperPreviewViewModel.isViewAsHome = intent.getBooleanExtra(EXTRA_VIEW_AS_HOME, false)
-        val wallpaper =
-            checkNotNull(intent.getParcelableExtra(EXTRA_WALLPAPER_INFO, WallpaperInfo::class.java))
-                .convertToWallpaperModel()
-        wallpaperPreviewRepository.setWallpaperModel(wallpaper)
+        if (savedInstanceState == null) {
+            wallpaperPreviewRepository.setWallpaperModel(wallpaper)
+        }
         val whichPreview =
             if (isAssetIdPresent) WallpaperConnection.WhichPreview.EDIT_NON_CURRENT
             else WallpaperConnection.WhichPreview.EDIT_CURRENT
@@ -97,37 +125,26 @@ class WallpaperPreviewActivity :
             )
         }
 
-        if ((wallpaper as? WallpaperModel.StaticWallpaperModel)?.imageWallpaperData != null) {
+        val creativeWallpaperEffectData =
+            (wallpaper as? WallpaperModel.LiveWallpaperModel)
+                ?.creativeWallpaperData
+                ?.creativeWallpaperEffectsData
+        if (creativeWallpaperEffectData != null) {
             lifecycleScope.launch {
-                effectsRepository.initializeEffect(
+                creativeEffectsRepository.initializeEffect(creativeWallpaperEffectData)
+            }
+        } else if (
+            (wallpaper as? WallpaperModel.StaticWallpaperModel)?.imageWallpaperData != null &&
+                imageEffectsRepository.areEffectsAvailable()
+        ) {
+            lifecycleScope.launch {
+                imageEffectsRepository.initializeEffect(
                     staticWallpaperModel = wallpaper,
                     onWallpaperModelUpdated = { wallpaper ->
                         wallpaperPreviewRepository.setWallpaperModel(wallpaper)
                     },
                 )
             }
-        }
-
-        val liveWallpaperModel = (wallpaper as? WallpaperModel.LiveWallpaperModel)
-        if (liveWallpaperModel != null && liveWallpaperModel.isNewCreativeWallpaper()) {
-            // If it's a new creative wallpaper, override the start destination to the fullscreen
-            // fragment for the create-new flow of creative wallpapers
-            val navController =
-                (supportFragmentManager.findFragmentById(R.id.wallpaper_preview_nav_host)
-                        as NavHostFragment)
-                    .navController
-            val navGraph =
-                navController.navInflater.inflate(R.navigation.wallpaper_preview_nav_graph)
-            navGraph.setStartDestination(R.id.creativeNewPreviewFragment)
-            navController.setGraph(
-                navGraph,
-                Bundle().apply {
-                    putParcelable(
-                        SmallPreviewFragment.ARG_EDIT_INTENT,
-                        liveWallpaperModel.liveWallpaperData.getEditActivityIntent()
-                    )
-                }
-            )
         }
     }
 
@@ -148,17 +165,37 @@ class WallpaperPreviewActivity :
     }
 
     override fun onDestroy() {
+        imageEffectsRepository.destroy()
+        creativeEffectsRepository.destroy()
         liveWallpaperDownloader.cleanup()
+        // TODO(b/333879532): Only disconnect when leaving the Activity without introducing black
+        //  preview. If onDestroy is caused by an orientation change, we should keep the connection
+        //  to avoid initiating the engines again.
+        // TODO(b/328302105): MainScope ensures the job gets done non-blocking even if the
+        //   activity has been destroyed already. Consider making this part of
+        //   WallpaperConnectionUtils.
         (wallpaperPreviewViewModel.wallpaper.value as? WallpaperModel.LiveWallpaperModel)?.let {
-            runBlocking { WallpaperConnectionUtils.disconnect(applicationContext, it) }
+            // Keep a copy of current wallpaperPreviewViewModel.wallpaperDisplaySize as what we want
+            // to disconnect. There's a chance mainScope executes the job not until new activity
+            // is created and the wallpaperDisplaySize is updated to a new one, e.g. when
+            // orientation changed.
+            // TODO(b/328302105): maintain this state in WallpaperConnectionUtils.
+            val currentWallpaperDisplay = wallpaperPreviewViewModel.wallpaperDisplaySize.value
+            mainScope.launch {
+                WallpaperConnectionUtils.disconnect(
+                    appContext,
+                    it,
+                    wallpaperPreviewViewModel.smallerDisplaySize
+                )
+                WallpaperConnectionUtils.disconnect(
+                    appContext,
+                    it,
+                    currentWallpaperDisplay,
+                )
+            }
         }
-        effectsRepository.destroy()
-        super.onDestroy()
-    }
 
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-        enforcePortraitForHandheldAndFoldedDisplay()
+        super.onDestroy()
     }
 
     private fun WallpaperInfo.convertToWallpaperModel(): WallpaperModel {
@@ -192,6 +229,46 @@ class WallpaperPreviewActivity :
             intent.putExtra(IS_NEW_TASK, isNewTask)
             return intent
         }
+
+        /**
+         * Returns a new [Intent] that can be used to start [WallpaperPreviewActivity], explicitly
+         * propagating any permissions on the wallpaper data to the new [Intent].
+         *
+         * @param context application context.
+         * @param wallpaperInfo selected by user for editing preview.
+         * @param isNewTask true to launch at a new task.
+         *
+         * TODO(b/291761856): Use wallpaper model to replace wallpaper info.
+         */
+        fun newIntent(
+            context: Context,
+            originalIntent: Intent,
+            isAssetIdPresent: Boolean,
+            isViewAsHome: Boolean = false,
+            isNewTask: Boolean = false,
+        ): Intent {
+            val data = originalIntent.data
+            val intent =
+                newIntent(
+                    context,
+                    ImageWallpaperInfo(data),
+                    isAssetIdPresent,
+                    isViewAsHome,
+                    isNewTask
+                )
+            // Both these lines are required for permission propagation
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            intent.setData(data)
+            return intent
+        }
+
+        private fun WallpaperModel.LiveWallpaperModel.getNewCreativeWallpaperArgs() =
+            Bundle().apply {
+                putParcelable(
+                    SmallPreviewFragment.ARG_EDIT_INTENT,
+                    liveWallpaperData.getEditActivityIntent(true),
+                )
+            }
     }
 
     /**

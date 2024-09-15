@@ -17,10 +17,13 @@ package com.android.wallpaper.config
 
 import android.app.WallpaperManager
 import android.content.Context
+import com.android.settings.accessibility.Flags.enableColorContrastControl
+import com.android.systemui.Flags.clockReactiveVariants
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClient
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClientImpl
 import com.android.systemui.shared.customization.data.content.CustomizationProviderContract as Contract
-import com.android.wallpaper.Flags.multiCropPreviewUiFlag
+import com.android.wallpaper.Flags.magicPortraitFlag
+import com.android.wallpaper.Flags.newPickerUiFlag
 import com.android.wallpaper.Flags.refactorWallpaperCategoryFlag
 import com.android.wallpaper.Flags.wallpaperRestorerFlag
 import com.android.wallpaper.module.InjectorProvider
@@ -36,9 +39,10 @@ abstract class BaseFlags {
     open fun isInterruptModelDownloadEnabled() = false
     open fun isWallpaperRestorerEnabled() = wallpaperRestorerFlag()
     open fun isWallpaperCategoryRefactoringEnabled() = refactorWallpaperCategoryFlag()
-
-    /** Enables new preview UI if both [isMultiCropEnabled] and this flag are true. */
-    open fun isMultiCropPreviewUiEnabled() = multiCropPreviewUiFlag()
+    open fun isColorContrastControlEnabled() = enableColorContrastControl()
+    open fun isMagicPortraitEnabled() = magicPortraitFlag()
+    open fun isNewPickerUi() = newPickerUiFlag()
+    open fun isClockReactiveVariantsEnabled() = clockReactiveVariants()
 
     open fun isMultiCropEnabled() = WallpaperManager.isMultiCropEnabled()
 

@@ -20,11 +20,15 @@ import android.app.WallpaperColors
 import android.app.WallpaperInfo
 import android.content.ComponentName
 import android.graphics.Color
+import android.graphics.Point
+import android.graphics.Rect
 import android.net.Uri
 import com.android.wallpaper.asset.Asset
 import com.android.wallpaper.picker.data.ColorInfo
 import com.android.wallpaper.picker.data.CommonWallpaperData
+import com.android.wallpaper.picker.data.CreativeWallpaperData
 import com.android.wallpaper.picker.data.Destination
+import com.android.wallpaper.picker.data.DownloadableWallpaperData
 import com.android.wallpaper.picker.data.ImageWallpaperData
 import com.android.wallpaper.picker.data.LiveWallpaperData
 import com.android.wallpaper.picker.data.StaticWallpaperData
@@ -34,6 +38,8 @@ import com.android.wallpaper.util.converter.WallpaperModelFactory
 
 class WallpaperModelUtils {
     companion object {
+        const val SAMPLE_TITLE1 = "wallpaper-1"
+        const val SAMPLE_TITLE2 = "wallpaper-2"
         const val DEFAULT_PLACEHOLDER_COLOR = 1200
         const val DEFAULT_ACTION_URL = "http://www.bogus.com"
         val DEFAULT_COLORS =
@@ -53,6 +59,9 @@ class WallpaperModelUtils {
             actionUrl: String? = DEFAULT_ACTION_URL,
             colors: WallpaperColors = DEFAULT_COLORS,
             asset: Asset = DEFAULT_ASSET,
+            imageWallpaperUri: Uri = Uri.EMPTY,
+            downloadableWallpaperData: DownloadableWallpaperData? = null,
+            cropHints: Map<Point, Rect> = emptyMap(),
         ): WallpaperModel.StaticWallpaperModel {
             return WallpaperModel.StaticWallpaperModel(
                 commonWallpaperData =
@@ -66,7 +75,7 @@ class WallpaperModelUtils {
                                 wallpaperId,
                                 collectionId,
                             ),
-                        title = null,
+                        title = SAMPLE_TITLE1,
                         attributions = attribution,
                         exploreActionUrl = actionUrl,
                         thumbAsset = asset,
@@ -80,11 +89,11 @@ class WallpaperModelUtils {
                 staticWallpaperData =
                     StaticWallpaperData(
                         asset,
-                        emptyMap(),
+                        cropHints,
                     ),
-                imageWallpaperData = ImageWallpaperData(Uri.EMPTY),
+                imageWallpaperData = ImageWallpaperData(imageWallpaperUri),
                 networkWallpaperData = null,
-                downloadableWallpaperData = null,
+                downloadableWallpaperData = downloadableWallpaperData,
             )
         }
 
@@ -101,6 +110,7 @@ class WallpaperModelUtils {
             isTitleVisible: Boolean = true,
             isApplied: Boolean = true,
             effectNames: String? = null,
+            creativeWallpaperData: CreativeWallpaperData? = null,
         ): WallpaperModel.LiveWallpaperModel {
             return WallpaperModel.LiveWallpaperModel(
                 commonWallpaperData =
@@ -111,7 +121,7 @@ class WallpaperModelUtils {
                                 wallpaperId,
                                 collectionId,
                             ),
-                        title = null,
+                        title = SAMPLE_TITLE2,
                         attributions = attribution,
                         exploreActionUrl = actionUrl,
                         thumbAsset = asset,
@@ -128,9 +138,10 @@ class WallpaperModelUtils {
                         systemWallpaperInfo,
                         isTitleVisible,
                         isApplied,
+                        effectNames != null,
                         effectNames
                     ),
-                creativeWallpaperData = null,
+                creativeWallpaperData = creativeWallpaperData,
                 internalLiveWallpaperData = null,
             )
         }

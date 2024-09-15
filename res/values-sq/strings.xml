@@ -67,6 +67,10 @@
     <string name="refresh_daily_wallpaper_home_content_description" msgid="2770445044556164259">"Rifresko imazhin e përditshëm të sfondit të ekranit kryesor"</string>
     <string name="refresh_daily_wallpaper_content_description" msgid="4362142658237147583">"Rifresko imazhin e përditshëm të sfondit"</string>
     <string name="preview_screen_description" msgid="3386387053327775919">"Ekrani i pamjes paraprake të imazhit të sfondit"</string>
+    <string name="preview_screen_description_editable" msgid="506875963019888699">"Ekrani i pamjes paraprake të sfondit - %1$s. Përdor dy gishta për të zgjeruar dhe zmadhuar."</string>
+    <string name="folded_device_state_description" msgid="4972608448265616264">"Palosur"</string>
+    <string name="unfolded_device_state_description" msgid="3071975681472460627">"Shpalosur"</string>
+    <string name="full_preview_check_button_description" msgid="700484353763952975">"Modifikimi i imazhit të sfondit u krye"</string>
     <string name="refreshing_daily_wallpaper_dialog_message" msgid="1975910873362855761">"Po rifreskon imazhin e përditshëm të sfondit..."</string>
     <string name="refresh_daily_wallpaper_failed_message" msgid="4749879993812557166">"Rifreskimi i imazhit të përditshëm të sfondit dështoi. Kontrollo lidhjen e rrjetit dhe provo përsëri."</string>
     <string name="on_device_wallpapers_category_title" msgid="805819102071369004">"Imazhet e sfondit në pajisje"</string>
@@ -93,6 +97,7 @@
     <string name="bottom_action_bar_back" msgid="2620581414970740784">"Navigo lart"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Modifiko"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Shkarko"</string>
+    <string name="download_effects" msgid="2772742927165716701">"Shkarko efektet"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Imazhi i sfondit të diafilmit"</string>
     <string name="bottom_action_bar_apply" msgid="2983308349819178932">"Zbato"</string>
     <string name="accessibility_preview_pager" msgid="1839869637405028575">"Faqja <xliff:g id="ID_1">%1$d</xliff:g> nga <xliff:g id="ID_2">%2$d</xliff:g>"</string>
@@ -100,6 +105,7 @@
     <string name="previous_page_content_description" msgid="1138597031571078429">"Pas"</string>
     <string name="wallpaper_title" msgid="6754214682228331092">"Imazhi i sfondit"</string>
     <string name="wallpaper_preview_card_content_description" msgid="6049261033541034584">"Pamja paraprake e imazhit të sfondit"</string>
+    <string name="wallpaper_preview_card_content_description_editable" msgid="3111763100515242340">"Pamja paraprake e sfondit - %1$s. Trokit për të modifikuar fotografinë"</string>
     <string name="lock_wallpaper_preview_card_content_description" msgid="5236839857695985498">"Pamja paraprake e imazhit të sfondit të ekranit të kyçjes"</string>
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Pamja paraprake e imazhit të sfondit të ekranit bazë"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Koleksioni nuk ekziston"</string>

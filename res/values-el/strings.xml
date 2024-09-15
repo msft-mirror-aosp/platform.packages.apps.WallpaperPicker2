@@ -67,6 +67,10 @@
     <string name="refresh_daily_wallpaper_home_content_description" msgid="2770445044556164259">"Ανανέωση ημερήσιας ταπετσαρίας αρχικής οθόνης"</string>
     <string name="refresh_daily_wallpaper_content_description" msgid="4362142658237147583">"Ανανέωση ημερήσιας ταπετσαρίας"</string>
     <string name="preview_screen_description" msgid="3386387053327775919">"Οθόνη προεπισκόπησης ταπετσαρίας"</string>
+    <string name="preview_screen_description_editable" msgid="506875963019888699">"Οθόνη προεπισκόπησης ταπετσαρίας %1$s. Χρησιμοποιήστε δύο δάχτυλα για μετακίνηση και εστίαση."</string>
+    <string name="folded_device_state_description" msgid="4972608448265616264">"Διπλωμένη"</string>
+    <string name="unfolded_device_state_description" msgid="3071975681472460627">"Ξεδιπλωμένη"</string>
+    <string name="full_preview_check_button_description" msgid="700484353763952975">"Η επεξεργασία της ταπετσαρίας ολοκληρώθηκε"</string>
     <string name="refreshing_daily_wallpaper_dialog_message" msgid="1975910873362855761">"Ανανέωση ημερήσιας ταπετσαρίας…"</string>
     <string name="refresh_daily_wallpaper_failed_message" msgid="4749879993812557166">"Αποτυχία ανανέωσης ημερήσιας ταπετσαρίας. Ελέγξτε τη σύνδεση δικτύου σας και δοκιμάστε ξανά."</string>
     <string name="on_device_wallpapers_category_title" msgid="805819102071369004">"Ταπετσαρίες στη συσκευή"</string>
@@ -93,6 +97,7 @@
     <string name="bottom_action_bar_back" msgid="2620581414970740784">"Πλοήγηση προς τα επάνω"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Επεξεργασία"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Λήψη"</string>
+    <string name="download_effects" msgid="2772742927165716701">"Λήψη εφέ"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Ταπετσαρία: Προβολή διαφανειών"</string>
     <string name="bottom_action_bar_apply" msgid="2983308349819178932">"Εφαρμογή"</string>
     <string name="accessibility_preview_pager" msgid="1839869637405028575">"Σελίδα <xliff:g id="ID_1">%1$d</xliff:g> από <xliff:g id="ID_2">%2$d</xliff:g>"</string>
@@ -100,6 +105,7 @@
     <string name="previous_page_content_description" msgid="1138597031571078429">"Προηγούμενη"</string>
     <string name="wallpaper_title" msgid="6754214682228331092">"Ταπετσαρία"</string>
     <string name="wallpaper_preview_card_content_description" msgid="6049261033541034584">"Προεπισκόπηση ταπετσαρίας"</string>
+    <string name="wallpaper_preview_card_content_description_editable" msgid="3111763100515242340">"Προεπ. ταπετσ. %1$s, πατήστε για επεξερ."</string>
     <string name="lock_wallpaper_preview_card_content_description" msgid="5236839857695985498">"Προεπισκόπηση ταπετσαρίας οθόνης κλειδώματος"</string>
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Προεπισκόπηση ταπετσαρίας αρχικής οθόνης"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Η συλλογή δεν υπάρχει."</string>

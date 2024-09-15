@@ -31,12 +31,12 @@
     <string name="wallpaper_destination_both" msgid="1124197176741944063">"ಹೋಮ್ ಮತ್ತು ಲಾಕ್‌ ಸ್ಕ್ರೀನ್"</string>
     <string name="choose_a_wallpaper_section_title" msgid="1009823506890453891">"ವಾಲ್‌ಪೇಪರ್‌ ಆಯ್ಕೆಮಾಡಿ"</string>
     <string name="creative_wallpaper_title" msgid="3581650238648981372">"ವಾಲ್‌ಪೇಪರ್ ಅನ್ನು ರಚಿಸಿ"</string>
-    <string name="home_screen_message" msgid="106444102822522813">"ಮುಖಪುಟದ ಪರದೆ"</string>
-    <string name="lock_screen_message" msgid="1534506081955058013">"ಲಾಕ್ ಪರದೆ"</string>
+    <string name="home_screen_message" msgid="106444102822522813">"ಹೋಮ್ ಸ್ಕ್ರೀನ್"</string>
+    <string name="lock_screen_message" msgid="1534506081955058013">"ಲಾಕ್ ಸ್ಕ್ರೀನ್"</string>
     <string name="home_and_lock_short_label" msgid="2937922943541927983">"ಮುಖಪುಟ ಮತ್ತು ಲಾಕ್‌"</string>
     <string name="set_wallpaper_dialog_message" msgid="2110475703996853076">"ವಾಲ್‌ಪೇಪರ್ ಅನ್ನು ಆನ್‌ಗೆ ಹೊಂದಿಸಿ"</string>
     <string name="set_wallpaper_home_screen_destination" msgid="7315594722013109354">"ಹೋಮ್ ಸ್ಕ್ರೀನ್"</string>
-    <string name="set_wallpaper_lock_screen_destination" msgid="6224685559375417945">"ಲಾಕ್ ಪರದೆ"</string>
+    <string name="set_wallpaper_lock_screen_destination" msgid="6224685559375417945">"ಲಾಕ್ ಸ್ಕ್ರೀನ್"</string>
     <string name="set_wallpaper_both_destination" msgid="2536004558738350775">"ಹೋಮ್ ಮತ್ತು ಲಾಕ್ ಸ್ಕ್ರೀನ್‌ಗಳು"</string>
     <string name="no_backup_image_wallpaper_label" msgid="6316627676107284851">"ತಿರುಗುವ ಚಿತ್ರದ ವಾಲ್‌ಪೇಪರ್"</string>
     <string name="permission_needed_explanation" msgid="139166837541426823">"ಪ್ರಸ್ತುತ ವಾಲ್ಪೇಪರ್ ಅನ್ನು ಇಲ್ಲಿ ಪ್ರದರ್ಶಿಸಲು, <xliff:g id="APP_NAME">%1$s</xliff:g> ಗೆ ನಿಮ್ಮ ಸಾಧನದ ಸಂಗ್ರಹಣೆಯ ಪ್ರವೇಶದ ಅಗತ್ಯವಿದೆ."</string>
@@ -67,6 +67,10 @@
     <string name="refresh_daily_wallpaper_home_content_description" msgid="2770445044556164259">"ದೈನಂದಿನ ಮುಖಪುಟ ಪರದೆಯ ವಾಲ್‌ಪೇಪರ್ ರಿಫ್ರೆಶ್ ಮಾಡಿ"</string>
     <string name="refresh_daily_wallpaper_content_description" msgid="4362142658237147583">"ದಿನನಿತ್ಯದ ವಾಲ್‌ಪೇಪರ್ ಅನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಿ"</string>
     <string name="preview_screen_description" msgid="3386387053327775919">"ವಾಲ್‌ಪೇಪರ್ ಪೂರ್ವವೀಕ್ಷಣೆಯ ಪರದೆ"</string>
+    <string name="preview_screen_description_editable" msgid="506875963019888699">"ವಾಲ್‌ಪೇಪರ್ ಪೂರ್ವವೀಕ್ಷಣೆ ಸ್ಕ್ರೀನ್ %1$s. ಪ್ಯಾನ್ ಮಾಡಲು ಮತ್ತು ಜೂಮ್ ಮಾಡಲು ಎರಡು ಬೆರಳುಗಳನ್ನು ಬಳಸಿ."</string>
+    <string name="folded_device_state_description" msgid="4972608448265616264">"ಫೋಲ್ಡ್ ಆಗಿದೆ"</string>
+    <string name="unfolded_device_state_description" msgid="3071975681472460627">"ಅನ್‌ಫೋಲ್ಡ್ ಆಗಿದೆ"</string>
+    <string name="full_preview_check_button_description" msgid="700484353763952975">"ವಾಲ್‌ಪೇಪರ್ ಎಡಿಟಿಂಗ್ ಪೂರ್ಣಗೊಂಡಿದೆ"</string>
     <string name="refreshing_daily_wallpaper_dialog_message" msgid="1975910873362855761">"ದೈನಂದಿನ ವಾಲ್‌ಪೇಪರ್ ಅನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಲಾಗುತ್ತಿದೆ…"</string>
     <string name="refresh_daily_wallpaper_failed_message" msgid="4749879993812557166">"ಪ್ರತಿದಿನದ ವಾಲ್‌ಪೇಪರ್ ರಿಫ್ರೆಶ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ. ನಿಮ್ಮ ನೆಟ್‌ವರ್ಕ್ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ ಹಾಗೂ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."</string>
     <string name="on_device_wallpapers_category_title" msgid="805819102071369004">"ಸಾಧನದಲ್ಲಿನ ವಾಲ್‌ಪೇಪರ್‌ಗಳು"</string>
@@ -93,6 +97,7 @@
     <string name="bottom_action_bar_back" msgid="2620581414970740784">"ಮೇಲಕ್ಕೆ ನ್ಯಾವಿಗೇಟ್ ಮಾಡಿ"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"ಎಡಿಟ್ ಮಾಡಿ"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"ಡೌನ್‌ಲೋಡ್"</string>
+    <string name="download_effects" msgid="2772742927165716701">"ಎಫೆಕ್ಟ್‌ಗಳನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"ಸ್ಲೈಡ್‌ಶೋ ವಾಲ್‌ಪೇಪರ್"</string>
     <string name="bottom_action_bar_apply" msgid="2983308349819178932">"ಅನ್ವಯಿಸಿ"</string>
     <string name="accessibility_preview_pager" msgid="1839869637405028575">"ಪುಟ <xliff:g id="ID_2">%2$d</xliff:g> ರಲ್ಲಿ <xliff:g id="ID_1">%1$d</xliff:g>"</string>
@@ -100,6 +105,7 @@
     <string name="previous_page_content_description" msgid="1138597031571078429">"ಹಿಂದಕ್ಕೆ"</string>
     <string name="wallpaper_title" msgid="6754214682228331092">"ವಾಲ್‌ಪೇಪರ್‌"</string>
     <string name="wallpaper_preview_card_content_description" msgid="6049261033541034584">"ವಾಲ್‌ಪೇಪರ್ ಪೂರ್ವವೀಕ್ಷಣೆ"</string>
+    <string name="wallpaper_preview_card_content_description_editable" msgid="3111763100515242340">"ವಾಲ್‌ಪೇಪರ್ ಪೂರ್ವವೀಕ್ಷಣೆ %1$s, ಫೋಟೋ ಎಡಿಟ್ ಮಾಡಲು ಟ್ಯಾಪ್ ಮಾಡಿ"</string>
     <string name="lock_wallpaper_preview_card_content_description" msgid="5236839857695985498">"ಲಾಕ್‌ಸ್ಕ್ರೀನ್ ವಾಲ್‌ಪೇಪರ್‌ನ ಪೂರ್ವವೀಕ್ಷಣೆ"</string>
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"ಹೋಮ್ ಸ್ಕ್ರೀನ್ ವಾಲ್‌ಪೇಪರ್‌ನ ಪೂರ್ವವೀಕ್ಷಣೆ"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"ಸಂಗ್ರಹಣೆ ಅಸ್ತಿತ್ವದಲ್ಲಿಲ್ಲ"</string>

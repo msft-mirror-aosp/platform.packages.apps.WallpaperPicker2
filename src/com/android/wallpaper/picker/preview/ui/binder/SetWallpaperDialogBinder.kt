@@ -26,8 +26,8 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.android.wallpaper.R
-import com.android.wallpaper.model.wallpaper.FoldableDisplay
-import com.android.wallpaper.module.CustomizationSections.Screen
+import com.android.wallpaper.model.Screen
+import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout
 import com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout.Companion.getViewId
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
@@ -52,6 +52,7 @@ object SetWallpaperDialogBinder {
         currentNavDestId: Int,
         onFinishActivity: () -> Unit,
         onDismissDialog: () -> Unit,
+        isFirstBinding: Boolean,
         navigate: ((View) -> Unit)?,
     ) {
         val previewLayout: View =
@@ -62,8 +63,8 @@ object SetWallpaperDialogBinder {
                 previewLayout,
                 wallpaperPreviewViewModel,
                 lifecycleOwner,
-                mainScope,
                 currentNavDestId,
+                isFirstBinding,
                 navigate,
             )
         else
@@ -72,8 +73,8 @@ object SetWallpaperDialogBinder {
                 wallpaperPreviewViewModel,
                 handheldDisplaySize,
                 lifecycleOwner,
-                mainScope,
                 currentNavDestId,
+                isFirstBinding,
                 navigate,
             )
 
@@ -125,8 +126,8 @@ object SetWallpaperDialogBinder {
         previewLayout: View,
         wallpaperPreviewViewModel: WallpaperPreviewViewModel,
         lifecycleOwner: LifecycleOwner,
-        mainScope: CoroutineScope,
         currentNavDestId: Int,
+        isFirstBinding: Boolean,
         navigate: ((View) -> Unit)?,
     ) {
         previewLayout.isVisible = true
@@ -138,23 +139,25 @@ object SetWallpaperDialogBinder {
 
             dualDisplayAspectRatioLayout.setDisplaySizes(
                 mapOf(
-                    FoldableDisplay.FOLDED to wallpaperPreviewViewModel.smallerDisplaySize,
-                    FoldableDisplay.UNFOLDED to wallpaperPreviewViewModel.wallpaperDisplaySize,
+                    DeviceDisplayType.FOLDED to wallpaperPreviewViewModel.smallerDisplaySize,
+                    DeviceDisplayType.UNFOLDED to
+                        wallpaperPreviewViewModel.wallpaperDisplaySize.value,
                 )
             )
-            FoldableDisplay.entries.forEach { display ->
+            DeviceDisplayType.FOLDABLE_DISPLAY_TYPES.forEach { display ->
                 val previewDisplaySize = dualDisplayAspectRatioLayout.getPreviewDisplaySize(display)
+                val view: View = dualDisplayAspectRatioLayout.requireViewById(display.getViewId())
                 previewDisplaySize?.let {
                     SmallPreviewBinder.bind(
                         applicationContext = previewLayout.context.applicationContext,
-                        view = dualDisplayAspectRatioLayout.requireViewById(display.getViewId()),
+                        view = view,
                         viewModel = wallpaperPreviewViewModel,
-                        mainScope = mainScope,
                         viewLifecycleOwner = lifecycleOwner,
                         screen = screenId.key,
                         displaySize = it,
-                        foldableDisplay = display,
+                        deviceDisplayType = display,
                         currentNavDestId = currentNavDestId,
+                        isFirstBinding = isFirstBinding,
                         navigate = navigate,
                     )
                 }
@@ -167,25 +170,26 @@ object SetWallpaperDialogBinder {
         wallpaperPreviewViewModel: WallpaperPreviewViewModel,
         displaySize: Point,
         lifecycleOwner: LifecycleOwner,
-        mainScope: CoroutineScope,
         currentNavDestId: Int,
+        isFirstBinding: Boolean,
         navigate: ((View) -> Unit)?,
     ) {
         previewLayout.isVisible = true
         PreviewScreenIds.forEach { screenId ->
+            val view: View =
+                previewLayout
+                    .requireViewById<FrameLayout>(screenId.value)
+                    .requireViewById(R.id.preview)
             SmallPreviewBinder.bind(
                 applicationContext = previewLayout.context.applicationContext,
-                view =
-                    previewLayout
-                        .requireViewById<FrameLayout>(screenId.value)
-                        .requireViewById(R.id.preview),
+                view = view,
                 viewModel = wallpaperPreviewViewModel,
                 screen = screenId.key,
                 displaySize = displaySize,
-                foldableDisplay = null,
-                mainScope = mainScope,
+                deviceDisplayType = DeviceDisplayType.SINGLE,
                 viewLifecycleOwner = lifecycleOwner,
                 currentNavDestId = currentNavDestId,
+                isFirstBinding = isFirstBinding,
                 navigate = navigate,
             )
         }
@@ -198,6 +202,7 @@ object SetWallpaperDialogBinder {
         dialogViewModel: WallpaperPreviewViewModel,
     ) {
         selector.isActivated = selectedScreens.contains(screen)
+        selector.isSelected = selector.isActivated
         selector.setOnClickListener { dialogViewModel.onSetWallpaperDialogScreenSelected(screen) }
     }
 }

@@ -67,6 +67,10 @@
     <string name="refresh_daily_wallpaper_home_content_description" msgid="2770445044556164259">"Абнавіць шпалеры галоўнага экрана на кожны дзень"</string>
     <string name="refresh_daily_wallpaper_content_description" msgid="4362142658237147583">"Абнавіць шпалеры на кожны дзень"</string>
     <string name="preview_screen_description" msgid="3386387053327775919">"Экран перадпрагляду шпалер"</string>
+    <string name="preview_screen_description_editable" msgid="506875963019888699">"Экран перадпрагляду шпалер %1$s. Зрушвайце і маштабіруйце двума пальцамі."</string>
+    <string name="folded_device_state_description" msgid="4972608448265616264">"Складзена"</string>
+    <string name="unfolded_device_state_description" msgid="3071975681472460627">"Раскладзена"</string>
+    <string name="full_preview_check_button_description" msgid="700484353763952975">"Рэдагаванне шпалер завершана"</string>
     <string name="refreshing_daily_wallpaper_dialog_message" msgid="1975910873362855761">"Абнаўленне шпалер на кожны дзень…"</string>
     <string name="refresh_daily_wallpaper_failed_message" msgid="4749879993812557166">"Не атрымалася абнавіць шпалеры на кожны дзень. Спраўдзіце падключэнне да сеткі і паўтарыце спробу."</string>
     <string name="on_device_wallpapers_category_title" msgid="805819102071369004">"Шпалеры на прыладзе"</string>
@@ -93,6 +97,7 @@
     <string name="bottom_action_bar_back" msgid="2620581414970740784">"Перайсці ўверх"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Змяніць"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Спампаваць"</string>
+    <string name="download_effects" msgid="2772742927165716701">"Спампаваць эфекты"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Паказаць шпалеры як слайд-шоу"</string>
     <string name="bottom_action_bar_apply" msgid="2983308349819178932">"Ужыць"</string>
     <string name="accessibility_preview_pager" msgid="1839869637405028575">"Старонка <xliff:g id="ID_1">%1$d</xliff:g> з <xliff:g id="ID_2">%2$d</xliff:g>"</string>
@@ -100,6 +105,7 @@
     <string name="previous_page_content_description" msgid="1138597031571078429">"Назад"</string>
     <string name="wallpaper_title" msgid="6754214682228331092">"Шпалеры"</string>
     <string name="wallpaper_preview_card_content_description" msgid="6049261033541034584">"Перадпрагляд шпалер"</string>
+    <string name="wallpaper_preview_card_content_description_editable" msgid="3111763100515242340">"Перадпрагляд: %1$s. Націсніце і змяніце."</string>
     <string name="lock_wallpaper_preview_card_content_description" msgid="5236839857695985498">"Перадпрагляд шпалер экрана блакіроўкі"</string>
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Перадпрагляд шпалер галоўнага экрана"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Калекцыя не існуе"</string>
