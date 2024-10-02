@@ -71,10 +71,7 @@ import kotlinx.coroutines.launch
  */
 object ScreenPreviewBinder {
     interface Binding {
-        fun sendMessage(
-            id: Int,
-            args: Bundle = Bundle.EMPTY,
-        )
+        fun sendMessage(id: Int, args: Bundle = Bundle.EMPTY)
 
         fun destroy()
 
@@ -221,7 +218,7 @@ object ScreenPreviewBinder {
                                                 LoadingAnimation(
                                                     loadingView,
                                                     LoadingAnimation.RevealType.CIRCULAR,
-                                                    LoadingAnimation.TIME_OUT_DURATION_MS
+                                                    LoadingAnimation.TIME_OUT_DURATION_MS,
                                                 )
                                         }
                                     }
@@ -266,7 +263,7 @@ object ScreenPreviewBinder {
                                             animationTransitionProgress,
                                             animationColorToRestore,
                                         )
-                                    } else null
+                                    } else null,
                                 )
                                 wallpaperIsReadyForReveal = false
                                 if (isPageTransitionsFeatureEnabled) {
@@ -307,7 +304,7 @@ object ScreenPreviewBinder {
                                         ResourceUtils.getColorAttr(
                                             previewView.context,
                                             android.R.attr.colorSecondary,
-                                        )
+                                        ),
                                     )
                                 ),
                             ) {
@@ -318,14 +315,14 @@ object ScreenPreviewBinder {
                                     offsetToStart =
                                         if (isMultiCropEnabled) false else offsetToStart,
                                     onSurfaceViewsReady = surfaceViewsReady,
-                                    thumbnailRequested = thumbnailRequested
+                                    thumbnailRequested = thumbnailRequested,
                                 )
                                 if (showLoadingAnimation) {
                                     val colorAccent =
                                         animationColorToRestore
                                             ?: ResourceUtils.getColorAttr(
                                                 activity,
-                                                android.R.attr.colorAccent
+                                                android.R.attr.colorAccent,
                                             )
                                     val night =
                                         (previewView.resources.configuration.uiMode and
@@ -334,7 +331,7 @@ object ScreenPreviewBinder {
                                     loadingAnimation?.updateColor(ColorScheme(colorAccent, night))
                                     loadingAnimation?.setupRevealAnimation(
                                         animationTimeToRestore,
-                                        animationTransitionProgress
+                                        animationTransitionProgress,
                                     )
                                     val isStaticWallpaper =
                                         wallpaperInfo != null && wallpaperInfo !is LiveWallpaperInfo
@@ -439,14 +436,14 @@ object ScreenPreviewBinder {
                                             LoadingAnimation(
                                                 loadingView,
                                                 LoadingAnimation.RevealType.CIRCULAR,
-                                                LoadingAnimation.TIME_OUT_DURATION_MS
+                                                LoadingAnimation.TIME_OUT_DURATION_MS,
                                             )
                                     }
                                     loadingImageDrawable = animationBackground
                                     val colorAccent =
                                         ResourceUtils.getColorAttr(
                                             activity,
-                                            android.R.attr.colorAccent
+                                            android.R.attr.colorAccent,
                                         )
                                     val night =
                                         (previewView.resources.configuration.uiMode and
@@ -477,7 +474,7 @@ object ScreenPreviewBinder {
                                 surfaceCallback = wallpaperSurfaceCallback,
                                 offsetToStart = if (isMultiCropEnabled) false else offsetToStart,
                                 onSurfaceViewsReady = surfaceViewsReady,
-                                thumbnailRequested = thumbnailRequested
+                                thumbnailRequested = thumbnailRequested,
                             )
                             if (showLoadingAnimation && wallpaperInfo !is LiveWallpaperInfo) {
                                 loadingAnimation?.playRevealAnimation()
@@ -494,7 +491,7 @@ object ScreenPreviewBinder {
                                                 viewModel,
                                                 wallpaperSurface,
                                                 mirrorSurface,
-                                                viewModel.screen
+                                                viewModel.screen,
                                             ) {
                                                 surfaceViewsReady()
                                                 if (showLoadingAnimation) {
@@ -560,13 +557,13 @@ object ScreenPreviewBinder {
         wallpaperSurface: SurfaceView,
         mirrorSurface: SurfaceView?,
         screen: Screen,
-        onEngineShown: () -> Unit
+        onEngineShown: () -> Unit,
     ) =
         WallpaperConnection(
             Intent(WallpaperService.SERVICE_INTERFACE).apply {
                 setClassName(
                     liveWallpaperInfo.wallpaperComponent.packageName,
-                    liveWallpaperInfo.wallpaperComponent.serviceName
+                    liveWallpaperInfo.wallpaperComponent.serviceName,
                 )
             },
             previewView.context,
@@ -582,7 +579,7 @@ object ScreenPreviewBinder {
             wallpaperSurface,
             mirrorSurface,
             screen.toFlag(),
-            WallpaperConnection.WhichPreview.PREVIEW_CURRENT
+            WallpaperConnection.WhichPreview.PREVIEW_CURRENT,
         )
 
     private fun removeAndReadd(view: View) {
@@ -601,7 +598,7 @@ object ScreenPreviewBinder {
         surfaceCallback: WallpaperSurfaceCallback?,
         offsetToStart: Boolean,
         onSurfaceViewsReady: () -> Unit,
-        thumbnailRequested: AtomicBoolean
+        thumbnailRequested: AtomicBoolean,
     ) {
         if (wallpaperInfo == null || surfaceCallback == null) {
             return
@@ -620,7 +617,7 @@ object ScreenPreviewBinder {
                     imageView,
                     ResourceUtils.getColorAttr(activity, android.R.attr.colorSecondary),
                     /* offsetToStart= */ thumbAsset !is CurrentWallpaperAsset || offsetToStart,
-                    wallpaperInfo.wallpaperCropHints
+                    wallpaperInfo.wallpaperCropHints,
                 )
             if (wallpaperInfo !is LiveWallpaperInfo) {
                 imageView.addOnLayoutChangeListener(
@@ -634,7 +631,7 @@ object ScreenPreviewBinder {
                             oldLeft: Int,
                             oldTop: Int,
                             oldRight: Int,
-                            oldBottom: Int
+                            oldBottom: Int,
                         ) {
                             v?.removeOnLayoutChangeListener(this)
                             onSurfaceViewsReady()
