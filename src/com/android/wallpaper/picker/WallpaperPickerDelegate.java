@@ -27,11 +27,13 @@ import android.os.Build.VERSION_CODES;
 import android.service.wallpaper.WallpaperService;
 import android.util.Log;
 
+import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentActivity;
 
 import com.android.wallpaper.R;
+import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.model.Category;
 import com.android.wallpaper.model.CategoryProvider;
 import com.android.wallpaper.model.CategoryReceiver;
@@ -67,6 +69,7 @@ public class WallpaperPickerDelegate implements MyPhotosStarter {
     private final MyPhotosIntentProvider mMyPhotosIntentProvider;
     private WallpaperPreferences mPreferences;
     private PackageStatusNotifier mPackageStatusNotifier;
+    private BaseFlags mFlags;
 
     private List<PermissionChangedListener> mPermissionChangedListeners;
     private PackageStatusNotifier.Listener mLiveWallpaperStatusListener;
@@ -81,7 +84,7 @@ public class WallpaperPickerDelegate implements MyPhotosStarter {
             Injector injector) {
         mContainer = container;
         mActivity = activity;
-
+        mFlags = injector.getFlags();
         mCategoryProvider = injector.getCategoryProvider(activity);
         mPreferences = injector.getPreferences(activity);
 
@@ -94,28 +97,31 @@ public class WallpaperPickerDelegate implements MyPhotosStarter {
     }
 
     public void initialize(boolean forceCategoryRefresh) {
-        populateCategories(forceCategoryRefresh);
-        mLiveWallpaperStatusListener = this::updateLiveWallpapersCategories;
-        mThirdPartyStatusListener = this::updateThirdPartyCategories;
-        mPackageStatusNotifier.addListener(
-                mLiveWallpaperStatusListener,
-                WallpaperService.SERVICE_INTERFACE);
-        mPackageStatusNotifier.addListener(mThirdPartyStatusListener, Intent.ACTION_SET_WALLPAPER);
-        if (mDownloadableIntentAction != null) {
-            mDownloadableWallpaperStatusListener = (packageName, status) -> {
-                if (status != PackageStatusNotifier.PackageStatus.REMOVED) {
-                    populateCategories(/* forceRefresh= */ true);
-                }
-            };
+        if (!mFlags.isWallpaperCategoryRefactoringEnabled()) {
+            populateCategories(forceCategoryRefresh);
+            mLiveWallpaperStatusListener = this::updateLiveWallpapersCategories;
+            mThirdPartyStatusListener = this::updateThirdPartyCategories;
             mPackageStatusNotifier.addListener(
-                    mDownloadableWallpaperStatusListener, mDownloadableIntentAction);
+                    mLiveWallpaperStatusListener,
+                    WallpaperService.SERVICE_INTERFACE);
+            mPackageStatusNotifier.addListener(mThirdPartyStatusListener,
+                    Intent.ACTION_SET_WALLPAPER);
+            if (mDownloadableIntentAction != null) {
+                mDownloadableWallpaperStatusListener = (packageName, status) -> {
+                    if (status != PackageStatusNotifier.PackageStatus.REMOVED) {
+                        populateCategories(/* forceRefresh= */ true);
+                    }
+                };
+                mPackageStatusNotifier.addListener(
+                        mDownloadableWallpaperStatusListener, mDownloadableIntentAction);
+            }
         }
     }
 
     @Override
     public void requestCustomPhotoPicker(PermissionChangedListener listener) {
         //TODO (b/282073506): Figure out a better way to have better photos experience
-        if (DISABLE_MY_PHOTOS_BLOCK_PREVIEW) {
+        if (mFlags.isWallpaperCategoryRefactoringEnabled()) {
             if (!isReadExternalStoragePermissionGranted()) {
                 PermissionChangedListener wrappedListener = new PermissionChangedListener() {
                     @Override
@@ -136,6 +142,12 @@ public class WallpaperPickerDelegate implements MyPhotosStarter {
         }
 
         showCustomPhotoPicker();
+    }
+
+    @Override
+    public void requestCustomPhotoPicker(PermissionChangedListener listener, Activity activity,
+            ActivityResultLauncher<Intent> photoPickerLauncher) {
+        requestCustomPhotoPicker(listener);
     }
 
     /**
@@ -160,10 +172,10 @@ public class WallpaperPickerDelegate implements MyPhotosStarter {
 
     private void showCustomPhotoPicker() {
         try {
-            Intent intent = mMyPhotosIntentProvider.getMyPhotosIntent(mActivity);
+            Intent intent = mMyPhotosIntentProvider.getMyPhotosIntent();
             mActivity.startActivityForResult(intent, SHOW_CATEGORY_REQUEST_CODE);
         } catch (ActivityNotFoundException e) {
-            Intent fallback = mMyPhotosIntentProvider.getFallbackIntent(mActivity);
+            Intent fallback = mMyPhotosIntentProvider.getFallbackIntent();
             if (fallback != null) {
                 Log.i(TAG, "Couldn't launch photo picker with main intent, trying with fallback");
                 mActivity.startActivityForResult(fallback, SHOW_CATEGORY_REQUEST_CODE);

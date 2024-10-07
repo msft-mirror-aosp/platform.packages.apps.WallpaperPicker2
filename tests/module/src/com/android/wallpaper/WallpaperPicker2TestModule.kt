@@ -25,13 +25,19 @@ import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.modules.WallpaperPicker2AppModule
 import com.android.wallpaper.network.Requester
 import com.android.wallpaper.picker.category.client.DefaultWallpaperCategoryClient
+import com.android.wallpaper.picker.category.wrapper.WallpaperCategoryWrapper
+import com.android.wallpaper.picker.common.preview.ui.binder.DefaultWorkspaceCallbackBinder
+import com.android.wallpaper.picker.common.preview.ui.binder.WorkspaceCallbackBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
 import com.android.wallpaper.picker.customization.ui.binder.DefaultCustomizationOptionsBinder
+import com.android.wallpaper.picker.customization.ui.binder.DefaultToolbarBinder
+import com.android.wallpaper.picker.customization.ui.binder.ToolbarBinder
 import com.android.wallpaper.picker.preview.ui.util.DefaultImageEffectDialogUtil
 import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
 import com.android.wallpaper.testing.FakeDefaultRequester
 import com.android.wallpaper.testing.FakeDefaultWallpaperCategoryClient
 import com.android.wallpaper.testing.FakeDefaultWallpaperModelFactory
+import com.android.wallpaper.testing.FakeWallpaperCategoryWrapper
 import com.android.wallpaper.testing.TestInjector
 import com.android.wallpaper.testing.TestPartnerProvider
 import com.android.wallpaper.testing.TestWallpaperPreferences
@@ -45,7 +51,7 @@ import javax.inject.Singleton
 @Module
 @TestInstallIn(
     components = [SingletonComponent::class],
-    replaces = [WallpaperPicker2AppModule::class]
+    replaces = [WallpaperPicker2AppModule::class],
 )
 abstract class WallpaperPicker2TestModule {
 
@@ -58,7 +64,7 @@ abstract class WallpaperPicker2TestModule {
     @Binds
     @Singleton
     abstract fun bindDefaultWallpaperCategoryClient(
-        impl: FakeDefaultWallpaperCategoryClient,
+        impl: FakeDefaultWallpaperCategoryClient
     ): DefaultWallpaperCategoryClient
 
     @Binds
@@ -77,15 +83,29 @@ abstract class WallpaperPicker2TestModule {
 
     @Binds @Singleton abstract fun bindRequester(impl: FakeDefaultRequester): Requester
 
+    @Binds @Singleton abstract fun bindToolbarBinder(impl: DefaultToolbarBinder): ToolbarBinder
+
     @Binds @Singleton abstract fun bindUserEventLogger(impl: TestUserEventLogger): UserEventLogger
 
     @Binds
     @Singleton
+    abstract fun bindWallpaperCategoryWrapper(
+        impl: FakeWallpaperCategoryWrapper
+    ): WallpaperCategoryWrapper
+
+    @Binds
+    @Singleton
     abstract fun bindWallpaperModelFactory(
-        impl: FakeDefaultWallpaperModelFactory,
+        impl: FakeDefaultWallpaperModelFactory
     ): WallpaperModelFactory
 
     @Binds
     @Singleton
     abstract fun bindWallpaperPreferences(impl: TestWallpaperPreferences): WallpaperPreferences
+
+    @Binds
+    @Singleton
+    abstract fun bindWorkspaceCallbackBinder(
+        impl: DefaultWorkspaceCallbackBinder
+    ): WorkspaceCallbackBinder
 }

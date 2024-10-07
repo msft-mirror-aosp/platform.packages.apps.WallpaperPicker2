@@ -29,9 +29,9 @@ import com.android.wallpaper.R
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.customization.shared.model.WallpaperColorsModel
 import com.android.wallpaper.picker.data.WallpaperModel
+import com.android.wallpaper.picker.preview.ui.view.SystemScaledSubsamplingScaleImageView
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.android.wallpaper.util.SurfaceViewUtils
-import com.android.wallpaper.util.SurfaceViewUtils.attachView
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.Companion.shouldEnforceSingleEngine
 import com.android.wallpaper.util.wallpaperconnection.WallpaperEngineConnection.WallpaperEngineConnectionListener
@@ -126,7 +126,7 @@ object SmallWallpaperPreviewBinder {
                                     object : WallpaperEngineConnectionListener {
                                         override fun onWallpaperColorsChanged(
                                             colors: WallpaperColors?,
-                                            displayId: Int
+                                            displayId: Int,
                                         ) {
                                             viewModel.setWallpaperConnectionColors(
                                                 WallpaperColorsModel.Loaded(colors)
@@ -138,13 +138,18 @@ object SmallWallpaperPreviewBinder {
                                 val staticPreviewView =
                                     LayoutInflater.from(applicationContext)
                                         .inflate(R.layout.fullscreen_wallpaper_preview, null)
-                                surface.attachView(staticPreviewView)
+                                // We need to locate full res view because later it will be added to
+                                // the surface control nad not in the current view hierarchy.
+                                val fullResView =
+                                    staticPreviewView.requireViewById<
+                                        SystemScaledSubsamplingScaleImageView
+                                    >(
+                                        R.id.full_res_image
+                                    )
                                 // Bind static wallpaper
                                 StaticWallpaperPreviewBinder.bind(
-                                    lowResImageView =
-                                        staticPreviewView.requireViewById(R.id.low_res_image),
-                                    fullResImageView =
-                                        staticPreviewView.requireViewById(R.id.full_res_image),
+                                    staticPreviewView = staticPreviewView,
+                                    wallpaperSurface = surface,
                                     viewModel = viewModel.staticWallpaperPreviewViewModel,
                                     displaySize = displaySize,
                                     parentCoroutineScope = this,
@@ -155,8 +160,7 @@ object SmallWallpaperPreviewBinder {
 
                                 loadingAnimationBinding =
                                     PreviewEffectsLoadingBinder.bind(
-                                        view =
-                                            staticPreviewView.requireViewById(R.id.full_res_image),
+                                        view = fullResView,
                                         viewModel = viewModel,
                                         viewLifecycleOwner = lifecycleOwner,
                                     )

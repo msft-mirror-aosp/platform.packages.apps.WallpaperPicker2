@@ -28,12 +28,16 @@ import android.view.SurfaceView
  */
 class CustomizationSurfaceView(context: Context, attrs: AttributeSet? = null) :
     SurfaceView(context, attrs) {
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
 
         // TODO (b/348462236): investigate effect on scale transition and touch forwarding layout
         if (oldw == 0 && oldh == 0) {
-            holder.setFixedSize(w, h)
+            holder.surfaceFrame.let {
+                if (it.isEmpty) holder.setFixedSize(width, height)
+                else holder.setFixedSize(it.width(), it.height())
+            }
         }
     }
 }

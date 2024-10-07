@@ -22,6 +22,7 @@ import android.content.res.Resources
 import com.android.wallpaper.module.LargeScreenMultiPanesChecker
 import com.android.wallpaper.module.MultiPanesChecker
 import com.android.wallpaper.module.NetworkStatusNotifier
+import com.android.wallpaper.picker.category.client.LiveWallpapersClient
 import com.android.wallpaper.picker.category.data.repository.WallpaperCategoryRepository
 import com.android.wallpaper.picker.category.domain.interactor.CategoriesLoadingStatusInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
@@ -34,12 +35,17 @@ import com.android.wallpaper.picker.customization.data.content.WallpaperClient
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.di.modules.SharedAppModule
+import com.android.wallpaper.picker.network.data.DefaultNetworkStatusRepository
+import com.android.wallpaper.picker.network.data.NetworkStatusRepository
+import com.android.wallpaper.picker.network.domain.DefaultNetworkStatusInteractor
+import com.android.wallpaper.picker.network.domain.NetworkStatusInteractor
 import com.android.wallpaper.system.UiModeManagerWrapper
 import com.android.wallpaper.testing.FakeCategoriesLoadingStatusInteractor
 import com.android.wallpaper.testing.FakeCategoryInteractor
 import com.android.wallpaper.testing.FakeCreativeWallpaperInteractor
 import com.android.wallpaper.testing.FakeDefaultCategoryFactory
 import com.android.wallpaper.testing.FakeDefaultWallpaperCategoryRepository
+import com.android.wallpaper.testing.FakeLiveWallpaperClientImpl
 import com.android.wallpaper.testing.FakeMyPhotosInteractor
 import com.android.wallpaper.testing.FakeThirdPartyCategoryInteractor
 import com.android.wallpaper.testing.FakeUiModeManager
@@ -86,6 +92,18 @@ internal abstract class SharedAppTestModule {
         impl: FakeCreativeWallpaperInteractor
     ): CreativeCategoryInteractor
 
+    @Binds
+    @Singleton
+    abstract fun bindNetworkStatusRepository(
+        impl: DefaultNetworkStatusRepository
+    ): NetworkStatusRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNetworkStatusInteractor(
+        impl: DefaultNetworkStatusInteractor
+    ): NetworkStatusInteractor
+
     // Dispatcher and Scope injection choices are based on documentation at
     // http://go/android-dev/kotlin/coroutines/test. Most tests will not need to inject anything
     // other than the TestDispatcher, for use in Dispatchers.setMain().
@@ -101,6 +119,12 @@ internal abstract class SharedAppTestModule {
     abstract fun bindIndividualPickerFactoryFragment(
         impl: DefaultIndividualPickerFactory
     ): IndividualPickerFactory
+
+    @Binds
+    @Singleton
+    abstract fun bindLiveWallpaperClient(
+        impl: FakeLiveWallpaperClientImpl,
+    ): LiveWallpapersClient
 
     @Binds
     @Singleton

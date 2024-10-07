@@ -19,10 +19,11 @@ import android.app.WallpaperManager
 import android.content.Context
 import com.android.settings.accessibility.Flags.enableColorContrastControl
 import com.android.systemui.Flags.clockReactiveVariants
-import com.android.systemui.Flags.newPickerUi
+import com.android.systemui.shared.Flags.newCustomizationPickerUi
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClient
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClientImpl
 import com.android.systemui.shared.customization.data.content.CustomizationProviderContract as Contract
+import com.android.wallpaper.Flags.largeScreenWallpaperCollections
 import com.android.wallpaper.Flags.magicPortraitFlag
 import com.android.wallpaper.Flags.refactorWallpaperCategoryFlag
 import com.android.wallpaper.Flags.wallpaperRestorerFlag
@@ -48,9 +49,11 @@ abstract class BaseFlags {
 
     open fun isColorContrastControlEnabled() = enableColorContrastControl()
 
+    open fun isLargeScreenWallpaperCollectionsEnabled() = largeScreenWallpaperCollections()
+
     open fun isMagicPortraitEnabled() = magicPortraitFlag()
 
-    open fun isNewPickerUi() = newPickerUi()
+    open fun isNewPickerUi() = newCustomizationPickerUi()
 
     open fun isClockReactiveVariantsEnabled() = clockReactiveVariants()
 
