@@ -276,7 +276,6 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
         isFoldable: Boolean,
         isNewPickerUi: Boolean,
     ) {
-        val currentNavDestId = checkNotNull(findNavController().currentDestination?.id)
         val tabs = view.findViewById<PreviewTabs>(R.id.preview_tabs_container)
         if (isFoldable) {
             val dualPreviewView: DualPreviewViewPager = view.requireViewById(R.id.pager_previews)
@@ -289,7 +288,6 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                 appContext,
                 mainScope,
                 viewLifecycleOwner,
-                currentNavDestId,
                 (reenterTransition as Transition?),
                 wallpaperPreviewViewModel.fullPreviewConfigViewModel.value,
                 wallpaperConnectionUtils,
@@ -317,7 +315,6 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                     viewModel = wallpaperPreviewViewModel,
                     previewDisplaySize =
                         displayUtils.getRealSize(displayUtils.getWallpaperDisplay()),
-                    currentNavDestId = currentNavDestId,
                     transition = (reenterTransition as Transition?),
                     transitionConfig = wallpaperPreviewViewModel.fullPreviewConfigViewModel.value,
                     wallpaperConnectionUtils = wallpaperConnectionUtils,
@@ -345,7 +342,6 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                     appContext,
                     mainScope,
                     viewLifecycleOwner,
-                    currentNavDestId,
                     (reenterTransition as Transition?),
                     wallpaperPreviewViewModel.fullPreviewConfigViewModel.value,
                     wallpaperConnectionUtils,
