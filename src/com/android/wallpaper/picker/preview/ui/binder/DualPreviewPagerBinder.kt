@@ -18,6 +18,7 @@ package com.android.wallpaper.picker.preview.ui.binder
 import android.content.Context
 import android.view.View
 import android.view.View.OVER_SCROLL_NEVER
+import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -45,6 +46,7 @@ object DualPreviewPagerBinder {
     fun bind(
         dualPreviewView: DualPreviewViewPager,
         wallpaperPreviewViewModel: WallpaperPreviewViewModel,
+        smallPreview: MotionLayout?,
         applicationContext: Context,
         viewLifecycleOwner: LifecycleOwner,
         currentNavDestId: Int,
@@ -101,7 +103,7 @@ object DualPreviewPagerBinder {
             view.tag = positionLTR
 
             PreviewTooltipBinder.bindSmallPreviewTooltip(
-                tooltipStub = view.requireViewById(R.id.tooltip_stub),
+                tooltipStub = view.requireViewById(R.id.small_preview_tooltip_stub),
                 viewModel = wallpaperPreviewViewModel.smallTooltipViewModel,
                 lifecycleOwner = viewLifecycleOwner,
             )
@@ -124,6 +126,7 @@ object DualPreviewPagerBinder {
                     SmallPreviewBinder.bind(
                         applicationContext = applicationContext,
                         view = dualDisplayAspectRatioLayout.requireViewById(display.getViewId()),
+                        smallPreview = smallPreview,
                         viewModel = wallpaperPreviewViewModel,
                         viewLifecycleOwner = viewLifecycleOwner,
                         screen = wallpaperPreviewViewModel.smallPreviewTabs[positionLTR],
@@ -152,7 +155,7 @@ object DualPreviewPagerBinder {
                 override fun onPageScrolled(
                     position: Int,
                     positionOffset: Float,
-                    positionOffsetPixels: Int
+                    positionOffsetPixels: Int,
                 ) {}
 
                 override fun onPageScrollStateChanged(state: Int) {}

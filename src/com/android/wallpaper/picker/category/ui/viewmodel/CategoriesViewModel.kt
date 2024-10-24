@@ -26,8 +26,10 @@ import com.android.wallpaper.picker.category.domain.interactor.CategoryInteracto
 import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.MyPhotosInteractor
 import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
+import com.android.wallpaper.picker.category.ui.view.SectionCardinality
 import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.data.category.CategoryModel
+import com.android.wallpaper.picker.network.domain.NetworkStatusInteractor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -37,7 +39,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.zip
 import kotlinx.coroutines.launch
 
 /** Top level [ViewModel] for the categories screen */
@@ -50,6 +51,7 @@ constructor(
     private val myPhotosInteractor: MyPhotosInteractor,
     private val thirdPartyCategoryInteractor: ThirdPartyCategoryInteractor,
     private val loadindStatusInteractor: CategoriesLoadingStatusInteractor,
+    private val networkStatusInteractor: NetworkStatusInteractor,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -66,7 +68,7 @@ constructor(
 
     private fun navigateToPreviewScreen(
         wallpaperModel: WallpaperModel,
-        categoryType: CategoryType
+        categoryType: CategoryType,
     ) {
         viewModelScope.launch {
             _navigationEvents.emit(
@@ -75,8 +77,10 @@ constructor(
         }
     }
 
-    private fun navigateToPhotosPicker() {
-        viewModelScope.launch { _navigationEvents.emit(NavigationEvent.NavigateToPhotosPicker) }
+    private fun navigateToPhotosPicker(wallpaperModel: WallpaperModel?) {
+        viewModelScope.launch {
+            _navigationEvents.emit(NavigationEvent.NavigateToPhotosPicker(wallpaperModel))
+        }
     }
 
     private fun navigateToThirdPartyApp(resolveInfo: ResolveInfo) {
@@ -109,7 +113,7 @@ constructor(
                                 }
                             ),
                         columnCount = 1,
-                        sectionTitle = null
+                        sectionTitle = null,
                     )
                 }
             }
@@ -133,24 +137,26 @@ constructor(
                                     ) {
                                         navigateToPreviewScreen(
                                             category.collectionCategoryData.wallpaperModels[0],
-                                            CategoryType.DefaultCategories
+                                            CategoryType.DefaultCategories,
                                         )
                                     } else {
                                         navigateToWallpaperCollection(
                                             category.commonCategoryData.collectionId,
-                                            CategoryType.DefaultCategories
+                                            CategoryType.DefaultCategories,
                                         )
                                     }
                                 }
                             ),
                         columnCount = 1,
-                        sectionTitle = null
+                        sectionTitle = null,
                     )
                 }
             }
 
     private val individualSectionViewModels: Flow<List<SectionViewModel>> =
-        defaultCategorySections.zip(thirdPartyCategorySections) { list1, list2 -> list1 + list2 }
+        combine(defaultCategorySections, thirdPartyCategorySections) { list1, list2 ->
+            list1 + list2
+        }
 
     private val creativeSectionViewModel: Flow<SectionViewModel> =
         creativeCategoryInteractor.categories
@@ -162,18 +168,19 @@ constructor(
                             defaultDrawable = null,
                             thumbnailAsset = category.collectionCategoryData?.thumbAsset,
                             text = category.commonCategoryData.title,
+                            maxCategoriesInRow = SectionCardinality.Triple,
                         ) {
                             if (
                                 category.collectionCategoryData?.isSingleWallpaperCategory == true
                             ) {
                                 navigateToPreviewScreen(
                                     category.collectionCategoryData.wallpaperModels[0],
-                                    CategoryType.CreativeCategories
+                                    CategoryType.CreativeCategories,
                                 )
                             } else {
                                 navigateToWallpaperCollection(
                                     category.commonCategoryData.collectionId,
-                                    CategoryType.CreativeCategories
+                                    CategoryType.CreativeCategories,
                                 )
                             }
                         }
@@ -181,7 +188,7 @@ constructor(
                 return@map SectionViewModel(
                     tileViewModels = tiles,
                     columnCount = 3,
-                    sectionTitle = context.getString(R.string.creative_wallpaper_title)
+                    sectionTitle = context.getString(R.string.creative_wallpaper_title),
                 )
             }
 
@@ -194,13 +201,14 @@ constructor(
                             defaultDrawable = category.imageCategoryData?.defaultDrawable,
                             thumbnailAsset = category.imageCategoryData?.thumbnailAsset,
                             text = category.commonCategoryData.title,
+                            maxCategoriesInRow = SectionCardinality.Single,
                         ) {
                             // TODO(b/352081782): trigger the effect with effect controller
-                            navigateToPhotosPicker()
+                            navigateToPhotosPicker(null)
                         }
                     ),
                 columnCount = 3,
-                sectionTitle = context.getString(R.string.choose_a_wallpaper_section_title)
+                sectionTitle = context.getString(R.string.choose_a_wallpaper_section_title),
             )
         }
 
@@ -218,6 +226,14 @@ constructor(
 
     val isLoading: Flow<Boolean> = loadindStatusInteractor.isLoading
 
+    /** A [Flow] to indicate when the network status has been made enabled */
+    val isConnectionObtained: Flow<Boolean> = networkStatusInteractor.isConnectionObtained
+
+    /** This method updates network categories */
+    fun refreshNetworkCategories() {
+        singleCategoryInteractor.refreshNetworkCategories()
+    }
+
     /** This method updates the photos category */
     fun updateMyPhotosCategory() {
         myPhotosInteractor.updateMyPhotos()
@@ -234,21 +250,21 @@ constructor(
         DefaultCategories,
         CreativeCategories,
         MyPhotosCategories,
-        Default
+        Default,
     }
 
     sealed class NavigationEvent {
         data class NavigateToWallpaperCollection(
             val categoryId: String,
-            val categoryType: CategoryType
+            val categoryType: CategoryType,
         ) : NavigationEvent()
 
         data class NavigateToPreviewScreen(
             val wallpaperModel: WallpaperModel,
-            val categoryType: CategoryType
+            val categoryType: CategoryType,
         ) : NavigationEvent()
 
-        object NavigateToPhotosPicker : NavigationEvent()
+        data class NavigateToPhotosPicker(val wallpaperModel: WallpaperModel?) : NavigationEvent()
 
         data class NavigateToThirdParty(val resolveInfo: ResolveInfo) : NavigationEvent()
     }

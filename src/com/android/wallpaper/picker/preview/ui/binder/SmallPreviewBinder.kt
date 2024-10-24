@@ -20,6 +20,7 @@ import android.graphics.Point
 import android.view.SurfaceView
 import android.view.View
 import androidx.cardview.widget.CardView
+import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -29,6 +30,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.transition.Transition
 import androidx.transition.TransitionListenerAdapter
 import com.android.wallpaper.R
+import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.preview.ui.fragment.SmallPreviewFragment
@@ -44,6 +46,8 @@ object SmallPreviewBinder {
     fun bind(
         applicationContext: Context,
         view: View,
+        smallPreview: MotionLayout? = null,
+        previewPager: MotionLayout? = null,
         viewModel: WallpaperPreviewViewModel,
         screen: Screen,
         displaySize: Point,
@@ -58,7 +62,6 @@ object SmallPreviewBinder {
     ) {
 
         val previewCard: CardView = view.requireViewById(R.id.preview_card)
-        val cardRadius = previewCard.radius
         val foldedStateDescription =
             when (deviceDisplayType) {
                 DeviceDisplayType.FOLDED ->
@@ -70,9 +73,16 @@ object SmallPreviewBinder {
         previewCard.contentDescription =
             view.context.getString(
                 R.string.wallpaper_preview_card_content_description_editable,
-                foldedStateDescription
+                foldedStateDescription,
             )
-        val wallpaperSurface: SurfaceView = view.requireViewById(R.id.wallpaper_surface)
+        val wallpaperSurface = view.requireViewById<SurfaceView>(R.id.wallpaper_surface)
+
+        // Don't set radius for set wallpaper dialog
+        if (!viewModel.showSetWallpaperDialog.value) {
+            // When putting the surface on top for full transition, the card view is behind the
+            // surface view so we need to apply radius on surface view instead
+            wallpaperSurface.cornerRadius = previewCard.radius
+        }
         val workspaceSurface: SurfaceView = view.requireViewById(R.id.workspace_surface)
 
         // Set transition names to enable the small to full preview enter and return shared
@@ -116,9 +126,6 @@ object SmallPreviewBinder {
                             transitionConfig.screen == screen &&
                                 transitionConfig.deviceDisplayType == deviceDisplayType
                         ) {
-                            // Put the surface on top for full transition, the card view is behind
-                            // the surface view so we need to apply radius on surface view instead
-                            wallpaperSurface.cornerRadius = cardRadius
                             wallpaperSurface.setZOrderOnTop(true)
                             workspaceSurface.setZOrderOnTop(true)
                         } else {
@@ -171,7 +178,11 @@ object SmallPreviewBinder {
                         }
                         .collect { onClick ->
                             if (onClick != null) {
-                                view.setOnClickListener { onClick() }
+                                if (BaseFlags.get().isNewPickerUi()) {
+                                    // TODO: Set click listener for motion layout
+                                } else {
+                                    view.setOnClickListener { onClick() }
+                                }
                             } else {
                                 view.setOnClickListener(null)
                             }
@@ -191,12 +202,7 @@ object SmallPreviewBinder {
         }
 
         val config = viewModel.getWorkspacePreviewConfig(screen, deviceDisplayType)
-        WorkspacePreviewBinder.bind(
-            workspaceSurface,
-            config,
-            viewModel,
-            viewLifecycleOwner,
-        )
+        WorkspacePreviewBinder.bind(workspaceSurface, config, viewModel, viewLifecycleOwner)
 
         SmallWallpaperPreviewBinder.bind(
             surface = wallpaperSurface,
