@@ -91,6 +91,9 @@ object SmallPreviewScreenBinder {
                                         if (isActionChecked) R.id.floating_sheet_visible
                                         else R.id.floating_sheet_gone
                                     )
+                                    // TODO(b/367374790): Use jumpToState for shared element
+                                    //  transition back from PreviewScreen.FULL_PREVIEW, until full
+                                    //  preview fragment is removed.
                                     previewPager.transitionToState(
                                         if (tab == Screen.LOCK_SCREEN) R.id.lock_preview_selected
                                         else R.id.home_preview_selected

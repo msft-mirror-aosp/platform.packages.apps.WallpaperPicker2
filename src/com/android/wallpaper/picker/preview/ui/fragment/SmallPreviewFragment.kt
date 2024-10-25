@@ -20,7 +20,9 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.GestureDetector
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.addCallback
@@ -127,7 +129,10 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
             else null
         val previewPager =
             if (isNewPickerUi) currentView.findViewById<MotionLayout>(R.id.preview_pager) else null
-        previewPager?.let { setUpTransitionListener(it) }
+        previewPager?.let {
+            setUpTransitionListener(it)
+            setUpTapListener(it)
+        }
         if (isNewPickerUi) {
             requireActivity().onBackPressedDispatcher.let {
                 it.addCallback {
@@ -263,6 +268,20 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
         )
     }
 
+    private fun setUpTapListener(previewPager: MotionLayout) {
+        val gestureDetector =
+            GestureDetector(
+                requireContext().applicationContext,
+                object : GestureDetector.SimpleOnGestureListener() {
+                    override fun onSingleTapUp(e: MotionEvent): Boolean {
+                        wallpaperPreviewViewModel.handlePagerTapped()
+                        return true
+                    }
+                },
+            )
+        previewPager.setOnTouchListener { _, event -> gestureDetector.onTouchEvent(event) }
+    }
+
     private fun createSetWallpaperProgressDialog(activity: Activity): AlertDialog {
         val dialogView =
             activity.layoutInflater.inflate(R.layout.set_wallpaper_progress_dialog_view, null)
@@ -327,13 +346,16 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                         FragmentNavigatorExtras(sharedElement to FULL_PREVIEW_SHARED_ELEMENT_ID)
                     // Set to false on small-to-full preview transition to remove surfaceView jank.
                     (view as ViewGroup).isTransitionGroup = false
-                    findNavController()
-                        .navigate(
-                            resId = R.id.action_smallPreviewFragment_to_fullPreviewFragment,
-                            args = null,
-                            navOptions = null,
-                            navigatorExtras = extras,
-                        )
+                    findNavController().let {
+                        if (it.currentDestination?.id == R.id.smallPreviewFragment) {
+                            it.navigate(
+                                resId = R.id.action_smallPreviewFragment_to_fullPreviewFragment,
+                                args = null,
+                                navOptions = null,
+                                navigatorExtras = extras,
+                            )
+                        }
+                    }
                 }
             } else {
                 PreviewSelectorBinder.bind(
@@ -355,13 +377,16 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                         FragmentNavigatorExtras(sharedElement to FULL_PREVIEW_SHARED_ELEMENT_ID)
                     // Set to false on small-to-full preview transition to remove surfaceView jank.
                     (view as ViewGroup).isTransitionGroup = false
-                    findNavController()
-                        .navigate(
-                            resId = R.id.action_smallPreviewFragment_to_fullPreviewFragment,
-                            args = null,
-                            navOptions = null,
-                            navigatorExtras = extras,
-                        )
+                    findNavController().let {
+                        if (it.currentDestination?.id == R.id.smallPreviewFragment) {
+                            it.navigate(
+                                resId = R.id.action_smallPreviewFragment_to_fullPreviewFragment,
+                                args = null,
+                                navOptions = null,
+                                navigatorExtras = extras,
+                            )
+                        }
+                    }
                 }
             }
         }

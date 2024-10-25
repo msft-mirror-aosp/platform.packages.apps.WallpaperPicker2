@@ -112,14 +112,21 @@ constructor(
      * Returns true if back pressed is handled due to conditions like users at a secondary screen.
      */
     fun handleBackPressed(): Boolean {
-        if (
-            _currentPreviewScreen.value == PreviewScreen.FULL_PREVIEW ||
-                _currentPreviewScreen.value == PreviewScreen.APPLY_WALLPAPER
-        ) {
+        if (_currentPreviewScreen.value == PreviewScreen.APPLY_WALLPAPER) {
             _currentPreviewScreen.value = PreviewScreen.SMALL_PREVIEW
             return true
+        } else if (_currentPreviewScreen.value == PreviewScreen.FULL_PREVIEW) {
+            _currentPreviewScreen.value = PreviewScreen.SMALL_PREVIEW
+            // TODO(b/367374790): Returns true when shared element transition is removed
+            return false
         }
         return false
+    }
+
+    fun handlePagerTapped() {
+        if (_currentPreviewScreen.value == PreviewScreen.SMALL_PREVIEW) {
+            _currentPreviewScreen.value = PreviewScreen.FULL_PREVIEW
+        }
     }
 
     fun getSmallPreviewTabIndex(): Int {
