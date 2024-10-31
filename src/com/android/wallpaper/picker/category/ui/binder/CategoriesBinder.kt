@@ -25,6 +25,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.RecyclerView
 import com.android.wallpaper.R
 import com.android.wallpaper.picker.category.ui.viewmodel.CategoriesViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /** Binds the wallpaper categories and its meta data to the category screen */
@@ -58,6 +59,13 @@ object CategoriesBinder {
                 }
 
                 launch {
+                    viewModel.isConnectionObtained.distinctUntilChanged().collect { _ ->
+                        // Trigger a refresh of the categories every time the network status changes
+                        viewModel.refreshNetworkCategories()
+                    }
+                }
+
+                launch {
                     viewModel.navigationEvents.collect { navigationEvent ->
                         when (navigationEvent) {
                             is CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection,
@@ -66,7 +74,7 @@ object CategoriesBinder {
                                 // Perform navigation with event.data
                                 navigationHandler(navigationEvent, null)
                             }
-                            CategoriesViewModel.NavigationEvent.NavigateToPhotosPicker -> {
+                            is CategoriesViewModel.NavigationEvent.NavigateToPhotosPicker -> {
                                 navigationHandler(navigationEvent) {
                                     viewModel.updateMyPhotosCategory()
                                 }
