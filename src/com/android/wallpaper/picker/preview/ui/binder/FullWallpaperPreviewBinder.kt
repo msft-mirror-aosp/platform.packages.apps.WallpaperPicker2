@@ -25,7 +25,6 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import android.widget.FrameLayout
-import android.widget.ImageView
 import androidx.cardview.widget.CardView
 import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
@@ -43,18 +42,17 @@ import com.android.wallpaper.picker.preview.shared.model.CropSizeModel
 import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 import com.android.wallpaper.picker.preview.ui.util.SubsamplingScaleImageViewUtil.setOnNewCropListener
 import com.android.wallpaper.picker.preview.ui.view.FullPreviewFrameLayout
+import com.android.wallpaper.picker.preview.ui.view.SystemScaledSubsamplingScaleImageView
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.android.wallpaper.util.DisplayUtils
-import com.android.wallpaper.util.RtlUtils.isRtl
 import com.android.wallpaper.util.SurfaceViewUtils
-import com.android.wallpaper.util.SurfaceViewUtils.attachView
 import com.android.wallpaper.util.WallpaperCropUtils
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.Companion.shouldEnforceSingleEngine
-import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import java.lang.Integer.min
 import kotlin.math.max
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DisposableHandle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -68,12 +66,14 @@ object FullWallpaperPreviewBinder {
         viewModel: WallpaperPreviewViewModel,
         transition: Transition?,
         displayUtils: DisplayUtils,
+        mainScope: CoroutineScope,
         lifecycleOwner: LifecycleOwner,
         savedInstanceState: Bundle?,
         wallpaperConnectionUtils: WallpaperConnectionUtils,
         isFirstBindingDeferred: CompletableDeferred<Boolean>,
         onWallpaperLoaded: ((Boolean) -> Unit)? = null,
     ) {
+        val surfaceView: SurfaceView = view.requireViewById(R.id.wallpaper_surface)
         val wallpaperPreviewCrop: FullPreviewFrameLayout =
             view.requireViewById(R.id.wallpaper_preview_crop)
         val previewCard: CardView = view.requireViewById(R.id.preview_card)
@@ -85,15 +85,13 @@ object FullWallpaperPreviewBinder {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.fullWallpaper.collect { (_, _, displaySize, _) ->
                     val currentSize = displayUtils.getRealSize(checkNotNull(view.context.display))
-                    wallpaperPreviewCrop.setCurrentAndTargetDisplaySize(
-                        currentSize,
-                        displaySize,
-                    )
+                    wallpaperPreviewCrop.setCurrentAndTargetDisplaySize(currentSize, displaySize)
 
                     val setFinalPreviewCardRadiusAndEndLoading = { isWallpaperFullScreen: Boolean ->
                         if (isWallpaperFullScreen) {
                             previewCard.radius = 0f
                         }
+                        surfaceView.cornerRadius = previewCard.radius
                         scrimView.isVisible = isWallpaperFullScreen
                         onWallpaperLoaded?.invoke(isWallpaperFullScreen)
                     }
@@ -131,7 +129,6 @@ object FullWallpaperPreviewBinder {
             }
             transitionDisposableHandle?.dispose()
         }
-        val surfaceView: SurfaceView = view.requireViewById(R.id.wallpaper_surface)
         val surfaceTouchForwardingLayout: TouchForwardingLayout =
             view.requireViewById(R.id.touch_forwarding_layout)
 
@@ -150,7 +147,7 @@ object FullWallpaperPreviewBinder {
                         surfaceTouchForwardingLayout.contentDescription =
                             surfaceTouchForwardingLayout.context.getString(
                                 R.string.preview_screen_description_editable,
-                                descriptionString
+                                descriptionString,
                             )
                     }
                 }
@@ -159,7 +156,7 @@ object FullWallpaperPreviewBinder {
             surfaceTouchForwardingLayout.contentDescription =
                 surfaceTouchForwardingLayout.context.getString(
                     R.string.preview_screen_description_editable,
-                    ""
+                    "",
                 )
         }
 
@@ -172,6 +169,7 @@ object FullWallpaperPreviewBinder {
                         surfaceView = surfaceView,
                         surfaceTouchForwardingLayout = surfaceTouchForwardingLayout,
                         viewModel = viewModel,
+                        mainScope = mainScope,
                         lifecycleOwner = lifecycleOwner,
                         wallpaperConnectionUtils = wallpaperConnectionUtils,
                         isFirstBindingDeferred = isFirstBindingDeferred,
@@ -197,6 +195,7 @@ object FullWallpaperPreviewBinder {
         surfaceView: SurfaceView,
         surfaceTouchForwardingLayout: TouchForwardingLayout,
         viewModel: WallpaperPreviewViewModel,
+        mainScope: CoroutineScope,
         lifecycleOwner: LifecycleOwner,
         wallpaperConnectionUtils: WallpaperConnectionUtils,
         isFirstBindingDeferred: CompletableDeferred<Boolean>,
@@ -204,8 +203,6 @@ object FullWallpaperPreviewBinder {
         return object : SurfaceViewUtils.SurfaceCallback {
 
             var job: Job? = null
-            var surfaceOrigWidth: Int? = null
-            var surfaceOrigHeight: Int? = null
 
             // Suppress lint warning for setting on touch listener to a live wallpaper surface view.
             // This is because the touch effect on a live wallpaper is purely visual, instead of
@@ -213,7 +210,8 @@ object FullWallpaperPreviewBinder {
             @SuppressLint("ClickableViewAccessibility")
             override fun surfaceCreated(holder: SurfaceHolder) {
                 job =
-                    lifecycleOwner.lifecycleScope.launch {
+                    // Ensure the wallpaper connection is connected / disconnected in [mainScope].
+                    mainScope.launch {
                         viewModel.fullWallpaper.collect {
                             (wallpaper, config, displaySize, allowUserCropping, whichPreview) ->
                             if (wallpaper is WallpaperModel.LiveWallpaperModel) {
@@ -248,20 +246,20 @@ object FullWallpaperPreviewBinder {
                                 val preview =
                                     LayoutInflater.from(applicationContext)
                                         .inflate(R.layout.fullscreen_wallpaper_preview, null)
-                                adjustSizeAndAttachPreview(
-                                    applicationContext,
-                                    surfaceOrigWidth
-                                        ?: surfaceView.width.also { surfaceOrigWidth = it },
-                                    surfaceOrigHeight
-                                        ?: surfaceView.height.also { surfaceOrigHeight = it },
-                                    surfaceView,
-                                    preview,
-                                )
 
                                 val fullResImageView =
-                                    preview.requireViewById<SubsamplingScaleImageView>(
+                                    preview.requireViewById<SystemScaledSubsamplingScaleImageView>(
                                         R.id.full_res_image
                                     )
+                                // Bind static wallpaper
+                                StaticWallpaperPreviewBinder.bind(
+                                    staticPreviewView = preview,
+                                    wallpaperSurface = surfaceView,
+                                    viewModel = viewModel.staticWallpaperPreviewViewModel,
+                                    displaySize = displaySize,
+                                    parentCoroutineScope = this,
+                                    isFullScreen = true,
+                                )
                                 fullResImageView.doOnLayout {
                                     val imageSize =
                                         Point(fullResImageView.width, fullResImageView.height)
@@ -271,7 +269,7 @@ object FullWallpaperPreviewBinder {
                                             max(imageSize.x, imageSize.y),
                                             min(imageSize.x, imageSize.y),
                                             imageSize.x,
-                                            imageSize.y
+                                            imageSize.y,
                                         )
                                     fullResImageView.setOnNewCropListener { crop, zoom ->
                                         viewModel.staticWallpaperPreviewViewModel
@@ -287,8 +285,6 @@ object FullWallpaperPreviewBinder {
                                             )
                                     }
                                 }
-                                val lowResImageView =
-                                    preview.requireViewById<ImageView>(R.id.low_res_image)
 
                                 // We do not allow users to pinch to crop if it is a
                                 // downloadable wallpaper.
@@ -297,16 +293,6 @@ object FullWallpaperPreviewBinder {
                                         fullResImageView
                                     )
                                 }
-
-                                // Bind static wallpaper
-                                StaticWallpaperPreviewBinder.bind(
-                                    lowResImageView = lowResImageView,
-                                    fullResImageView = fullResImageView,
-                                    viewModel = viewModel.staticWallpaperPreviewViewModel,
-                                    displaySize = displaySize,
-                                    parentCoroutineScope = this,
-                                    isFullScreen = true,
-                                )
                             }
                         }
                     }
@@ -324,48 +310,6 @@ object FullWallpaperPreviewBinder {
                 // wallpaper services, when going back and forth small and full preview.
             }
         }
-    }
-
-    // When showing full screen, we set the parent SurfaceView to be bigger than the image by N
-    // percent (usually 10%) as given by getSystemWallpaperMaximumScale. This ensures that no matter
-    // what scale and pan is set by the user, at least N% of the source image in the preview will be
-    // preserved around the visible crop. This is needed for system zoom out animations.
-    private fun adjustSizeAndAttachPreview(
-        applicationContext: Context,
-        origWidth: Int,
-        origHeight: Int,
-        surfaceView: SurfaceView,
-        preview: View,
-    ) {
-        val scale = WallpaperCropUtils.getSystemWallpaperMaximumScale(applicationContext)
-
-        val width = (origWidth * scale).toInt()
-        val height = (origHeight * scale).toInt()
-        val left =
-            ((origWidth - width) / 2).let {
-                if (isRtl(applicationContext)) {
-                    -it
-                } else {
-                    it
-                }
-            }
-        val top = (origHeight - height) / 2
-
-        val params = surfaceView.layoutParams
-        params.width = width
-        params.height = height
-        surfaceView.x = left.toFloat()
-        surfaceView.y = top.toFloat()
-        surfaceView.layoutParams = params
-        surfaceView.requestLayout()
-
-        preview.measure(
-            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
-        )
-        preview.layout(0, 0, width, height)
-
-        surfaceView.attachView(preview, width, height)
     }
 
     private fun TouchForwardingLayout.initTouchForwarding(targetView: View) {
