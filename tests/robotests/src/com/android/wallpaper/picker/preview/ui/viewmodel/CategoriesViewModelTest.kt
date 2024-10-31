@@ -21,9 +21,11 @@ import android.content.pm.ActivityInfo
 import androidx.activity.viewModels
 import androidx.test.core.app.ActivityScenario
 import com.android.wallpaper.module.InjectorProvider
+import com.android.wallpaper.module.NetworkStatusNotifier
 import com.android.wallpaper.picker.category.ui.viewmodel.CategoriesViewModel
 import com.android.wallpaper.picker.preview.PreviewTestActivity
 import com.android.wallpaper.testing.TestInjector
+import com.android.wallpaper.testing.TestNetworkStatusNotifier
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -57,6 +59,8 @@ class CategoriesViewModelTest {
     @Inject @ApplicationContext lateinit var appContext: Context
 
     @Inject lateinit var testInjector: TestInjector
+
+    @Inject lateinit var networkStatusNotifier: TestNetworkStatusNotifier
 
     @Before
     fun setUp() {
@@ -154,7 +158,7 @@ class CategoriesViewModelTest {
                     .isEqualTo(
                         CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection(
                             CATEGORY_ID_CELESTIAL_DREAMSCAPES,
-                            CategoriesViewModel.CategoryType.DefaultCategories
+                            CategoriesViewModel.CategoryType.DefaultCategories,
                         )
                     )
 
@@ -177,7 +181,7 @@ class CategoriesViewModelTest {
                     .isEqualTo(
                         CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection(
                             CATEGORY_ID_CYBERPUNK_CITYSCAPE,
-                            CategoriesViewModel.CategoryType.DefaultCategories
+                            CategoriesViewModel.CategoryType.DefaultCategories,
                         )
                     )
                 job.cancelAndJoin()
@@ -197,7 +201,7 @@ class CategoriesViewModelTest {
                     .isEqualTo(
                         CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection(
                             CATEGORY_ID_COSMIC_NEBULA,
-                            CategoriesViewModel.CategoryType.DefaultCategories
+                            CategoriesViewModel.CategoryType.DefaultCategories,
                         )
                     )
                 job.cancelAndJoin()
@@ -220,10 +224,28 @@ class CategoriesViewModelTest {
 
             onClick()
             testDispatcher.scheduler.advanceUntilIdle()
-            assertThat(collectedValues[0])
-                .isEqualTo(CategoriesViewModel.NavigationEvent.NavigateToPhotosPicker)
+            val navigateToPhotosPicker =
+                CategoriesViewModel.NavigationEvent.NavigateToPhotosPicker(null)
+            assertThat(collectedValues[0]).isEqualTo(navigateToPhotosPicker)
             job.cancelAndJoin()
         }
+    }
+
+    @Test
+    fun networkStatus_verifyStatusOnNetworkChange() = runTest {
+        val collectedValues = mutableListOf<Boolean>()
+        val job =
+            launch(testDispatcher) {
+                categoriesViewModel.isConnectionObtained.collect { collectedValues.add(it) }
+            }
+        networkStatusNotifier.setAndNotifyNetworkStatus(NetworkStatusNotifier.NETWORK_NOT_CONNECTED)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertThat(collectedValues[0]).isFalse()
+
+        networkStatusNotifier.setAndNotifyNetworkStatus(NetworkStatusNotifier.NETWORK_CONNECTED)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertThat(collectedValues[1]).isTrue()
+        job.cancelAndJoin()
     }
 
     /**
