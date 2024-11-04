@@ -18,16 +18,20 @@ package com.android.wallpaper.picker.preview.ui.fragment
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.activityViewModels
+import androidx.navigation.NavController
 import androidx.navigation.fragment.findNavController
 import androidx.transition.Transition
 import com.android.wallpaper.R
 import com.android.wallpaper.picker.AppbarFragment
+import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.binder.CropWallpaperButtonBinder
 import com.android.wallpaper.picker.preview.ui.binder.FullWallpaperPreviewBinder
 import com.android.wallpaper.picker.preview.ui.binder.PreviewTooltipBinder
@@ -41,12 +45,14 @@ import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 
 /** Shows full preview of user selected wallpaper for cropping, zooming and positioning. */
 @AndroidEntryPoint(AppbarFragment::class)
 class FullPreviewFragment : Hilt_FullPreviewFragment() {
 
     @Inject @ApplicationContext lateinit var appContext: Context
+    @Inject @MainDispatcher lateinit var mainScope: CoroutineScope
     @Inject lateinit var displayUtils: DisplayUtils
     @Inject lateinit var wallpaperConnectionUtils: WallpaperConnectionUtils
 
@@ -56,6 +62,7 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
     private val isFirstBindingDeferred = CompletableDeferred<Boolean>()
 
     private var useLightToolbar = false
+    private var navigateUpListener: NavController.OnDestinationChangedListener? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,15 +74,36 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         currentView = inflater.inflate(R.layout.fragment_full_preview, container, false)
+
+        navigateUpListener =
+            NavController.OnDestinationChangedListener { _, destination, _ ->
+                if (destination.id == R.id.smallPreviewFragment) {
+                    wallpaperPreviewViewModel.handleBackPressed()
+                    currentView.findViewById<View>(R.id.crop_wallpaper_button)?.isVisible = false
+                    currentView.findViewById<View>(R.id.full_preview_tooltip_stub)?.isVisible =
+                        false
+                    // When navigate up back to small preview, move previews up app window for
+                    // smooth shared element transition. It's the earliest timing to do this, it'll
+                    // be to late in transition started callback.
+                    currentView
+                        .requireViewById<SurfaceView>(R.id.wallpaper_surface)
+                        .setZOrderOnTop(true)
+                    currentView
+                        .requireViewById<SurfaceView>(R.id.workspace_surface)
+                        .setZOrderOnTop(true)
+                }
+            }
+        navigateUpListener?.let { findNavController().addOnDestinationChangedListener(it) }
+
         setUpToolbar(currentView, true, true)
 
         val previewCard: CardView = currentView.requireViewById(R.id.preview_card)
         ViewCompat.setTransitionName(
             previewCard,
-            SmallPreviewFragment.FULL_PREVIEW_SHARED_ELEMENT_ID
+            SmallPreviewFragment.FULL_PREVIEW_SHARED_ELEMENT_ID,
         )
 
         FullWallpaperPreviewBinder.bind(
@@ -84,6 +112,7 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
             viewModel = wallpaperPreviewViewModel,
             transition = sharedElementEnterTransition as? Transition,
             displayUtils = displayUtils,
+            mainScope = mainScope,
             lifecycleOwner = viewLifecycleOwner,
             savedInstanceState = savedInstanceState,
             wallpaperConnectionUtils = wallpaperConnectionUtils,
@@ -98,6 +127,7 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
             viewModel = wallpaperPreviewViewModel,
             lifecycleOwner = viewLifecycleOwner,
         ) {
+            wallpaperPreviewViewModel.handleBackPressed()
             findNavController().popBackStack()
         }
 
@@ -108,7 +138,7 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
         )
 
         PreviewTooltipBinder.bindFullPreviewTooltip(
-            tooltipStub = currentView.requireViewById(R.id.tooltip_stub),
+            tooltipStub = currentView.requireViewById(R.id.full_preview_tooltip_stub),
             viewModel = wallpaperPreviewViewModel.fullTooltipViewModel,
             lifecycleOwner = viewLifecycleOwner,
         )
@@ -119,6 +149,11 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
     override fun onViewStateRestored(savedInstanceState: Bundle?) {
         super.onViewStateRestored(savedInstanceState)
         isFirstBindingDeferred.complete(savedInstanceState == null)
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        navigateUpListener?.let { findNavController().removeOnDestinationChangedListener(it) }
     }
 
     // TODO(b/291761856): Use real string

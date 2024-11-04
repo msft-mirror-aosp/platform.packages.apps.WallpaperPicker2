@@ -22,12 +22,14 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.constraintlayout.motion.widget.MotionLayout
+import androidx.core.view.isInvisible
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.android.wallpaper.R
+import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
@@ -54,7 +56,7 @@ object PreviewActionsBinder {
     fun bind(
         actionGroup: PreviewActionGroup,
         floatingSheet: PreviewActionFloatingSheet,
-        motionLayout: MotionLayout? = null,
+        smallPreview: MotionLayout? = null,
         previewViewModel: WallpaperPreviewViewModel,
         actionsViewModel: PreviewActionsViewModel,
         deviceDisplayType: DeviceDisplayType,
@@ -79,18 +81,27 @@ object PreviewActionsBinder {
                     // when the view is not gone.
                     if (newState == STATE_HIDDEN) {
                         actionsViewModel.onFloatingSheetCollapsed()
-                        motionLayout?.transitionToStart()
+                        if (BaseFlags.get().isNewPickerUi())
+                            smallPreview?.transitionToState(R.id.floating_sheet_gone)
+                        else floatingSheet.isInvisible = true
                     } else {
-                        motionLayout?.transitionToEnd()
+                        if (BaseFlags.get().isNewPickerUi())
+                            smallPreview?.transitionToState(R.id.floating_sheet_visible)
+                        else floatingSheet.isInvisible = false
                     }
                 }
 
                 override fun onSlide(p0: View, p1: Float) {}
             }
-        if (!actionsViewModel.isAnyActionChecked()) {
-            motionLayout?.transitionToStart()
+        val noActionChecked = !actionsViewModel.isAnyActionChecked()
+        if (BaseFlags.get().isNewPickerUi()) {
+            if (noActionChecked) {
+                smallPreview?.transitionToState(R.id.floating_sheet_gone)
+            } else {
+                smallPreview?.transitionToState(R.id.floating_sheet_visible)
+            }
         } else {
-            motionLayout?.transitionToEnd()
+            floatingSheet.isInvisible = noActionChecked
         }
         floatingSheet.addFloatingSheetCallback(floatingSheetCallback)
         lifecycleOwner.lifecycleScope.launch {
@@ -171,7 +182,7 @@ object PreviewActionsBinder {
                                     appContext.contentResolver.delete(
                                         viewModel.creativeWallpaperDeleteUri,
                                         null,
-                                        null
+                                        null,
                                     )
                                 } else if (viewModel.liveWallpaperDeleteIntent != null) {
                                     appContext.startService(viewModel.liveWallpaperDeleteIntent)
@@ -218,7 +229,7 @@ object PreviewActionsBinder {
                                     )
                                     onNavigateToEditScreen.invoke(it)
                                 }
-                            } else null
+                            } else null,
                         )
                     }
                 }
@@ -340,7 +351,7 @@ object PreviewActionsBinder {
                             SHARE,
                             if (it != null) {
                                 { onStartShareActivity.invoke(it) }
-                            } else null
+                            } else null,
                         )
                     }
                 }
