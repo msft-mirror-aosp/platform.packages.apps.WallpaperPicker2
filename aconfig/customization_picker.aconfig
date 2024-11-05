@@ -1,5 +1,5 @@
 package: "com.android.wallpaper"
-container: "system_ext"
+container: "system"
 
 flag {
     name: "wallpaper_restorer_flag"
@@ -27,11 +27,4 @@ flag {
    namespace: "systemui"
    description: "Add reactive variant fonts to some clocks"
    bug: "343495953"
-}
-
-flag {
-    name: "large_screen_wallpaper_collections"
-    namespace: "customization_picker"
-    description: "Enables wallpaper collections for large screen devices."
-    bug: "350781344"
 }
