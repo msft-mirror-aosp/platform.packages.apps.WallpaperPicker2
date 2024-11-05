@@ -74,7 +74,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
 /** View model for the preview action buttons */
@@ -302,7 +301,9 @@ constructor(
                     title = it.title,
                     subtitle = it.subtitle,
                     wallpaperActions = it.actions,
-                    wallpaperEffectSwitchListener = { interactor.turnOnCreativeEffect(it) },
+                    wallpaperEffectSwitchListener = { actionPosition ->
+                        interactor.turnOnCreativeEffect(actionPosition)
+                    },
                 )
             }
         }
@@ -547,6 +548,26 @@ constructor(
             _isCustomizeChecked.value ||
             _isEffectsChecked.value
 
+    val isActionChecked: Flow<Boolean> =
+        combine(
+            isInformationChecked,
+            isDeleteChecked,
+            isEditChecked,
+            isCustomizeChecked,
+            isEffectsChecked,
+        ) {
+            isInformationChecked,
+            isDeleteChecked,
+            isEditChecked,
+            isCustomizeChecked,
+            isEffectsChecked ->
+            isInformationChecked ||
+                isDeleteChecked ||
+                isEditChecked ||
+                isCustomizeChecked ||
+                isEffectsChecked
+        }
+
     private fun uncheckAllOthersExcept(action: Action) {
         if (action != INFORMATION) {
             _isInformationChecked.value = false
@@ -567,6 +588,7 @@ constructor(
 
     companion object {
         const val EXTRA_KEY_IS_CREATE_NEW = "is_create_new"
+        const val EXTRA_WALLPAPER_DESCRIPTION = "wp_description"
 
         private fun WallpaperModel.shouldShowInformationFloatingSheet(): Boolean {
             if (
@@ -618,6 +640,7 @@ constructor(
                     component = ComponentName(systemWallpaperInfo.packageName, settingsActivity)
                     putExtra(WallpaperSettingsActivity.EXTRA_PREVIEW_MODE, true)
                     putExtra(EXTRA_KEY_IS_CREATE_NEW, isCreateNew)
+                    description.content.let { putExtra(EXTRA_WALLPAPER_DESCRIPTION, it) }
                 }
             return intent
         }

@@ -30,14 +30,18 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.transition.Transition
 import androidx.transition.TransitionListenerAdapter
 import com.android.wallpaper.R
+import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.preview.ui.fragment.SmallPreviewFragment
 import com.android.wallpaper.picker.preview.ui.viewmodel.FullPreviewConfigViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
+import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel.Companion.PreviewScreen
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DisposableHandle
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 object SmallPreviewBinder {
@@ -45,11 +49,13 @@ object SmallPreviewBinder {
     fun bind(
         applicationContext: Context,
         view: View,
-        motionLayout: MotionLayout? = null,
+        smallPreview: MotionLayout? = null,
+        previewPager: MotionLayout? = null,
         viewModel: WallpaperPreviewViewModel,
         screen: Screen,
         displaySize: Point,
         deviceDisplayType: DeviceDisplayType,
+        mainScope: CoroutineScope,
         viewLifecycleOwner: LifecycleOwner,
         currentNavDestId: Int,
         navigate: ((View) -> Unit)? = null,
@@ -170,15 +176,23 @@ object SmallPreviewBinder {
                 }
 
                 if (R.id.smallPreviewFragment == currentNavDestId) {
-                    viewModel
-                        .onSmallPreviewClicked(screen, deviceDisplayType) {
-                            navigate?.invoke(previewCard)
+                    combine(
+                            viewModel.onSmallPreviewClicked(screen, deviceDisplayType) {
+                                navigate?.invoke(previewCard)
+                            },
+                            viewModel.currentPreviewScreen,
+                            viewModel.smallPreviewSelectedTab,
+                        ) { onClick, previewScreen, tab ->
+                            Triple(onClick, previewScreen, tab)
                         }
-                        .collect { onClick ->
-                            if (onClick != null) {
-                                view.setOnClickListener { onClick() }
+                        .collect { (onClick, previewScreen, tab) ->
+                            if (BaseFlags.get().isNewPickerUi()) {
+                                if (previewScreen == PreviewScreen.FULL_PREVIEW && tab == screen) {
+                                    onClick?.invoke()
+                                }
                             } else {
-                                view.setOnClickListener(null)
+                                onClick?.let { view.setOnClickListener { it() } }
+                                    ?: view.setOnClickListener(null)
                             }
                         }
                 } else if (R.id.setWallpaperDialog == currentNavDestId) {
@@ -203,6 +217,7 @@ object SmallPreviewBinder {
             viewModel = viewModel,
             displaySize = displaySize,
             applicationContext = applicationContext,
+            mainScope = mainScope,
             viewLifecycleOwner = viewLifecycleOwner,
             deviceDisplayType = deviceDisplayType,
             wallpaperConnectionUtils = wallpaperConnectionUtils,
