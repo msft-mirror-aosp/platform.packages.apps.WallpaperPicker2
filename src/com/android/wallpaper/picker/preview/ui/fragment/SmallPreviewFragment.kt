@@ -343,69 +343,69 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
         isNewPickerUi: Boolean,
     ) {
         val tabs = view.findViewById<PreviewTabs>(R.id.preview_tabs_container)
-        if (isFoldable) {
-            val dualPreviewView: DualPreviewViewPager = view.requireViewById(R.id.pager_previews)
 
-            DualPreviewSelectorBinder.bind(
-                tabs,
-                dualPreviewView,
-                smallPreview,
-                wallpaperPreviewViewModel,
-                appContext,
-                mainScope,
-                viewLifecycleOwner,
-                (reenterTransition as Transition?),
-                wallpaperPreviewViewModel.fullPreviewConfigViewModel.value,
-                wallpaperConnectionUtils,
-                isFirstBindingDeferred,
+        if (isNewPickerUi) {
+            SmallPreviewScreenBinder.bind(
+                applicationContext = appContext,
+                mainScope = mainScope,
+                lifecycleOwner = viewLifecycleOwner,
+                fragmentLayout = view as MotionLayout,
+                viewModel = wallpaperPreviewViewModel,
+                previewDisplaySize = displayUtils.getRealSize(displayUtils.getWallpaperDisplay()),
+                transition = (reenterTransition as Transition?),
+                transitionConfig = wallpaperPreviewViewModel.fullPreviewConfigViewModel.value,
+                wallpaperConnectionUtils = wallpaperConnectionUtils,
+                isFirstBindingDeferred = isFirstBindingDeferred,
+                isFoldable = isFoldable,
             ) { sharedElement ->
                 val extras =
                     FragmentNavigatorExtras(sharedElement to FULL_PREVIEW_SHARED_ELEMENT_ID)
                 // Set to false on small-to-full preview transition to remove surfaceView jank.
                 (view as ViewGroup).isTransitionGroup = false
-                findNavController()
-                    .navigate(
-                        resId = R.id.action_smallPreviewFragment_to_fullPreviewFragment,
-                        args = null,
-                        navOptions = null,
-                        navigatorExtras = extras,
-                    )
+                findNavController().let {
+                    if (it.currentDestination?.id == R.id.smallPreviewFragment) {
+                        it.navigate(
+                            resId = R.id.action_smallPreviewFragment_to_fullPreviewFragment,
+                            args = null,
+                            navOptions = null,
+                            navigatorExtras = extras,
+                        )
+                    }
+                }
             }
         } else {
-            if (isNewPickerUi) {
-                SmallPreviewScreenBinder.bind(
-                    applicationContext = appContext,
-                    mainScope = mainScope,
-                    lifecycleOwner = viewLifecycleOwner,
-                    fragmentLayout = view as MotionLayout,
-                    viewModel = wallpaperPreviewViewModel,
-                    previewDisplaySize =
-                        displayUtils.getRealSize(displayUtils.getWallpaperDisplay()),
-                    transition = (reenterTransition as Transition?),
-                    transitionConfig = wallpaperPreviewViewModel.fullPreviewConfigViewModel.value,
-                    wallpaperConnectionUtils = wallpaperConnectionUtils,
-                    isFirstBindingDeferred = isFirstBindingDeferred,
+            if (isFoldable) {
+                val dualPreviewView: DualPreviewViewPager =
+                    view.requireViewById(R.id.pager_previews)
+
+                DualPreviewSelectorBinder.bind(
+                    tabs,
+                    dualPreviewView,
+                    wallpaperPreviewViewModel,
+                    appContext,
+                    mainScope,
+                    viewLifecycleOwner,
+                    (reenterTransition as Transition?),
+                    wallpaperPreviewViewModel.fullPreviewConfigViewModel.value,
+                    wallpaperConnectionUtils,
+                    isFirstBindingDeferred,
                 ) { sharedElement ->
                     val extras =
                         FragmentNavigatorExtras(sharedElement to FULL_PREVIEW_SHARED_ELEMENT_ID)
                     // Set to false on small-to-full preview transition to remove surfaceView jank.
                     (view as ViewGroup).isTransitionGroup = false
-                    findNavController().let {
-                        if (it.currentDestination?.id == R.id.smallPreviewFragment) {
-                            it.navigate(
-                                resId = R.id.action_smallPreviewFragment_to_fullPreviewFragment,
-                                args = null,
-                                navOptions = null,
-                                navigatorExtras = extras,
-                            )
-                        }
-                    }
+                    findNavController()
+                        .navigate(
+                            resId = R.id.action_smallPreviewFragment_to_fullPreviewFragment,
+                            args = null,
+                            navOptions = null,
+                            navigatorExtras = extras,
+                        )
                 }
             } else {
                 PreviewSelectorBinder.bind(
                     tabs,
                     view.findViewById(R.id.pager_previews),
-                    smallPreview,
                     displayUtils.getRealSize(displayUtils.getWallpaperDisplay()),
                     wallpaperPreviewViewModel,
                     appContext,
