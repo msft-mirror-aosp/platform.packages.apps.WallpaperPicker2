@@ -22,10 +22,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.transition.Slide
-import android.view.GestureDetector
 import android.view.Gravity
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
@@ -140,10 +138,7 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
             else null
         val previewPager =
             if (isNewPickerUi) currentView.findViewById<MotionLayout>(R.id.preview_pager) else null
-        previewPager?.let {
-            setUpTransitionListener(it)
-            setUpTapListener(it)
-        }
+        previewPager?.let { setUpTransitionListener(it) }
         if (isNewPickerUi) {
             requireActivity().onBackPressedDispatcher.let {
                 it.addCallback {
@@ -154,13 +149,7 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
         }
 
         setUpToolbar(currentView, /* upArrow= */ true, /* transparentToolbar= */ true)
-        bindScreenPreview(
-            currentView,
-            smallPreview,
-            isFirstBindingDeferred,
-            isFoldable,
-            isNewPickerUi,
-        )
+        bindScreenPreview(currentView, isFirstBindingDeferred, isFoldable, isNewPickerUi)
         bindPreviewActions(currentView, smallPreview)
 
         if (isNewPickerUi) {
@@ -321,23 +310,8 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
         )
     }
 
-    private fun setUpTapListener(previewPager: MotionLayout) {
-        val gestureDetector =
-            GestureDetector(
-                requireContext().applicationContext,
-                object : GestureDetector.SimpleOnGestureListener() {
-                    override fun onSingleTapUp(e: MotionEvent): Boolean {
-                        wallpaperPreviewViewModel.handlePagerTapped()
-                        return true
-                    }
-                },
-            )
-        previewPager.setOnTouchListener { _, event -> gestureDetector.onTouchEvent(event) }
-    }
-
     private fun bindScreenPreview(
         view: View,
-        smallPreview: MotionLayout?,
         isFirstBindingDeferred: CompletableDeferred<Boolean>,
         isFoldable: Boolean,
         isNewPickerUi: Boolean,
