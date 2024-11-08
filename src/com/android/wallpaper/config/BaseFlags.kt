@@ -15,7 +15,6 @@
  */
 package com.android.wallpaper.config
 
-import android.app.WallpaperManager
 import android.content.Context
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClient
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClientImpl
@@ -42,7 +41,7 @@ abstract class BaseFlags {
      */
     open fun isMultiCropPreviewUiEnabled() = false
 
-    open fun isMultiCropEnabled() = WallpaperManager.isMultiCropEnabled()
+    open fun isMultiCropEnabled() = false
 
     open fun isUseRevampedUiEnabled(context: Context): Boolean {
         return getCachedFlags(context)
