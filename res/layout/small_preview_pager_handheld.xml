@@ -14,7 +14,7 @@
   ~ limitations under the License.
   ~
   -->
-<androidx.constraintlayout.motion.widget.MotionLayout
+<com.android.wallpaper.picker.preview.ui.view.ClickableMotionLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/preview_pager"
@@ -99,4 +99,4 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         app:layout_constraintGuide_percent="0.5" />
-</androidx.constraintlayout.motion.widget.MotionLayout>
+</com.android.wallpaper.picker.preview.ui.view.ClickableMotionLayout>
