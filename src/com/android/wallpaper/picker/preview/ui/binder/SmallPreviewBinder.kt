@@ -183,10 +183,11 @@ object SmallPreviewBinder {
                             Triple(onClick, previewScreen, tab)
                         }
                         .collect { (onClick, previewScreen, tab) ->
-                            if (BaseFlags.get().isNewPickerUi()) {
-                                if (previewScreen == PreviewScreen.FULL_PREVIEW && tab == screen) {
-                                    onClick?.invoke()
-                                }
+                            if (
+                                BaseFlags.get().isNewPickerUi() &&
+                                    previewScreen != PreviewScreen.SMALL_PREVIEW
+                            ) {
+                                view.setOnClickListener(null)
                             } else {
                                 onClick?.let { view.setOnClickListener { it() } }
                                     ?: view.setOnClickListener(null)
