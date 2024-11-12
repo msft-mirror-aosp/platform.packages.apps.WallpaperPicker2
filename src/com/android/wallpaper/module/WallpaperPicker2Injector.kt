@@ -69,6 +69,15 @@ open class WallpaperPicker2Injector
 constructor(
     @MainDispatcher private val mainScope: CoroutineScope,
     @BackgroundDispatcher private val bgDispatcher: CoroutineDispatcher,
+    private val displayUtils: Lazy<DisplayUtils>,
+    private val requester: Lazy<Requester>,
+    private val networkStatusNotifier: Lazy<NetworkStatusNotifier>,
+    private val partnerProvider: Lazy<PartnerProvider>,
+    private val uiModeManager: Lazy<UiModeManagerWrapper>,
+    private val userEventLogger: Lazy<UserEventLogger>,
+    private val injectedWallpaperClient: Lazy<WallpaperClient>,
+    private val injectedWallpaperInteractor: Lazy<WallpaperInteractor>,
+    private val prefs: Lazy<WallpaperPreferences>,
 ) : Injector {
     private var alarmManagerWrapper: AlarmManagerWrapper? = null
     private var bitmapCropper: BitmapCropper? = null
@@ -93,17 +102,6 @@ constructor(
     private var wallpaperColorsRepository: WallpaperColorsRepository? = null
     private var previewActivityIntentFactory: InlinePreviewIntentFactory? = null
     private var viewOnlyPreviewActivityIntentFactory: InlinePreviewIntentFactory? = null
-
-    // Injected objects, sorted by alphabetical order on the type of object
-    @Inject lateinit var displayUtils: Lazy<DisplayUtils>
-    @Inject lateinit var requester: Lazy<Requester>
-    @Inject lateinit var networkStatusNotifier: Lazy<NetworkStatusNotifier>
-    @Inject lateinit var partnerProvider: Lazy<PartnerProvider>
-    @Inject lateinit var uiModeManager: Lazy<UiModeManagerWrapper>
-    @Inject lateinit var userEventLogger: Lazy<UserEventLogger>
-    @Inject lateinit var injectedWallpaperClient: Lazy<WallpaperClient>
-    @Inject lateinit var injectedWallpaperInteractor: Lazy<WallpaperInteractor>
-    @Inject lateinit var prefs: Lazy<WallpaperPreferences>
 
     override fun getApplicationCoroutineScope(): CoroutineScope {
         return mainScope
@@ -163,9 +161,7 @@ constructor(
             ?: DefaultDrawableLayerResolver().also { drawableLayerResolver = it }
     }
 
-    override fun getEffectsController(
-        context: Context,
-    ): EffectsController? {
+    override fun getEffectsController(context: Context): EffectsController? {
         return null
     }
 
@@ -281,7 +277,7 @@ constructor(
     override fun getWallpaperStatusChecker(context: Context): WallpaperStatusChecker {
         return wallpaperStatusChecker
             ?: DefaultWallpaperStatusChecker(
-                    wallpaperManager = WallpaperManager.getInstance(context.applicationContext),
+                    wallpaperManager = WallpaperManager.getInstance(context.applicationContext)
                 )
                 .also { wallpaperStatusChecker = it }
     }
@@ -292,7 +288,7 @@ constructor(
 
     override fun getUndoInteractor(
         context: Context,
-        lifecycleOwner: LifecycleOwner
+        lifecycleOwner: LifecycleOwner,
     ): UndoInteractor {
         return undoInteractor
             ?: UndoInteractor(
@@ -317,7 +313,7 @@ constructor(
                             client = getWallpaperClient(context),
                             wallpaperPreferences = getPreferences(context = appContext),
                             backgroundDispatcher = bgDispatcher,
-                        ),
+                        )
                 )
                 .also { wallpaperInteractor = it }
     }
@@ -362,7 +358,7 @@ constructor(
 
     override fun getWallpaperColorResources(
         wallpaperColors: WallpaperColors,
-        context: Context
+        context: Context,
     ): WallpaperColorResources {
         return DefaultWallpaperColorResources(wallpaperColors)
     }
