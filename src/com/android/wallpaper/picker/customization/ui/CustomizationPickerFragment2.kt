@@ -327,13 +327,8 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
                     lifecycleOwner = this@CustomizationPickerFragment2,
                     wallpaperConnectionUtils = wallpaperConnectionUtils,
                     isFirstBindingDeferred = CompletableDeferred(isFirstBinding),
-                    onClick = {
-                        previewViewModel.wallpapers.value?.let {
-                            val wallpaper =
-                                if (screen == HOME_SCREEN) it.homeWallpaper
-                                else it.lockWallpaper ?: it.homeWallpaper
-                            persistentWallpaperModelRepository.setWallpaperModel(wallpaper)
-                        }
+                    onLaunchPreview = { wallpaperModel ->
+                        persistentWallpaperModelRepository.setWallpaperModel(wallpaperModel)
                         val multiPanesChecker = LargeScreenMultiPanesChecker()
                         val isMultiPanel = multiPanesChecker.isMultiPanesEnabled(appContext)
                         startForResult.launch(
