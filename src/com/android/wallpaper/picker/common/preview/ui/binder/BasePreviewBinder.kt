@@ -23,6 +23,7 @@ import androidx.lifecycle.LifecycleOwner
 import com.android.wallpaper.R
 import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
+import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import kotlinx.coroutines.CompletableDeferred
@@ -41,6 +42,7 @@ object BasePreviewBinder {
         applicationContext: Context,
         view: View,
         viewModel: CustomizationPickerViewModel2,
+        colorUpdateViewModel: ColorUpdateViewModel,
         workspaceCallbackBinder: WorkspaceCallbackBinder,
         screen: Screen,
         deviceDisplayType: DeviceDisplayType,
@@ -70,6 +72,7 @@ object BasePreviewBinder {
         WorkspacePreviewBinder.bind(
             surfaceView = view.requireViewById(R.id.workspace_surface),
             viewModel = viewModel,
+            colorUpdateViewModel = colorUpdateViewModel,
             workspaceCallbackBinder = workspaceCallbackBinder,
             screen = screen,
             deviceDisplayType = deviceDisplayType,

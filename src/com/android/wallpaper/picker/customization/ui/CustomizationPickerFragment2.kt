@@ -301,8 +301,10 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
                         }
                     if (clockHostView != null) {
                         customizationOptionsBinder.bindClockPreview(
+                            context = context,
                             clockHostView = clockHostView,
                             viewModel = customizationPickerViewModel,
+                            colorUpdateViewModel = colorUpdateViewModel,
                             lifecycleOwner = this@CustomizationPickerFragment2,
                             clockViewFactory = clockViewFactory,
                         )
@@ -313,6 +315,7 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
                     applicationContext = appContext,
                     view = previewCard,
                     viewModel = customizationPickerViewModel,
+                    colorUpdateViewModel = colorUpdateViewModel,
                     workspaceCallbackBinder = workspaceCallbackBinder,
                     screen = screen,
                     deviceDisplayType = displayUtils.getCurrentDisplayType(activity),
