@@ -71,8 +71,18 @@ import kotlinx.coroutines.Dispatchers
 
 /** Test implementation of [Injector] */
 @Singleton
-open class TestInjector @Inject constructor(private val userEventLogger: UserEventLogger) :
-    Injector {
+open class TestInjector
+@Inject
+constructor(
+    private val userEventLogger: UserEventLogger,
+    private val displayUtils: DisplayUtils,
+    private val requester: Requester,
+    private val networkStatusNotifier: NetworkStatusNotifier,
+    private val partnerProvider: PartnerProvider,
+    private val wallpaperClient: FakeWallpaperClient,
+    private val injectedWallpaperInteractor: WallpaperInteractor,
+    private val prefs: WallpaperPreferences,
+) : Injector {
     private var appScope: CoroutineScope? = null
     private var alarmManagerWrapper: AlarmManagerWrapper? = null
     private var bitmapCropper: BitmapCropper? = null
@@ -94,15 +104,6 @@ open class TestInjector @Inject constructor(private val userEventLogger: UserEve
     private var wallpaperColorsRepository: WallpaperColorsRepository? = null
     private var previewActivityIntentFactory: InlinePreviewIntentFactory? = null
     private var viewOnlyPreviewActivityIntentFactory: InlinePreviewIntentFactory? = null
-
-    // Injected objects, sorted by alphabetical order of the type of object
-    @Inject lateinit var displayUtils: DisplayUtils
-    @Inject lateinit var requester: Requester
-    @Inject lateinit var networkStatusNotifier: NetworkStatusNotifier
-    @Inject lateinit var partnerProvider: PartnerProvider
-    @Inject lateinit var wallpaperClient: FakeWallpaperClient
-    @Inject lateinit var injectedWallpaperInteractor: WallpaperInteractor
-    @Inject lateinit var prefs: WallpaperPreferences
 
     override fun getApplicationCoroutineScope(): CoroutineScope {
         return appScope ?: CoroutineScope(Dispatchers.Main).also { appScope = it }
@@ -149,9 +150,7 @@ open class TestInjector @Inject constructor(private val userEventLogger: UserEve
             ?: TestDrawableLayerResolver().also { drawableLayerResolver = it }
     }
 
-    override fun getEffectsController(
-        context: Context,
-    ): EffectsController? {
+    override fun getEffectsController(context: Context): EffectsController? {
         return null
     }
 
@@ -161,7 +160,7 @@ open class TestInjector @Inject constructor(private val userEventLogger: UserEve
 
     override fun getIndividualPickerFragment(
         context: Context,
-        collectionId: String
+        collectionId: String,
     ): IndividualPickerFragment {
         return IndividualPickerFragment.newInstance(collectionId)
     }
@@ -257,13 +256,13 @@ open class TestInjector @Inject constructor(private val userEventLogger: UserEve
 
     override fun getUndoInteractor(
         context: Context,
-        lifecycleOwner: LifecycleOwner
+        lifecycleOwner: LifecycleOwner,
     ): UndoInteractor {
         return undoInteractor
             ?: UndoInteractor(
                 getApplicationCoroutineScope(),
                 UndoRepository(),
-                HashMap()
+                HashMap(),
             ) // Empty because we don't support undoing in WallpaperPicker2..also{}
     }
 
@@ -280,7 +279,7 @@ open class TestInjector @Inject constructor(private val userEventLogger: UserEve
                             client = getWallpaperClient(context),
                             wallpaperPreferences = getPreferences(context = context),
                             backgroundDispatcher = Dispatchers.IO,
-                        ),
+                        )
                 )
                 .also { wallpaperInteractor = it }
     }
@@ -296,7 +295,7 @@ open class TestInjector @Inject constructor(private val userEventLogger: UserEve
 
     override fun getWallpaperColorResources(
         wallpaperColors: WallpaperColors,
-        context: Context
+        context: Context,
     ): WallpaperColorResources {
         return DefaultWallpaperColorResources(wallpaperColors)
     }
