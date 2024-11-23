@@ -107,7 +107,8 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
         // Set wallpaper without downscaling directly from an input stream if there's no crop rect
         // specified by the caller and the asset is streamable.
 
-        if (mWallpaperManager.isMultiCropEnabled() && (!(asset instanceof StreamableAsset))) {
+        boolean isMultiCropEnabled = false;
+        if (isMultiCropEnabled && (!(asset instanceof StreamableAsset))) {
             asset.decodeBitmap(bitmap -> {
                 if (bitmap == null) {
                     callback.onError(null /* throwable */);
@@ -118,7 +119,7 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
             return;
         }
 
-        if ((cropRect == null || mWallpaperManager.isMultiCropEnabled())
+        if ((cropRect == null || isMultiCropEnabled)
                 && asset instanceof StreamableAsset) {
             ((StreamableAsset) asset).fetchInputStream(new StreamReceiver() {
                 @Override
@@ -344,7 +345,8 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
                 (int) Math.floor((float) cropRect.bottom / minWallpaperZoom));
 
         // Scale and crop the bitmap
-        if (!mWallpaperManager.isMultiCropEnabled()) {
+        boolean isMultiCropEnabled = false;
+        if (!isMultiCropEnabled) {
             wallpaperBitmap = Bitmap.createBitmap(wallpaperBitmap,
                     scaledCropRect.left,
                     scaledCropRect.top,
@@ -352,7 +354,7 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
                     scaledCropRect.height());
         }
         int whichWallpaper = getDefaultWhichWallpaper();
-        scaledCropRect = mWallpaperManager.isMultiCropEnabled() ? scaledCropRect : null;
+        scaledCropRect = isMultiCropEnabled ? scaledCropRect : null;
 
         int wallpaperId = setBitmapToWallpaperManager(wallpaperBitmap, scaledCropRect,
                 /* allowBackup */ false, whichWallpaper);
