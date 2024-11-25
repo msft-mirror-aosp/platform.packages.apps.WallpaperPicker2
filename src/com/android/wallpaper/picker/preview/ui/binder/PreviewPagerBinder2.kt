@@ -23,6 +23,9 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.transition.Transition
 import com.android.wallpaper.R
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
+import com.android.wallpaper.picker.preview.ui.view.ClickableMotionLayout
+import com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout
+import com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout.Companion.getViewId
 import com.android.wallpaper.picker.preview.ui.viewmodel.FullPreviewConfigViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
@@ -45,35 +48,72 @@ object PreviewPagerBinder2 {
         transitionConfig: FullPreviewConfigViewModel?,
         wallpaperConnectionUtils: WallpaperConnectionUtils,
         isFirstBindingDeferred: CompletableDeferred<Boolean>,
+        isFoldable: Boolean,
         navigate: (View) -> Unit,
     ) {
-        val previewPager = smallPreview.requireViewById<MotionLayout>(R.id.preview_pager)
-        pagerItems.forEach {
-            val container = previewPager.requireViewById<View>(it)
+        val previewPager = smallPreview.requireViewById<ClickableMotionLayout>(R.id.preview_pager)
+        pagerItems.forEach { item ->
+            val container = previewPager.requireViewById<View>(item)
             PreviewTooltipBinder.bindSmallPreviewTooltip(
                 tooltipStub = container.requireViewById(R.id.small_preview_tooltip_stub),
                 viewModel = viewModel.smallTooltipViewModel,
                 lifecycleOwner = lifecycleOwner,
             )
 
-            SmallPreviewBinder.bind(
-                applicationContext = applicationContext,
-                view = container.requireViewById(R.id.preview),
-                smallPreview = smallPreview,
-                previewPager = previewPager,
-                viewModel = viewModel,
-                screen = viewModel.smallPreviewTabs[pagerItems.indexOf(it)],
-                displaySize = previewDisplaySize,
-                deviceDisplayType = DeviceDisplayType.SINGLE,
-                mainScope = mainScope,
-                viewLifecycleOwner = lifecycleOwner,
-                currentNavDestId = R.id.smallPreviewFragment,
-                transition = transition,
-                transitionConfig = transitionConfig,
-                isFirstBindingDeferred = isFirstBindingDeferred,
-                wallpaperConnectionUtils = wallpaperConnectionUtils,
-                navigate = navigate,
-            )
+            if (isFoldable) {
+                val dualDisplayAspectRatioLayout: DualDisplayAspectRatioLayout =
+                    container.requireViewById(R.id.dual_preview)
+                val displaySizes =
+                    mapOf(
+                        DeviceDisplayType.FOLDED to viewModel.smallerDisplaySize,
+                        DeviceDisplayType.UNFOLDED to viewModel.wallpaperDisplaySize.value,
+                    )
+                dualDisplayAspectRatioLayout.setDisplaySizes(displaySizes)
+                previewPager.setClickableViewIds(
+                    DeviceDisplayType.FOLDABLE_DISPLAY_TYPES.map { it.getViewId() }
+                )
+                DeviceDisplayType.FOLDABLE_DISPLAY_TYPES.forEach { display ->
+                    dualDisplayAspectRatioLayout.getPreviewDisplaySize(display)?.let { displaySize
+                        ->
+                        SmallPreviewBinder.bind(
+                            applicationContext = applicationContext,
+                            view =
+                                dualDisplayAspectRatioLayout.requireViewById(display.getViewId()),
+                            viewModel = viewModel,
+                            screen = viewModel.smallPreviewTabs[pagerItems.indexOf(item)],
+                            displaySize = displaySize,
+                            deviceDisplayType = display,
+                            mainScope = mainScope,
+                            viewLifecycleOwner = lifecycleOwner,
+                            currentNavDestId = R.id.smallPreviewFragment,
+                            transition = transition,
+                            transitionConfig = transitionConfig,
+                            wallpaperConnectionUtils = wallpaperConnectionUtils,
+                            isFirstBindingDeferred = isFirstBindingDeferred,
+                            navigate = navigate,
+                        )
+                    }
+                }
+            } else {
+                val previewViewId = R.id.preview
+                previewPager.setClickableViewIds(listOf(previewViewId))
+                SmallPreviewBinder.bind(
+                    applicationContext = applicationContext,
+                    view = container.requireViewById(previewViewId),
+                    viewModel = viewModel,
+                    screen = viewModel.smallPreviewTabs[pagerItems.indexOf(item)],
+                    displaySize = previewDisplaySize,
+                    deviceDisplayType = DeviceDisplayType.SINGLE,
+                    mainScope = mainScope,
+                    viewLifecycleOwner = lifecycleOwner,
+                    currentNavDestId = R.id.smallPreviewFragment,
+                    transition = transition,
+                    transitionConfig = transitionConfig,
+                    wallpaperConnectionUtils = wallpaperConnectionUtils,
+                    isFirstBindingDeferred = isFirstBindingDeferred,
+                    navigate = navigate,
+                )
+            }
         }
     }
 }
