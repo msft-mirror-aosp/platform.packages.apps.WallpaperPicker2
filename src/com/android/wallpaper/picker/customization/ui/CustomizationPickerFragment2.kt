@@ -42,6 +42,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnLayout
 import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.commit
+import androidx.fragment.app.replace
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
@@ -51,12 +53,14 @@ import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.Screen.HOME_SCREEN
 import com.android.wallpaper.model.Screen.LOCK_SCREEN
 import com.android.wallpaper.module.LargeScreenMultiPanesChecker
+import com.android.wallpaper.picker.category.ui.view.CategoriesFragment
 import com.android.wallpaper.picker.common.preview.data.repository.PersistentWallpaperModelRepository
 import com.android.wallpaper.picker.common.preview.ui.binder.BasePreviewBinder
 import com.android.wallpaper.picker.common.preview.ui.binder.WorkspaceCallbackBinder
 import com.android.wallpaper.picker.customization.ui.binder.ColorUpdateBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationPickerBinder2
+import com.android.wallpaper.picker.customization.ui.binder.PagerTouchInterceptorBinder
 import com.android.wallpaper.picker.customization.ui.binder.ToolbarBinder
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil.CustomizationOption
@@ -66,6 +70,7 @@ import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewMo
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
 import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity
+import com.android.wallpaper.util.ActivityUtils
 import com.android.wallpaper.util.DisplayUtils
 import com.android.wallpaper.util.WallpaperConnection
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
@@ -108,6 +113,12 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
         savedInstanceState: Bundle?,
     ): View? {
         configuration = Configuration(resources.configuration)
+
+        val isFromLauncher =
+            activity?.intent?.let { ActivityUtils.isLaunchedFromLauncher(it) } ?: false
+        if (isFromLauncher) {
+            customizationPickerViewModel.selectPreviewScreen(HOME_SCREEN)
+        }
 
         val view = inflater.inflate(R.layout.fragment_customization_picker2, container, false)
 
@@ -165,7 +176,11 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
         // TODO (b/348462236): adjust flow so this is always false when previewing current wallpaper
         previewViewModel.setIsWallpaperColorPreviewEnabled(false)
 
-        initPreviewPager(view = view, isFirstBinding = savedInstanceState == null)
+        initPreviewPager(
+            view = view,
+            isFirstBinding = savedInstanceState == null,
+            initialScreen = if (isFromLauncher) HOME_SCREEN else LOCK_SCREEN,
+        )
 
         val optionContainer =
             view.requireViewById<MotionLayout>(R.id.customization_option_container)
@@ -214,8 +229,13 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
                     }
                 }
             },
-            navigateToCategoriesScreen = { screen ->
-                // TODO (b/368343524): Fragment transition to CategoriesFragment
+            navigateToCategoriesScreen = { _ ->
+                if (isAdded) {
+                    parentFragmentManager.commit {
+                        replace<CategoriesFragment>(R.id.fragment_container)
+                        addToBackStack(null)
+                    }
+                }
             },
         )
 
@@ -276,9 +296,16 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
         }
     }
 
-    private fun initPreviewPager(view: View, isFirstBinding: Boolean) {
+    private fun initPreviewPager(view: View, isFirstBinding: Boolean, initialScreen: Screen) {
         val appContext = context?.applicationContext ?: return
         val activity = activity ?: return
+
+        PagerTouchInterceptorBinder.bind(
+            view.requireViewById(R.id.pager_touch_interceptor),
+            customizationPickerViewModel,
+            viewLifecycleOwner,
+        )
+
         val pager = view.requireViewById<ViewPager2>(R.id.preview_pager)
         val previewViewModel = customizationPickerViewModel.basePreviewViewModel
         pager.apply {
@@ -301,8 +328,10 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
                         }
                     if (clockHostView != null) {
                         customizationOptionsBinder.bindClockPreview(
+                            context = context,
                             clockHostView = clockHostView,
                             viewModel = customizationPickerViewModel,
+                            colorUpdateViewModel = colorUpdateViewModel,
                             lifecycleOwner = this@CustomizationPickerFragment2,
                             clockViewFactory = clockViewFactory,
                         )
@@ -313,6 +342,7 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
                     applicationContext = appContext,
                     view = previewCard,
                     viewModel = customizationPickerViewModel,
+                    colorUpdateViewModel = colorUpdateViewModel,
                     workspaceCallbackBinder = workspaceCallbackBinder,
                     screen = screen,
                     deviceDisplayType = displayUtils.getCurrentDisplayType(activity),
@@ -324,13 +354,8 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
                     lifecycleOwner = this@CustomizationPickerFragment2,
                     wallpaperConnectionUtils = wallpaperConnectionUtils,
                     isFirstBindingDeferred = CompletableDeferred(isFirstBinding),
-                    onClick = {
-                        previewViewModel.wallpapers.value?.let {
-                            val wallpaper =
-                                if (screen == HOME_SCREEN) it.homeWallpaper
-                                else it.lockWallpaper ?: it.homeWallpaper
-                            persistentWallpaperModelRepository.setWallpaperModel(wallpaper)
-                        }
+                    onLaunchPreview = { wallpaperModel ->
+                        persistentWallpaperModelRepository.setWallpaperModel(wallpaperModel)
                         val multiPanesChecker = LargeScreenMultiPanesChecker()
                         val isMultiPanel = multiPanesChecker.isMultiPanesEnabled(appContext)
                         startForResult.launch(
@@ -344,6 +369,13 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
                     },
                 )
             }
+            setCurrentItem(
+                when (initialScreen) {
+                    LOCK_SCREEN -> 0
+                    HOME_SCREEN -> 1
+                },
+                false,
+            )
             // Disable over scroll
             (getChildAt(0) as RecyclerView).overScrollMode = RecyclerView.OVER_SCROLL_NEVER
             // The neighboring view should be inflated when pager is rendered

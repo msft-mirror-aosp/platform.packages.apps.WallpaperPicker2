@@ -29,6 +29,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.transition.Transition
 import com.android.wallpaper.R
 import com.android.wallpaper.model.Screen
+import com.android.wallpaper.picker.preview.ui.view.ClickableMotionLayout
 import com.android.wallpaper.picker.preview.ui.viewmodel.FullPreviewConfigViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel.Companion.PreviewScreen
@@ -50,9 +51,10 @@ object SmallPreviewScreenBinder {
         transitionConfig: FullPreviewConfigViewModel?,
         wallpaperConnectionUtils: WallpaperConnectionUtils,
         isFirstBindingDeferred: CompletableDeferred<Boolean>,
+        isFoldable: Boolean,
         navigate: (View) -> Unit,
     ) {
-        val previewPager = fragmentLayout.requireViewById<MotionLayout>(R.id.preview_pager)
+        val previewPager = fragmentLayout.requireViewById<ClickableMotionLayout>(R.id.preview_pager)
         val previewPagerContainer =
             fragmentLayout.requireViewById<MotionLayout>(R.id.small_preview_container)
         val nextButton = fragmentLayout.requireViewById<Button>(R.id.button_next)
@@ -68,6 +70,7 @@ object SmallPreviewScreenBinder {
             transitionConfig,
             wallpaperConnectionUtils,
             isFirstBindingDeferred,
+            isFoldable,
             navigate,
         )
 
@@ -106,11 +109,18 @@ object SmallPreviewScreenBinder {
                                         R.id.show_apply_wallpaper
                                     )
                                     previewPager.transitionToState(
-                                        R.id.apply_wallpaper_preview_only
+                                        if (isFoldable) R.id.apply_wallpaper_lock_preview_selected
+                                        else R.id.apply_wallpaper_preview_only
                                     )
                                 }
                             }
                         }
+                }
+
+                launch {
+                    viewModel.shouldEnableClickOnPager.collect {
+                        previewPager.shouldInterceptTouch = it
+                    }
                 }
 
                 launch {
