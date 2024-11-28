@@ -35,6 +35,7 @@ import com.android.wallpaper.picker.common.icon.ui.viewbinder.ContentDescription
 import com.android.wallpaper.picker.common.text.ui.viewbinder.TextViewBinder
 import com.android.wallpaper.picker.option.ui.view.OptionItemBackground
 import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel
+import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel2
 import kotlinx.coroutines.DisposableHandle
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flatMapLatest
@@ -66,12 +67,12 @@ object OptionItemBinder2 {
      */
     fun bind(
         view: View,
-        viewModel: OptionItemViewModel<*>,
+        viewModel: OptionItemViewModel2<*>,
         lifecycleOwner: LifecycleOwner,
         animationSpec: AnimationSpec = AnimationSpec(),
     ): DisposableHandle {
         val backgroundView: OptionItemBackground = view.requireViewById(R.id.background)
-        val foregroundView: ImageView = view.requireViewById(R.id.foreground)
+        val foregroundView: ImageView? = view.findViewById(R.id.foreground)
         val textView: TextView? = view.findViewById(R.id.text)
 
         if (textView != null && viewModel.isTextUserVisible) {
@@ -79,7 +80,10 @@ object OptionItemBinder2 {
         } else {
             // Use the text as the content description of the foreground if we don't have a TextView
             // dedicated to for the text.
-            ContentDescriptionViewBinder.bind(view = foregroundView, viewModel = viewModel.text)
+            ContentDescriptionViewBinder.bind(
+                view = foregroundView ?: backgroundView,
+                viewModel = viewModel.text,
+            )
         }
         textView?.isVisible = viewModel.isTextUserVisible
 
@@ -97,7 +101,7 @@ object OptionItemBinder2 {
                 animationSpec.disabledBackgroundAlpha
             }
 
-        foregroundView.alpha =
+        foregroundView?.alpha =
             if (viewModel.isEnabled) {
                 animationSpec.enabledAlpha
             } else {
@@ -147,7 +151,7 @@ object OptionItemBinder2 {
                                     backgroundView.setProgress(if (isSelected) 1f else 0f)
                                 }
 
-                                foregroundView.setColorFilter(
+                                foregroundView?.setColorFilter(
                                     if (isSelected) view.context.getColor(R.color.system_on_primary)
                                     else view.context.getColor(R.color.system_on_surface)
                                 )

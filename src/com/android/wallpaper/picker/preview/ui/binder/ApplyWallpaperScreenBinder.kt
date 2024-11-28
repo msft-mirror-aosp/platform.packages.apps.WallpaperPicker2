@@ -17,52 +17,62 @@
 package com.android.wallpaper.picker.preview.ui.binder
 
 import android.widget.Button
-import androidx.core.view.isVisible
+import android.widget.CheckBox
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /** Binds the set wallpaper button on small preview. */
 object ApplyWallpaperScreenBinder {
 
     fun bind(
-        nextButton: Button,
+        applyButton: Button,
         cancelButton: Button,
+        homeCheckbox: CheckBox,
+        lockCheckbox: CheckBox,
         viewModel: WallpaperPreviewViewModel,
         lifecycleOwner: LifecycleOwner,
-        navigateUp: () -> Unit,
-        navigate: () -> Unit,
+        @MainDispatcher mainScope: CoroutineScope,
+        onWallpaperSet: () -> Unit,
     ) {
-        cancelButton.setOnClickListener { navigateUp() }
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.isSetWallpaperButtonVisible.collect { nextButton.isVisible = it }
+                    viewModel.onCancelButtonClicked.collect { onClicked ->
+                        cancelButton.setOnClickListener { onClicked() }
+                    }
                 }
 
-                launch {
-                    viewModel.isSetWallpaperButtonEnabled.collect { nextButton.isEnabled = it }
-                }
+                launch { viewModel.isApplyButtonEnabled.collect { applyButton.isEnabled = it } }
+
+                launch { viewModel.isHomeCheckBoxChecked.collect { homeCheckbox.isChecked = it } }
+
+                launch { viewModel.isLockCheckBoxChecked.collect { lockCheckbox.isChecked = it } }
 
                 launch {
-                    viewModel.onSetWallpaperButtonClicked.collect { onClicked ->
-                        nextButton.setOnClickListener(
-                            if (onClicked != null) {
-                                { onClicked.invoke() }
-                            } else {
-                                null
-                            }
-                        )
+                    viewModel.onHomeCheckBoxChecked.collect {
+                        homeCheckbox.setOnClickListener { it() }
                     }
                 }
 
                 launch {
-                    viewModel.showSetWallpaperDialog.collect {
-                        if (it) {
-                            navigate.invoke()
+                    viewModel.onLockCheckBoxChecked.collect {
+                        lockCheckbox.setOnClickListener { it() }
+                    }
+                }
+
+                launch {
+                    viewModel.setWallpaperDialogOnConfirmButtonClicked.collect { onClicked ->
+                        applyButton.setOnClickListener {
+                            mainScope.launch {
+                                onClicked()
+                                onWallpaperSet()
+                            }
                         }
                     }
                 }

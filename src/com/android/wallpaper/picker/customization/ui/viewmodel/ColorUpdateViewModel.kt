@@ -26,11 +26,18 @@ import com.google.ux.material.libmonet.dynamiccolor.MaterialDynamicColors
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 
 @ActivityScoped
 class ColorUpdateViewModel @Inject constructor(@ApplicationContext private val context: Context) {
+    private val _systemColorsUpdated: MutableSharedFlow<Unit> =
+        MutableSharedFlow<Unit>(replay = 1).also { it.tryEmit(Unit) }
+    val systemColorsUpdated = _systemColorsUpdated.asSharedFlow()
+
     private val previewingColorScheme: MutableStateFlow<DynamicScheme?> = MutableStateFlow(null)
 
     private val _colorPrimary = MutableStateFlow(context.getColor(R.color.system_primary))
@@ -38,6 +45,15 @@ class ColorUpdateViewModel @Inject constructor(@ApplicationContext private val c
         combine(_colorPrimary, previewingColorScheme) { systemColor, previewScheme ->
             if (previewScheme != null) {
                 val dynamicColor = MaterialDynamicColors().primary()
+                previewScheme.getArgb(dynamicColor)
+            } else systemColor
+        }
+
+    private val _colorOnPrimary = MutableStateFlow(context.getColor(R.color.system_on_primary))
+    val colorOnPrimary =
+        combine(_colorOnPrimary, previewingColorScheme) { systemColor, previewScheme ->
+            if (previewScheme != null) {
+                val dynamicColor = MaterialDynamicColors().onPrimary()
                 previewScheme.getArgb(dynamicColor)
             } else systemColor
         }
@@ -62,6 +78,36 @@ class ColorUpdateViewModel @Inject constructor(@ApplicationContext private val c
             } else systemColor
         }
 
+    private val _colorOnSurface = MutableStateFlow(context.getColor(R.color.system_on_surface))
+    val colorOnSurface: Flow<Int> =
+        combine(_colorOnSurface, previewingColorScheme) { systemColor, previewScheme ->
+            if (previewScheme != null) {
+                val dynamicColor = MaterialDynamicColors().onSurface()
+                previewScheme.getArgb(dynamicColor)
+            } else systemColor
+        }
+
+    private val _colorOnSurfaceVariant =
+        MutableStateFlow(context.getColor(R.color.system_on_surface_variant))
+    val colorOnSurfaceVariant =
+        combine(_colorOnSurfaceVariant, previewingColorScheme) { systemColor, previewScheme ->
+            if (previewScheme != null) {
+                val dynamicColor = MaterialDynamicColors().onSurfaceVariant()
+                previewScheme.getArgb(dynamicColor)
+            } else systemColor
+        }
+
+    private val _colorSurfaceContainerHighest =
+        MutableStateFlow(context.getColor(R.color.system_surface_container_highest))
+    val colorSurfaceContainerHighest =
+        combine(_colorSurfaceContainerHighest, previewingColorScheme) { systemColor, previewScheme
+            ->
+            if (previewScheme != null) {
+                val dynamicColor = MaterialDynamicColors().surfaceContainerHighest()
+                previewScheme.getArgb(dynamicColor)
+            } else systemColor
+        }
+
     fun previewColors(colorSeed: Int, style: Style) {
         val isDarkMode =
             (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
@@ -74,6 +120,7 @@ class ColorUpdateViewModel @Inject constructor(@ApplicationContext private val c
     }
 
     fun updateColors() {
+        _systemColorsUpdated.tryEmit(Unit)
         _colorPrimary.value = context.getColor(R.color.system_primary)
         _colorSecondaryContainer.value = context.getColor(R.color.system_secondary_container)
         _colorSurfaceContainer.value = context.getColor(R.color.system_surface_container)
