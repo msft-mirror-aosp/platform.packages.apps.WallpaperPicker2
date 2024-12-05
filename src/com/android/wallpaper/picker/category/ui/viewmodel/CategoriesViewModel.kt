@@ -17,10 +17,14 @@
 package com.android.wallpaper.picker.category.ui.viewmodel
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ResolveInfo
+import android.service.wallpaper.WallpaperService
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.wallpaper.R
+import com.android.wallpaper.module.PackageStatusNotifier
+import com.android.wallpaper.module.PackageStatusNotifier.PackageStatus
 import com.android.wallpaper.picker.category.domain.interactor.CategoriesLoadingStatusInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
@@ -52,11 +56,56 @@ constructor(
     private val thirdPartyCategoryInteractor: ThirdPartyCategoryInteractor,
     private val loadindStatusInteractor: CategoriesLoadingStatusInteractor,
     private val networkStatusInteractor: NetworkStatusInteractor,
+    private val packageStatusNotifier: PackageStatusNotifier,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _navigationEvents = MutableSharedFlow<NavigationEvent>()
     val navigationEvents = _navigationEvents.asSharedFlow()
+
+    init {
+        registerLiveWallpaperReceiver()
+        registerThirdPartyWallpaperCategories()
+    }
+
+    // TODO: b/379138560: Add tests for this method and method below
+    private fun registerLiveWallpaperReceiver() {
+        packageStatusNotifier.addListener(
+            { packageName, status ->
+                if (packageName != null) {
+                    updateLiveWallpapersCategories(packageName, status)
+                }
+            },
+            WallpaperService.SERVICE_INTERFACE,
+        )
+    }
+
+    private fun registerThirdPartyWallpaperCategories() {
+        packageStatusNotifier.addListener(
+            { packageName, status ->
+                if (packageName != null) {
+                    updateThirdPartyAppCategories(packageName, status)
+                }
+            },
+            Intent.ACTION_SET_WALLPAPER,
+        )
+    }
+
+    private fun updateLiveWallpapersCategories(packageName: String, @PackageStatus status: Int) {
+        refreshThirdPartyLiveWallpaperCategories()
+    }
+
+    private fun updateThirdPartyAppCategories(packageName: String, @PackageStatus status: Int) {
+        refreshThirdPartyCategories()
+    }
+
+    private fun refreshThirdPartyLiveWallpaperCategories() {
+        singleCategoryInteractor.refreshThirdPartyLiveWallpaperCategories()
+    }
+
+    private fun refreshThirdPartyCategories() {
+        thirdPartyCategoryInteractor.refreshThirdPartyAppCategories()
+    }
 
     private fun navigateToWallpaperCollection(collectionId: String, categoryType: CategoryType) {
         viewModelScope.launch {
@@ -98,6 +147,10 @@ constructor(
             }
         }
 
+    /**
+     * This section is only for third party category apps, and not third party live wallpaper
+     * category apps which are handled as part of default category sections.
+     */
     private val thirdPartyCategorySections: Flow<List<SectionViewModel>> =
         thirdPartyCategoryInteractor.categories
             .distinctUntilChanged { old, new -> categoryModelListDifferentiator(old, new) }
@@ -106,7 +159,12 @@ constructor(
                     SectionViewModel(
                         tileViewModels =
                             listOf(
-                                TileViewModel(null, null, category.commonCategoryData.title) {
+                                TileViewModel(
+                                    /* defaultDrawable = */ category.thirdPartyCategoryData
+                                        ?.defaultDrawable,
+                                    /* thumbnailAsset = */ null,
+                                    /* text = */ category.commonCategoryData.title,
+                                ) {
                                     category.thirdPartyCategoryData?.resolveInfo?.let {
                                         navigateToThirdPartyApp(it)
                                     }

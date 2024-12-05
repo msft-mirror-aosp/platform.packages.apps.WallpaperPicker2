@@ -102,6 +102,9 @@ constructor(
     private val _currentPreviewScreen = MutableStateFlow(PreviewScreen.SMALL_PREVIEW)
     val currentPreviewScreen = _currentPreviewScreen.asStateFlow()
 
+    val shouldEnableClickOnPager: Flow<Boolean> =
+        _currentPreviewScreen.map { it != PreviewScreen.FULL_PREVIEW }
+
     val smallPreviewTabs = Screen.entries.toList()
 
     private val _smallPreviewSelectedTab = MutableStateFlow(getWallpaperPreviewSource())
@@ -122,12 +125,6 @@ constructor(
             return false
         }
         return false
-    }
-
-    fun handlePagerTapped() {
-        if (_currentPreviewScreen.value == PreviewScreen.SMALL_PREVIEW) {
-            _currentPreviewScreen.value = PreviewScreen.FULL_PREVIEW
-        }
     }
 
     fun getSmallPreviewTabIndex(): Int {
