@@ -16,22 +16,28 @@
 
 package com.android.wallpaper.picker.customization.ui.binder
 
-import android.widget.Button
-import android.widget.FrameLayout
-import android.widget.Toolbar
+import android.view.View
+import androidx.core.view.isVisible
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
-import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
-import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationOptionsViewModel
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
+import kotlinx.coroutines.launch
 
-interface ToolbarBinder {
+object PagerTouchInterceptorBinder {
 
     fun bind(
-        navButton: FrameLayout,
-        toolbar: Toolbar,
-        applyButton: Button,
-        viewModel: CustomizationOptionsViewModel,
-        colorUpdateViewModel: ColorUpdateViewModel,
+        pagerTouchInterceptor: View,
+        viewModel: CustomizationPickerViewModel2,
         lifecycleOwner: LifecycleOwner,
-        onNavBack: () -> Unit,
-    )
+    ) {
+        lifecycleOwner.lifecycleScope.launch {
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.isPagerInteractable.collect { pagerTouchInterceptor.isVisible = !it }
+                }
+            }
+        }
+    }
 }

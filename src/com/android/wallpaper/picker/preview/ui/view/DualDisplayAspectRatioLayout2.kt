@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,19 +18,21 @@ package com.android.wallpaper.picker.preview.ui.view
 import android.content.Context
 import android.graphics.Point
 import android.util.AttributeSet
+import android.view.View
 import android.widget.LinearLayout
 import com.android.wallpaper.R
-import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
+import com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout.Companion.getViewId
 
 /**
  * This LinearLayout view group implements the dual preview view for the small preview screen for
  * foldable devices.
  */
-class DualDisplayAspectRatioLayout(context: Context, attrs: AttributeSet?) :
+class DualDisplayAspectRatioLayout2(context: Context, attrs: AttributeSet?) :
     LinearLayout(context, attrs) {
 
     private var previewDisplaySizes: Map<DeviceDisplayType, Point>? = null
+    private var firstMeasuredWidth = 0
 
     /**
      * This measures the desired size of the preview views for both of foldable device's displays.
@@ -44,15 +46,19 @@ class DualDisplayAspectRatioLayout(context: Context, attrs: AttributeSet?) :
             setMeasuredDimension(widthMeasureSpec, heightMeasureSpec)
             return
         }
+        if (firstMeasuredWidth == 0) {
+            firstMeasuredWidth = measuredWidth
+        }
 
         // there are three spaces to consider
         // the margin before the folded preview, the margin in between the folded and unfolded and
         // the margin after the unfolded view
-        val totalMarginPixels =
-            context.resources.getDimension(R.dimen.small_preview_inter_preview_margin).toInt() * 3
+        val spaceBetweenPreviews =
+            resources.getDimension(R.dimen.foldable_small_preview_space_between_preview)
 
-        // TODO: This only works for portrait mode currently, need to incorporate landscape
-        val parentWidth = this.measuredWidth - totalMarginPixels
+        val ratio = 1.0 - SCREEN_WIDTH_RATIO_FOR_NEXT_PAGE
+        val singlePageWidth = (firstMeasuredWidth * ratio).toFloat()
+        val parentWidth = singlePageWidth - spaceBetweenPreviews
 
         val smallDisplaySize = checkNotNull(getPreviewDisplaySize(DeviceDisplayType.FOLDED))
         val largeDisplaySize = checkNotNull(getPreviewDisplaySize(DeviceDisplayType.UNFOLDED))
@@ -65,23 +71,23 @@ class DualDisplayAspectRatioLayout(context: Context, attrs: AttributeSet?) :
 
         // Width based calculation
         var newHeight = parentWidth / (largeDisplayAR + smallDisplayAR)
-        if (newHeight > this.measuredHeight && BaseFlags.get().isNewPickerUi()) {
+        if (newHeight > measuredHeight) {
             // If new height derived from width is larger than original height, use height based
             // calculation.
-            newHeight = this.measuredHeight.toFloat()
+            newHeight = measuredHeight.toFloat()
         }
 
         val widthFolded = newHeight * smallDisplayAR
         val widthUnfolded = newHeight * largeDisplayAR
 
-        val foldedView = getChildAt(0)
-        foldedView.measure(
+        val foldedView = findViewById<View>(DeviceDisplayType.FOLDED.getViewId())
+        foldedView?.measure(
             MeasureSpec.makeMeasureSpec(widthFolded.toInt(), MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(newHeight.toInt(), MeasureSpec.EXACTLY),
         )
 
-        val unfoldedView = getChildAt(1)
-        unfoldedView.measure(
+        val unfoldedView = findViewById<View>(DeviceDisplayType.UNFOLDED.getViewId())
+        unfoldedView?.measure(
             MeasureSpec.makeMeasureSpec(widthUnfolded.toInt(), MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(newHeight.toInt(), MeasureSpec.EXACTLY),
         )
@@ -100,23 +106,23 @@ class DualDisplayAspectRatioLayout(context: Context, attrs: AttributeSet?) :
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         // margins
-        val marginPixels =
-            context.resources.getDimension(R.dimen.small_preview_inter_preview_margin).toInt()
+        val spaceBetweenPreviews =
+            resources.getDimension(R.dimen.foldable_small_preview_space_between_preview).toInt()
 
         // the handheld preview will be position first
         val foldedView = getChildAt(0)
         val foldedViewWidth = foldedView.measuredWidth
         val foldedViewHeight = foldedView.measuredHeight
-        foldedView.layout(0 + marginPixels, 0, foldedViewWidth + marginPixels, foldedViewHeight)
+        foldedView.layout(0, 0, foldedViewWidth, foldedViewHeight)
 
         // the unfolded view will be position after
         val unfoldedView = getChildAt(1)
         val unfoldedViewWidth = unfoldedView.measuredWidth
         val unfoldedViewHeight = unfoldedView.measuredHeight
         unfoldedView.layout(
-            foldedViewWidth + 2 * marginPixels,
+            foldedViewWidth + spaceBetweenPreviews,
             0,
-            unfoldedViewWidth + foldedViewWidth + 2 * marginPixels,
+            unfoldedViewWidth + foldedViewWidth + spaceBetweenPreviews,
             unfoldedViewHeight,
         )
     }
@@ -130,7 +136,10 @@ class DualDisplayAspectRatioLayout(context: Context, attrs: AttributeSet?) :
     }
 
     companion object {
-        /** Defines children view ids for [DualDisplayAspectRatioLayout]. */
+        /** Defines percentage of the screen width is used for showing part of the next page. */
+        private const val SCREEN_WIDTH_RATIO_FOR_NEXT_PAGE = 0.1
+
+        /** Defines children view ids for [DualDisplayAspectRatioLayout2]. */
         fun DeviceDisplayType.getViewId(): Int {
             return when (this) {
                 DeviceDisplayType.SINGLE ->
