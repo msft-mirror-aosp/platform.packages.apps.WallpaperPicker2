@@ -21,11 +21,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
-import android.content.pm.PackageManager
-import android.content.pm.ResolveInfo
-import android.content.pm.ServiceInfo
 import android.graphics.Rect
-import android.service.wallpaper.WallpaperService
 import androidx.activity.viewModels
 import androidx.test.core.app.ActivityScenario
 import com.android.wallpaper.effects.FakeEffectsController
@@ -55,6 +51,7 @@ import com.android.wallpaper.testing.FakeWallpaperClient
 import com.android.wallpaper.testing.ShadowWallpaperInfo
 import com.android.wallpaper.testing.TestInjector
 import com.android.wallpaper.testing.TestWallpaperPreferences
+import com.android.wallpaper.testing.WallpaperInfoUtils
 import com.android.wallpaper.testing.WallpaperModelUtils
 import com.android.wallpaper.testing.collectLastValue
 import com.android.wallpaper.util.PreviewUtils
@@ -76,6 +73,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -133,20 +131,13 @@ class WallpaperPreviewViewModelTest {
             contentProvider,
         )
 
-        // Provide resolution info for our fake content provider
-        val packageName = FakeEffectsController.LIVE_WALLPAPER_COMPONENT_PKG_NAME
-        val className = FakeEffectsController.LIVE_WALLPAPER_COMPONENT_CLASS_NAME
-        val resolveInfo =
-            ResolveInfo().apply {
-                serviceInfo = ServiceInfo()
-                serviceInfo.packageName = packageName
-                serviceInfo.splitName = "effectsWallpaper"
-                serviceInfo.name = className
-                serviceInfo.flags = PackageManager.GET_META_DATA
-            }
-        val intent = Intent(WallpaperService.SERVICE_INTERFACE).setClassName(packageName, className)
-        pm.addResolveInfoForIntent(intent, resolveInfo)
-        effectsWallpaperInfo = WallpaperInfo(appContext, resolveInfo)
+        effectsWallpaperInfo =
+            WallpaperInfoUtils.createWallpaperInfo(
+                context = appContext,
+                stubPackage = FakeEffectsController.LIVE_WALLPAPER_COMPONENT_PKG_NAME,
+                wallpaperSplit = "effectsWallpaper",
+                wallpaperClass = FakeEffectsController.LIVE_WALLPAPER_COMPONENT_CLASS_NAME,
+            )
 
         startActivityIntent =
             Intent.makeMainActivity(ComponentName(appContext, PreviewTestActivity::class.java))
@@ -209,6 +200,30 @@ class WallpaperPreviewViewModelTest {
             assertThat(handled).isTrue()
             assertThat(currentPreviewScreen()).isEqualTo(PreviewScreen.SMALL_PREVIEW)
         }
+
+    @Test
+    fun onApplyWallpaperScreen_shouldEnableClickOnPager() =
+        testScope.runTest {
+            val shouldEnableClickOnPager =
+                collectLastValue(wallpaperPreviewViewModel.shouldEnableClickOnPager)
+            val onNextButtonClicked =
+                collectLastValue(wallpaperPreviewViewModel.onNextButtonClicked)
+            val model =
+                WallpaperModelUtils.getStaticWallpaperModel(
+                    wallpaperId = "testId",
+                    collectionId = "testCollection",
+                )
+            wallpaperPreviewRepository.setWallpaperModel(model)
+            executePendingWork(this)
+            // Navigates to apply wallpaper screen
+            onNextButtonClicked()?.invoke()
+
+            assertThat(shouldEnableClickOnPager()).isTrue()
+        }
+
+    @Ignore("b/367372434: test shouldEnableClickOnPager when implementing full preview")
+    @Test
+    fun onFullPreviewScreen_shouldNotEnableClickOnPager() = testScope.runTest {}
 
     @Test
     fun clickNextButton_setsApplyWallpaperScreen() =
