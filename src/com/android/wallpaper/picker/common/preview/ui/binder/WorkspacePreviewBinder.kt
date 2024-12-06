@@ -26,12 +26,15 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.android.customization.picker.clock.ui.view.ClockViewFactory
+import com.android.systemui.shared.clocks.shared.model.ClockPreviewConstants
 import com.android.systemui.shared.keyguard.shared.model.KeyguardQuickAffordanceSlots.SLOT_ID_BOTTOM_START
 import com.android.systemui.shared.quickaffordance.shared.model.KeyguardPreviewConstants.KEY_HIGHLIGHT_QUICK_AFFORDANCES
 import com.android.systemui.shared.quickaffordance.shared.model.KeyguardPreviewConstants.KEY_INITIALLY_SELECTED_SLOT_ID
 import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.common.preview.ui.viewmodel.BasePreviewViewModel
+import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
 import com.android.wallpaper.util.PreviewUtils
 import com.android.wallpaper.util.SurfaceViewUtils
@@ -47,10 +50,12 @@ object WorkspacePreviewBinder {
     fun bind(
         surfaceView: SurfaceView,
         viewModel: CustomizationPickerViewModel2,
+        colorUpdateViewModel: ColorUpdateViewModel,
         workspaceCallbackBinder: WorkspaceCallbackBinder,
         screen: Screen,
         deviceDisplayType: DeviceDisplayType,
         lifecycleOwner: LifecycleOwner,
+        clockViewFactory: ClockViewFactory,
     ) {
         var surfaceCallback: SurfaceViewUtils.SurfaceCallback? = null
         lifecycleOwner.lifecycleScope.launch {
@@ -59,11 +64,13 @@ object WorkspacePreviewBinder {
                     bindSurface(
                         surfaceView = surfaceView,
                         viewModel = viewModel,
+                        colorUpdateViewModel = colorUpdateViewModel,
                         workspaceCallbackBinder = workspaceCallbackBinder,
                         screen = screen,
                         previewUtils = getPreviewUtils(screen, viewModel.basePreviewViewModel),
                         deviceDisplayType = deviceDisplayType,
                         lifecycleOwner = lifecycleOwner,
+                        clockViewFactory = clockViewFactory,
                     )
                 surfaceView.setZOrderMediaOverlay(true)
                 surfaceView.holder.addCallback(surfaceCallback)
@@ -84,11 +91,13 @@ object WorkspacePreviewBinder {
     private fun bindSurface(
         surfaceView: SurfaceView,
         viewModel: CustomizationPickerViewModel2,
+        colorUpdateViewModel: ColorUpdateViewModel,
         workspaceCallbackBinder: WorkspaceCallbackBinder,
         screen: Screen,
         previewUtils: PreviewUtils,
         deviceDisplayType: DeviceDisplayType,
         lifecycleOwner: LifecycleOwner,
+        clockViewFactory: ClockViewFactory,
     ): SurfaceViewUtils.SurfaceCallback {
         return object : SurfaceViewUtils.SurfaceCallback {
 
@@ -100,6 +109,7 @@ object WorkspacePreviewBinder {
                     lifecycleOwner.lifecycleScope.launch {
                         renderWorkspacePreview(
                                 surfaceView = surfaceView,
+                                screen = screen,
                                 previewUtils = previewUtils,
                                 displayId =
                                     viewModel.basePreviewViewModel.getDisplayId(deviceDisplayType),
@@ -108,8 +118,10 @@ object WorkspacePreviewBinder {
                                 workspaceCallbackBinder.bind(
                                     workspaceCallback = workspaceCallback,
                                     viewModel = viewModel.customizationOptionsViewModel,
+                                    colorUpdateViewModel = colorUpdateViewModel,
                                     screen = screen,
                                     lifecycleOwner = lifecycleOwner,
+                                    clockViewFactory = clockViewFactory,
                                 )
                             }
                     }
@@ -126,6 +138,7 @@ object WorkspacePreviewBinder {
 
     private suspend fun renderWorkspacePreview(
         surfaceView: SurfaceView,
+        screen: Screen,
         previewUtils: PreviewUtils,
         displayId: Int,
         wallpaperColors: WallpaperColors? = null,
@@ -139,20 +152,22 @@ object WorkspacePreviewBinder {
             val surfacePosition = surfaceView.holder.surfaceFrame
             val extras =
                 bundleOf(
-                    Pair(SurfaceViewUtils.KEY_DISPLAY_ID, displayId),
-                    Pair(SurfaceViewUtils.KEY_VIEW_WIDTH, surfacePosition.width()),
-                    Pair(SurfaceViewUtils.KEY_VIEW_HEIGHT, surfacePosition.height()),
-                    Pair(KEY_INITIALLY_SELECTED_SLOT_ID, SLOT_ID_BOTTOM_START),
-                    Pair(KEY_HIGHLIGHT_QUICK_AFFORDANCES, false),
-                )
+                        Pair(SurfaceViewUtils.KEY_DISPLAY_ID, displayId),
+                        Pair(SurfaceViewUtils.KEY_VIEW_WIDTH, surfacePosition.width()),
+                        Pair(SurfaceViewUtils.KEY_VIEW_HEIGHT, surfacePosition.height()),
+                    )
+                    .apply {
+                        if (screen == Screen.LOCK_SCREEN) {
+                            putBoolean(ClockPreviewConstants.KEY_HIDE_CLOCK, true)
+                            putString(KEY_INITIALLY_SELECTED_SLOT_ID, SLOT_ID_BOTTOM_START)
+                            putBoolean(KEY_HIGHLIGHT_QUICK_AFFORDANCES, false)
+                        }
+                    }
+
             wallpaperColors?.let {
                 extras.putParcelable(SurfaceViewUtils.KEY_WALLPAPER_COLORS, wallpaperColors)
             }
-            val request =
-                SurfaceViewUtils.createSurfaceViewRequest(
-                    surfaceView,
-                    extras,
-                )
+            val request = SurfaceViewUtils.createSurfaceViewRequest(surfaceView, extras)
             workspaceCallback = suspendCancellableCoroutine { continuation ->
                 previewUtils.renderPreview(
                     request,
@@ -166,7 +181,7 @@ object WorkspacePreviewBinder {
                                         Log.w(
                                             TAG,
                                             "Result bundle from rendering preview does not contain " +
-                                                "a child surface package."
+                                                "a child surface package.",
                                         )
                                     }
                                 }
@@ -176,7 +191,7 @@ object WorkspacePreviewBinder {
                                 continuation.resume(null)
                             }
                         }
-                    }
+                    },
                 )
             }
         }
@@ -185,7 +200,7 @@ object WorkspacePreviewBinder {
 
     private fun getPreviewUtils(
         screen: Screen,
-        previewViewModel: BasePreviewViewModel
+        previewViewModel: BasePreviewViewModel,
     ): PreviewUtils =
         when (screen) {
             Screen.HOME_SCREEN -> {

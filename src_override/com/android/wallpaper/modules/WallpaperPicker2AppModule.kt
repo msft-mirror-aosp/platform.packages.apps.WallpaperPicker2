@@ -28,11 +28,15 @@ import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.category.domain.interactor.CategoriesLoadingStatusInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
+import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.implementations.CategoryInteractorImpl
 import com.android.wallpaper.picker.category.domain.interactor.implementations.CreativeCategoryInteractorImpl
 import com.android.wallpaper.picker.category.domain.interactor.implementations.DefaultCategoriesLoadingStatusInteractor
+import com.android.wallpaper.picker.category.domain.interactor.implementations.ThirdPartyCategoryInteractorImpl
 import com.android.wallpaper.picker.category.ui.view.providers.IndividualPickerFactory
 import com.android.wallpaper.picker.category.ui.view.providers.implementation.DefaultIndividualPickerFactory
+import com.android.wallpaper.picker.category.wrapper.DefaultWallpaperCategoryWrapper
+import com.android.wallpaper.picker.category.wrapper.WallpaperCategoryWrapper
 import com.android.wallpaper.picker.common.preview.ui.binder.DefaultWorkspaceCallbackBinder
 import com.android.wallpaper.picker.common.preview.ui.binder.WorkspaceCallbackBinder
 import com.android.wallpaper.picker.customization.ui.binder.CustomizationOptionsBinder
@@ -57,7 +61,7 @@ abstract class WallpaperPicker2AppModule {
     @Binds
     @Singleton
     abstract fun bindCreativeCategoryInteractor(
-        impl: CreativeCategoryInteractorImpl,
+        impl: CreativeCategoryInteractorImpl
     ): CreativeCategoryInteractor
 
     @Binds
@@ -82,6 +86,12 @@ abstract class WallpaperPicker2AppModule {
 
     @Binds
     @Singleton
+    abstract fun bindThirdPartyCategoryInteractor(
+        impl: ThirdPartyCategoryInteractorImpl
+    ): ThirdPartyCategoryInteractor
+
+    @Binds
+    @Singleton
     abstract fun bindIndividualPickerFactory(
         impl: DefaultIndividualPickerFactory
     ): IndividualPickerFactory
@@ -91,7 +101,7 @@ abstract class WallpaperPicker2AppModule {
     @Binds
     @Singleton
     abstract fun bindLoadingStatusInteractor(
-        impl: DefaultCategoriesLoadingStatusInteractor,
+        impl: DefaultCategoriesLoadingStatusInteractor
     ): CategoriesLoadingStatusInteractor
 
     @Binds
@@ -99,6 +109,12 @@ abstract class WallpaperPicker2AppModule {
     abstract fun bindPartnerProvider(impl: DefaultPartnerProvider): PartnerProvider
 
     @Binds @Singleton abstract fun bindToolbarBinder(impl: DefaultToolbarBinder): ToolbarBinder
+
+    @Binds
+    @Singleton
+    abstract fun bindWallpaperCategoryWrapper(
+        impl: DefaultWallpaperCategoryWrapper
+    ): WallpaperCategoryWrapper
 
     @Binds
     @Singleton

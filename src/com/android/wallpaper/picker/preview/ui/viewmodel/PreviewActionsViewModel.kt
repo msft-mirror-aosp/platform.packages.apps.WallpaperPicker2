@@ -16,6 +16,7 @@
 
 package com.android.wallpaper.picker.preview.ui.viewmodel
 
+import android.app.Flags.liveWallpaperContentHandling
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ComponentName
@@ -29,7 +30,6 @@ import android.util.Log
 import com.android.wallpaper.R
 import com.android.wallpaper.effects.Effect
 import com.android.wallpaper.effects.EffectsController.EffectEnumInterface
-import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.picker.data.CreativeWallpaperData
 import com.android.wallpaper.picker.data.LiveWallpaperData
 import com.android.wallpaper.picker.data.WallpaperModel
@@ -75,8 +75,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
 /** View model for the preview action buttons */
@@ -89,7 +87,6 @@ constructor(
     @ApplicationContext private val context: Context,
 ) {
     private val TAG = "PreviewActionsViewModel"
-    private var flags = InjectorProvider.getInjector().getFlags()
     private var EXTENDED_WALLPAPER_EFFECTS_PACKAGE =
         context.getString(R.string.extended_wallpaper_effects_package)
     private var EXTENDED_WALLPAPER_EFFECTS_ACTIVITY =
@@ -102,15 +99,19 @@ constructor(
                 null
             } else {
                 InformationFloatingSheetViewModel(
-                    wallpaperModel.commonWallpaperData.attributions,
-                    if (wallpaperModel.commonWallpaperData.exploreActionUrl.isNullOrEmpty()) {
-                        null
-                    } else {
-                        wallpaperModel.commonWallpaperData.exploreActionUrl
-                    },
-                    (wallpaperModel as? LiveWallpaperModel)?.let { liveWallpaperModel ->
-                        liveWallpaperModel.liveWallpaperData.contextDescription?.let { it }
-                    },
+                    description =
+                        (wallpaperModel as? LiveWallpaperModel)?.liveWallpaperData?.description,
+                    attributions = wallpaperModel.commonWallpaperData.attributions,
+                    actionUrl =
+                        if (wallpaperModel.commonWallpaperData.exploreActionUrl.isNullOrEmpty()) {
+                            null
+                        } else {
+                            wallpaperModel.commonWallpaperData.exploreActionUrl
+                        },
+                    actionButtonTitle =
+                        (wallpaperModel as? LiveWallpaperModel)
+                            ?.liveWallpaperData
+                            ?.contextDescription,
                 )
             }
         }
@@ -267,10 +268,7 @@ constructor(
                         null
                     }
                     else -> {
-                        getImageEffectFloatingSheetViewModel(
-                            imageEffect,
-                            imageEffectsModel,
-                        )
+                        getImageEffectFloatingSheetViewModel(imageEffect, imageEffectsModel)
                     }
                 }
             }
@@ -308,7 +306,9 @@ constructor(
                     title = it.title,
                     subtitle = it.subtitle,
                     wallpaperActions = it.actions,
-                    wallpaperEffectSwitchListener = { interactor.turnOnCreativeEffect(it) },
+                    wallpaperEffectSwitchListener = { actionPosition ->
+                        interactor.turnOnCreativeEffect(actionPosition)
+                    },
                 )
             }
         }
@@ -350,7 +350,7 @@ constructor(
             object : EffectSwitchListener {
                 override fun onEffectSwitchChanged(
                     effect: EffectEnumInterface,
-                    isChecked: Boolean
+                    isChecked: Boolean,
                 ) {
                     if (interactor.isTargetEffect(effect)) {
                         if (isChecked) {
@@ -414,27 +414,30 @@ constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val onEffectsClicked: Flow<(() -> Unit)?> =
-        combine(isEffectsVisible, isEffectsChecked) { show, isChecked ->
-                if (show) {
-                    {
+        combine(isEffectsVisible, isEffectsChecked, imageEffectFloatingSheetViewModel) {
+            isVisible,
+            isChecked,
+            imageEffect ->
+            if (isVisible) {
+                val intent = buildExtendedWallpaperIntent()
+                val isIntentValid =
+                    intent.resolveActivityInfo(context.getPackageManager(), 0) != null
+                if (imageEffect != null && isIntentValid) {
+                    { launchExtendedWallpaperEffects() }
+                } else {
+                    fun() {
                         if (!isChecked) {
                             uncheckAllOthersExcept(EFFECTS)
                         }
                         _isEffectsChecked.value = !isChecked
                     }
-                } else {
-                    null
                 }
+            } else {
+                null
             }
-            .flatMapLatest { action ->
-                if (flags.isMagicPortraitEnabled()) {
-                    launchExtendedWallpaperEffects()
-                } else {
-                    flow { action?.let { emit(it) } }
-                }
-            }
+        }
 
-    private fun launchExtendedWallpaperEffects(): Flow<() -> Unit> {
+    private fun launchExtendedWallpaperEffects() {
         val previewedWallpaperModel = interactor.wallpaperModel.value
         var photoUri: Uri? = null
         if (
@@ -444,30 +447,31 @@ constructor(
             photoUri = previewedWallpaperModel.imageWallpaperData.uri
         }
 
-        return flow {
-            emit {
-                val intent = Intent()
-                intent.component =
-                    ComponentName(
-                        EXTENDED_WALLPAPER_EFFECTS_PACKAGE,
-                        EXTENDED_WALLPAPER_EFFECTS_ACTIVITY
-                    )
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.grantUriPermission(
-                    EXTENDED_WALLPAPER_EFFECTS_PACKAGE,
-                    photoUri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-                Log.d(TAG, "PhotoURI is: $photoUri")
-                photoUri?.let { uri ->
-                    intent.putExtra("PHOTO_URI", uri)
-                    try {
-                        context.startActivity(intent)
-                    } catch (ex: ActivityNotFoundException) {
-                        Log.e(TAG, "Extended Wallpaper Activity is not available", ex)
-                    }
-                }
+        val intent = buildExtendedWallpaperIntent()
+        context.grantUriPermission(
+            EXTENDED_WALLPAPER_EFFECTS_PACKAGE,
+            photoUri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION,
+        )
+        Log.d(TAG, "PhotoURI is: $photoUri")
+        photoUri?.let { uri ->
+            intent.putExtra("PHOTO_URI", uri)
+            try {
+                context.startActivity(intent)
+            } catch (ex: ActivityNotFoundException) {
+                Log.e(TAG, "Extended Wallpaper Activity is not available", ex)
             }
+        }
+    }
+
+    private fun buildExtendedWallpaperIntent(): Intent {
+        return Intent().apply {
+            component =
+                ComponentName(
+                    EXTENDED_WALLPAPER_EFFECTS_PACKAGE,
+                    EXTENDED_WALLPAPER_EFFECTS_ACTIVITY,
+                )
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
     }
 
@@ -549,6 +553,26 @@ constructor(
             _isCustomizeChecked.value ||
             _isEffectsChecked.value
 
+    val isActionChecked: Flow<Boolean> =
+        combine(
+            isInformationChecked,
+            isDeleteChecked,
+            isEditChecked,
+            isCustomizeChecked,
+            isEffectsChecked,
+        ) {
+            isInformationChecked,
+            isDeleteChecked,
+            isEditChecked,
+            isCustomizeChecked,
+            isEffectsChecked ->
+            isInformationChecked ||
+                isDeleteChecked ||
+                isEditChecked ||
+                isCustomizeChecked ||
+                isEffectsChecked
+        }
+
     private fun uncheckAllOthersExcept(action: Action) {
         if (action != INFORMATION) {
             _isInformationChecked.value = false
@@ -569,6 +593,7 @@ constructor(
 
     companion object {
         const val EXTRA_KEY_IS_CREATE_NEW = "is_create_new"
+        const val EXTRA_WALLPAPER_DESCRIPTION = "wp_description"
 
         private fun WallpaperModel.shouldShowInformationFloatingSheet(): Boolean {
             if (
@@ -580,11 +605,19 @@ constructor(
                 return false
             }
             val attributions = commonWallpaperData.attributions
+            val description = (this as? LiveWallpaperModel)?.liveWallpaperData?.description
+            val hasDescription =
+                liveWallpaperContentHandling() &&
+                    description != null &&
+                    (description.description.isNotEmpty() ||
+                        !description.title.isNullOrEmpty() ||
+                        description.contextUri != null)
             // Show information floating sheet when any of the following contents exists
-            // 1. Attributions: Any of the list values is not null nor empty
+            // 1. Attributions/Description: Any of the list values is not null nor empty
             // 2. Explore action URL
-            return (!attributions.isNullOrEmpty() && attributions.any { !it.isNullOrEmpty() }) ||
-                !commonWallpaperData.exploreActionUrl.isNullOrEmpty()
+            return (!attributions.isNullOrEmpty() && attributions.any { it.isNotEmpty() }) ||
+                !commonWallpaperData.exploreActionUrl.isNullOrEmpty() ||
+                hasDescription
         }
 
         private fun CreativeWallpaperData.getShareIntent(): Intent {
@@ -620,6 +653,7 @@ constructor(
                     component = ComponentName(systemWallpaperInfo.packageName, settingsActivity)
                     putExtra(WallpaperSettingsActivity.EXTRA_PREVIEW_MODE, true)
                     putExtra(EXTRA_KEY_IS_CREATE_NEW, isCreateNew)
+                    description.content.let { putExtra(EXTRA_WALLPAPER_DESCRIPTION, it) }
                 }
             return intent
         }
@@ -637,7 +671,7 @@ constructor(
             flow5: Flow<T5>,
             flow6: Flow<T6>,
             flow7: Flow<T7>,
-            crossinline transform: suspend (T1, T2, T3, T4, T5, T6, T7) -> R
+            crossinline transform: suspend (T1, T2, T3, T4, T5, T6, T7) -> R,
         ): Flow<R> {
             return combine(flow, flow2, flow3, flow4, flow5, flow6, flow7) { args: Array<*> ->
                 @Suppress("UNCHECKED_CAST")
