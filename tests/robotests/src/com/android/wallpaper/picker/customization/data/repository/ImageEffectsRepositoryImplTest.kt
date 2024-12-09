@@ -17,7 +17,12 @@
 package com.android.wallpaper.picker.customization.data.repository
 
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
+import android.content.pm.ServiceInfo
 import android.net.Uri
+import android.service.wallpaper.WallpaperService
 import com.android.wallpaper.effects.Effect
 import com.android.wallpaper.effects.EffectsController
 import com.android.wallpaper.effects.EffectsController.RESULT_PROBE_SUCCESS
@@ -32,7 +37,6 @@ import com.android.wallpaper.testing.FakeContentProvider
 import com.android.wallpaper.testing.FakeContentProvider.Companion.FAKE_EFFECT_ID
 import com.android.wallpaper.testing.FakeContentProvider.Companion.FAKE_EFFECT_TITLE
 import com.android.wallpaper.testing.ShadowWallpaperInfo
-import com.android.wallpaper.testing.WallpaperInfoUtils
 import com.android.wallpaper.testing.WallpaperModelUtils.Companion.getStaticWallpaperModel
 import com.android.wallpaper.testing.collectLastValue
 import com.android.wallpaper.widget.floatingsheetcontent.WallpaperEffectsView2
@@ -49,6 +53,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowContentResolver
 
@@ -68,7 +73,7 @@ class ImageEffectsRepositoryImplTest {
         getStaticWallpaperModel(
             wallpaperId = "testWallpaperId",
             collectionId = "testCollection",
-            imageWallpaperUri = Uri.parse("content://com.test/image"),
+            imageWallpaperUri = Uri.parse("content://com.test/image")
         )
 
     @Before
@@ -79,24 +84,38 @@ class ImageEffectsRepositoryImplTest {
             FakeEffectsController.AUTHORITY,
             contentProvider,
         )
-        WallpaperInfoUtils.createWallpaperInfo(
-            context = context,
-            stubPackage = LIVE_WALLPAPER_COMPONENT_PKG_NAME,
-            wallpaperSplit = "effectsWallpaper",
-            wallpaperClass = LIVE_WALLPAPER_COMPONENT_CLASS_NAME,
-        )
+        // Make a shadow of package manager
+        val pm = shadowOf(context.packageManager)
+        val packageName = LIVE_WALLPAPER_COMPONENT_PKG_NAME
+        val className = LIVE_WALLPAPER_COMPONENT_CLASS_NAME
+        val resolveInfo =
+            ResolveInfo().apply {
+                serviceInfo = ServiceInfo()
+                serviceInfo.packageName = packageName
+                serviceInfo.splitName = "effectsWallpaper"
+                serviceInfo.name = className
+                serviceInfo.flags = PackageManager.GET_META_DATA
+            }
+        val intent = Intent(WallpaperService.SERVICE_INTERFACE).setClassName(packageName, className)
+        pm.addResolveInfoForIntent(intent, resolveInfo)
     }
 
     @Test
     fun areEffectsAvailableTrue() {
-        val underTest = getImageEffectsRepositoryForTesting(areEffectsAvailable = true)
+        val underTest =
+            getImageEffectsRepositoryForTesting(
+                areEffectsAvailable = true,
+            )
 
         assertThat(underTest.areEffectsAvailable()).isTrue()
     }
 
     @Test
     fun areEffectsAvailableFalse() {
-        val underTest = getImageEffectsRepositoryForTesting(areEffectsAvailable = false)
+        val underTest =
+            getImageEffectsRepositoryForTesting(
+                areEffectsAvailable = false,
+            )
 
         assertThat(underTest.areEffectsAvailable()).isFalse()
     }
@@ -125,7 +144,10 @@ class ImageEffectsRepositoryImplTest {
     @Test
     fun initializeEffect_isEffectTriggeredTrue() =
         testScope.runTest {
-            val underTest = getImageEffectsRepositoryForTesting(isEffectTriggered = true)
+            val underTest =
+                getImageEffectsRepositoryForTesting(
+                    isEffectTriggered = true,
+                )
             val imageEffectsModel = collectLastValue(underTest.imageEffectsModel)
 
             underTest.initializeEffect(
@@ -140,7 +162,10 @@ class ImageEffectsRepositoryImplTest {
     @Test
     fun initializeEffect_isEffectTriggeredFalse() =
         testScope.runTest {
-            val underTest = getImageEffectsRepositoryForTesting(isEffectTriggered = false)
+            val underTest =
+                getImageEffectsRepositoryForTesting(
+                    isEffectTriggered = false,
+                )
             val imageEffectsModel = collectLastValue(underTest.imageEffectsModel)
 
             underTest.initializeEffect(
@@ -152,7 +177,7 @@ class ImageEffectsRepositoryImplTest {
                 .isEqualTo(
                     ImageEffectsModel(
                         ImageEffectsRepository.EffectStatus.EFFECT_READY,
-                        RESULT_PROBE_SUCCESS,
+                        RESULT_PROBE_SUCCESS
                     )
                 )
         }
@@ -256,14 +281,18 @@ class ImageEffectsRepositoryImplTest {
                 onWallpaperModelUpdated = { _ -> },
             )
             underTest.startEffectsModelDownload(
-                Effect(FAKE_EFFECT_ID, FAKE_EFFECT_TITLE, FakeEffectsController.Effect.FAKE_EFFECT)
+                Effect(
+                    FAKE_EFFECT_ID,
+                    FAKE_EFFECT_TITLE,
+                    FakeEffectsController.Effect.FAKE_EFFECT,
+                )
             )
 
             assertThat(imageEffectsModel())
                 .isEqualTo(
                     ImageEffectsModel(
                         ImageEffectsRepository.EffectStatus.EFFECT_READY,
-                        EffectsController.RESULT_FOREGROUND_DOWNLOAD_SUCCEEDED,
+                        EffectsController.RESULT_FOREGROUND_DOWNLOAD_SUCCEEDED
                     )
                 )
         }

@@ -21,7 +21,11 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
+import android.content.pm.ServiceInfo
 import android.graphics.Rect
+import android.service.wallpaper.WallpaperService
 import androidx.activity.viewModels
 import androidx.test.core.app.ActivityScenario
 import com.android.wallpaper.effects.FakeEffectsController
@@ -51,7 +55,6 @@ import com.android.wallpaper.testing.FakeWallpaperClient
 import com.android.wallpaper.testing.ShadowWallpaperInfo
 import com.android.wallpaper.testing.TestInjector
 import com.android.wallpaper.testing.TestWallpaperPreferences
-import com.android.wallpaper.testing.WallpaperInfoUtils
 import com.android.wallpaper.testing.WallpaperModelUtils
 import com.android.wallpaper.testing.collectLastValue
 import com.android.wallpaper.util.PreviewUtils
@@ -131,13 +134,20 @@ class WallpaperPreviewViewModelTest {
             contentProvider,
         )
 
-        effectsWallpaperInfo =
-            WallpaperInfoUtils.createWallpaperInfo(
-                context = appContext,
-                stubPackage = FakeEffectsController.LIVE_WALLPAPER_COMPONENT_PKG_NAME,
-                wallpaperSplit = "effectsWallpaper",
-                wallpaperClass = FakeEffectsController.LIVE_WALLPAPER_COMPONENT_CLASS_NAME,
-            )
+        // Provide resolution info for our fake content provider
+        val packageName = FakeEffectsController.LIVE_WALLPAPER_COMPONENT_PKG_NAME
+        val className = FakeEffectsController.LIVE_WALLPAPER_COMPONENT_CLASS_NAME
+        val resolveInfo =
+            ResolveInfo().apply {
+                serviceInfo = ServiceInfo()
+                serviceInfo.packageName = packageName
+                serviceInfo.splitName = "effectsWallpaper"
+                serviceInfo.name = className
+                serviceInfo.flags = PackageManager.GET_META_DATA
+            }
+        val intent = Intent(WallpaperService.SERVICE_INTERFACE).setClassName(packageName, className)
+        pm.addResolveInfoForIntent(intent, resolveInfo)
+        effectsWallpaperInfo = WallpaperInfo(appContext, resolveInfo)
 
         startActivityIntent =
             Intent.makeMainActivity(ComponentName(appContext, PreviewTestActivity::class.java))
