@@ -24,6 +24,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.android.systemui.monet.Style
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
+import dagger.hilt.android.internal.lifecycle.RetainedLifecycleImpl
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import javax.inject.Inject
@@ -50,7 +51,7 @@ class ColorUpdateViewModelTest {
         hiltRule.inject()
 
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        underTest = ColorUpdateViewModel(context)
+        underTest = ColorUpdateViewModel(context, RetainedLifecycleImpl())
     }
 
     private fun overlayColors(context: Context, colorMapping: SparseIntArray) {
@@ -77,7 +78,7 @@ class ColorUpdateViewModelTest {
     }
 
     @Test
-    fun previewColors() {
+    fun previewColors_withPreviewEnabled() {
         testScope.runTest {
             val colorPrimary = collectLastValue(underTest.colorPrimary)
             overlayColors(
@@ -88,11 +89,31 @@ class ColorUpdateViewModelTest {
                 },
             )
             underTest.updateColors()
-            assertThat(colorPrimary()).isEqualTo(12345)
 
+            underTest.setPreviewEnabled(true)
             underTest.previewColors(54321, Style.VIBRANT)
 
             assertThat(colorPrimary()).isNotEqualTo(12345)
+        }
+    }
+
+    @Test
+    fun previewColors_withPreviewDisabled() {
+        testScope.runTest {
+            val colorPrimary = collectLastValue(underTest.colorPrimary)
+            overlayColors(
+                context,
+                SparseIntArray().apply {
+                    put(android.R.color.system_primary_light, 12345)
+                    put(android.R.color.system_primary_dark, 12345)
+                },
+            )
+            underTest.updateColors()
+
+            underTest.setPreviewEnabled(false)
+            underTest.previewColors(54321, Style.VIBRANT)
+
+            assertThat(colorPrimary()).isEqualTo(12345)
         }
     }
 
