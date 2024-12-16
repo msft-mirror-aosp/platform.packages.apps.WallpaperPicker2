@@ -30,6 +30,7 @@ import android.util.Log
 import com.android.wallpaper.R
 import com.android.wallpaper.effects.Effect
 import com.android.wallpaper.effects.EffectsController.EffectEnumInterface
+import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.picker.data.CreativeWallpaperData
 import com.android.wallpaper.picker.data.LiveWallpaperData
 import com.android.wallpaper.picker.data.WallpaperModel
@@ -615,7 +616,7 @@ constructor(
             // Show information floating sheet when any of the following contents exists
             // 1. Attributions/Description: Any of the list values is not null nor empty
             // 2. Explore action URL
-            return (!attributions.isNullOrEmpty() && attributions.any { !it.isNullOrEmpty() }) ||
+            return (!attributions.isNullOrEmpty() && attributions.any { it.isNotEmpty() }) ||
                 !commonWallpaperData.exploreActionUrl.isNullOrEmpty() ||
                 hasDescription
         }
@@ -659,7 +660,13 @@ constructor(
         }
 
         fun LiveWallpaperModel.isNewCreativeWallpaper(): Boolean {
-            return creativeWallpaperData?.deleteUri?.toString()?.isEmpty() == true
+            return if (
+                InjectorProvider.getInjector().getFlags().isNewCreativeWallpaperCategoryEnabled()
+            ) {
+                creativeWallpaperData?.isNewCreativeWallpaper ?: false
+            } else {
+                creativeWallpaperData?.deleteUri?.toString()?.isEmpty() == true
+            }
         }
 
         /** The original combine function can only take up to 5 flows. */

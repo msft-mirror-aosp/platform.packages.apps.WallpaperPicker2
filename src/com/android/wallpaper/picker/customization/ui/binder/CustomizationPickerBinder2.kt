@@ -39,8 +39,8 @@ import kotlinx.coroutines.launch
 
 object CustomizationPickerBinder2 {
 
-    private const val ALPHA_SELECTED_PREVIEW = 1f
-    private const val ALPHA_NON_SELECTED_PREVIEW = 0.4f
+    const val ALPHA_SELECTED_PREVIEW = 1f
+    const val ALPHA_NON_SELECTED_PREVIEW = 0.4f
     private const val LOCK_SCREEN_PREVIEW_POSITION = 0
     private const val HOME_SCREEN_PREVIEW_POSITION = 1
 
@@ -61,6 +61,7 @@ object CustomizationPickerBinder2 {
         navigateToPrimary: () -> Unit,
         navigateToSecondary: (screen: CustomizationOption) -> Unit,
         navigateToCategoriesScreen: (screen: Screen) -> Unit,
+        navigateToMoreLockScreenSettingsActivity: () -> Unit,
     ) {
         val optionContainer =
             view.requireViewById<MotionLayout>(R.id.customization_option_container)
@@ -172,6 +173,7 @@ object CustomizationPickerBinder2 {
             colorUpdateViewModel,
             lifecycleOwner,
             navigateToCategoriesScreen,
+            navigateToMoreLockScreenSettingsActivity,
         )
     }
 }
