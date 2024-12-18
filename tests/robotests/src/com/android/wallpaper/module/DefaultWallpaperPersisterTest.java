@@ -42,6 +42,7 @@ import com.android.wallpaper.module.DefaultWallpaperPersisterTest.TestSetWallpap
 import com.android.wallpaper.module.WallpaperPersister.SetWallpaperCallback;
 import com.android.wallpaper.module.logging.TestUserEventLogger;
 import com.android.wallpaper.network.Requester;
+import com.android.wallpaper.picker.category.wrapper.WallpaperCategoryWrapper;
 import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository;
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor;
 import com.android.wallpaper.testing.FakeDisplaysProvider;
@@ -70,6 +71,7 @@ import org.robolectric.shadows.ShadowPausedAsyncTask;
 import java.util.ArrayList;
 import java.util.List;
 
+
 @RunWith(RobolectricTestRunner.class)
 public class DefaultWallpaperPersisterTest {
     private static final String TAG = "DefaultWallpaperPersisterTest";
@@ -88,6 +90,7 @@ public class DefaultWallpaperPersisterTest {
     @Before
     public void setUp() {
         mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+
         mManager = spy(WallpaperManager.getInstance(mContext));
         mPrefs = new TestWallpaperPreferences();
         WallpaperChangedNotifier changedNotifier = spy(WallpaperChangedNotifier.getInstance());
@@ -103,8 +106,7 @@ public class DefaultWallpaperPersisterTest {
                                 new FakeWallpaperClient(),
                                 new TestWallpaperPreferences(),
                                 testDispatcher
-                        ),
-                        () -> true
+                        )
                 );
 
         InjectorProvider.setInjector(new TestInjector(
@@ -115,8 +117,10 @@ public class DefaultWallpaperPersisterTest {
                 mock(PartnerProvider.class),
                 new FakeWallpaperClient(),
                 wallpaperInteractor,
-                mock(WallpaperPreferences.class)
+                mock(WallpaperPreferences.class),
+                mock(WallpaperCategoryWrapper.class)
         ));
+
         TestCurrentWallpaperInfoFactory wallpaperInfoFactory =
                 new TestCurrentWallpaperInfoFactory(mContext);
 

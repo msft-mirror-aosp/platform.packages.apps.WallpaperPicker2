@@ -56,11 +56,12 @@ import com.android.wallpaper.picker.MyPhotosStarter
 import com.android.wallpaper.picker.PreviewActivity
 import com.android.wallpaper.picker.PreviewFragment
 import com.android.wallpaper.picker.ViewOnlyPreviewActivity
+import com.android.wallpaper.picker.category.wrapper.WallpaperCategoryWrapper
 import com.android.wallpaper.picker.customization.data.repository.WallpaperColorsRepository
 import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperSnapshotRestorer
-import com.android.wallpaper.picker.individual.IndividualPickerFragment
+import com.android.wallpaper.picker.individual.IndividualPickerFragment2
 import com.android.wallpaper.picker.undo.data.repository.UndoRepository
 import com.android.wallpaper.picker.undo.domain.interactor.UndoInteractor
 import com.android.wallpaper.util.DisplayUtils
@@ -82,6 +83,7 @@ constructor(
     private val wallpaperClient: FakeWallpaperClient,
     private val injectedWallpaperInteractor: WallpaperInteractor,
     private val prefs: WallpaperPreferences,
+    private val fakeWallpaperCategoryWrapper: WallpaperCategoryWrapper,
 ) : Injector {
     private var appScope: CoroutineScope? = null
     private var alarmManagerWrapper: AlarmManagerWrapper? = null
@@ -104,6 +106,12 @@ constructor(
     private var wallpaperColorsRepository: WallpaperColorsRepository? = null
     private var previewActivityIntentFactory: InlinePreviewIntentFactory? = null
     private var viewOnlyPreviewActivityIntentFactory: InlinePreviewIntentFactory? = null
+
+    // Injected objects, sorted by alphabetical order of the type of object
+
+    override fun getWallpaperCategoryWrapper(): WallpaperCategoryWrapper {
+        return fakeWallpaperCategoryWrapper
+    }
 
     override fun getApplicationCoroutineScope(): CoroutineScope {
         return appScope ?: CoroutineScope(Dispatchers.Main).also { appScope = it }
@@ -161,8 +169,8 @@ constructor(
     override fun getIndividualPickerFragment(
         context: Context,
         collectionId: String,
-    ): IndividualPickerFragment {
-        return IndividualPickerFragment.newInstance(collectionId)
+    ): IndividualPickerFragment2 {
+        return IndividualPickerFragment2.newInstance(collectionId)
     }
 
     override fun getLiveWallpaperInfoFactory(context: Context): LiveWallpaperInfoFactory {
@@ -245,6 +253,14 @@ constructor(
                         return true
                     }
 
+                    override fun isAIWallpaperEnabled(context: Context): Boolean {
+                        return true
+                    }
+
+                    override fun isWallpaperCategoryRefactoringEnabled(): Boolean {
+                        return true
+                    }
+
                     override fun getCachedFlags(
                         context: Context
                     ): List<CustomizationProviderClient.Flag> {
@@ -302,7 +318,7 @@ constructor(
 
     override fun getWallpaperColorsRepository(): WallpaperColorsRepository {
         return wallpaperColorsRepository
-            ?: WallpaperColorsRepository().also { wallpaperColorsRepository = it }
+            ?: WallpaperColorsRepository(wallpaperClient).also { wallpaperColorsRepository = it }
     }
 
     override fun getMyPhotosIntentProvider(): MyPhotosStarter.MyPhotosIntentProvider {
