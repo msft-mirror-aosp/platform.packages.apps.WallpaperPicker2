@@ -27,6 +27,8 @@ public final class WallpaperInfoContract {
     public static final String WALLPAPER_TITLE = "wallpaper_title";
     public static final String WALLPAPER_AUTHOR = "wallpaper_author";
     public static final String WALLPAPER_DESCRIPTION = "wallpaper_description";
+    public static final String WALLPAPER_DESCRIPTION_CONTENT_HANDLING =
+            "wallpaper_description_content_handling";
     public static final String WALLPAPER_CONTENT_DESCRIPTION = "wallpaper_content_description";
     public static final String WALLPAPER_THUMBNAIL = "wallpaper_thumbnail";
     public static final String WALLPAPER_CONFIG_PREVIEW_URI = "wallpaper_config_preview_uri";
@@ -35,6 +37,8 @@ public final class WallpaperInfoContract {
     public static final String WALLPAPER_SHARE_URI = "wallpaper_share_uri";
     public static final String WALLPAPER_GROUP_NAME = "wallpaper_group_name";
     public static final String WALLPAPER_IS_APPLIED = "wallpaper_is_applied";
+    public static final String WALLPAPER_IS_NEW_CREATIVE_WALLPAPER =
+            "wallpaper_is_new_creative_wallpaper";
     public static final String WALLPAPER_EFFECTS_SECTION_TITLE =
             "wallpaper_effects_bottom_sheet_title";
     public static final String WALLPAPER_EFFECTS_SECTION_SUBTITLE =

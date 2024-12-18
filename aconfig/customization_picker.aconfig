@@ -1,5 +1,5 @@
 package: "com.android.wallpaper"
-container: "system_ext"
+container: "system"
 
 flag {
     name: "wallpaper_restorer_flag"
@@ -13,6 +13,13 @@ flag {
     namespace: "customization_picker"
     description: "Enables wallpaper category selection according to recommended architecture when flag is turned on."
     bug: "290840060"
+}
+
+flag {
+    name: "new_creative_wallpaper_category"
+    namespace: "customization_picker"
+    description: "Add new column for the new creative wallpaper."
+    bug: "381009822"
 }
 
 flag {

@@ -18,12 +18,16 @@ package com.android.wallpaper.picker.preview.ui.viewmodel
 
 import android.content.Context
 import android.content.pm.ActivityInfo
+import android.platform.test.annotations.DisableFlags
+import android.platform.test.flag.junit.SetFlagsRule
 import androidx.activity.viewModels
 import androidx.test.core.app.ActivityScenario
 import com.android.wallpaper.module.InjectorProvider
+import com.android.wallpaper.module.NetworkStatusNotifier
 import com.android.wallpaper.picker.category.ui.viewmodel.CategoriesViewModel
 import com.android.wallpaper.picker.preview.PreviewTestActivity
 import com.android.wallpaper.testing.TestInjector
+import com.android.wallpaper.testing.TestNetworkStatusNotifier
 import com.android.wallpaper.testing.collectLastValue
 import com.google.common.truth.Truth.assertThat
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -48,7 +52,8 @@ import org.robolectric.Shadows
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class CategoriesViewModelTest {
-    @get:Rule var hiltRule = HiltAndroidRule(this)
+    @get:Rule(order = 0) var hiltRule = HiltAndroidRule(this)
+    @get:Rule(order = 1) val setFlagsRule = SetFlagsRule()
 
     private lateinit var scenario: ActivityScenario<PreviewTestActivity>
     private lateinit var categoriesViewModel: CategoriesViewModel
@@ -57,6 +62,8 @@ class CategoriesViewModelTest {
     @Inject @ApplicationContext lateinit var appContext: Context
 
     @Inject lateinit var testInjector: TestInjector
+
+    @Inject lateinit var networkStatusNotifier: TestNetworkStatusNotifier
 
     @Before
     fun setUp() {
@@ -80,12 +87,14 @@ class CategoriesViewModelTest {
     }
 
     @Test
+    @DisableFlags(com.android.systemui.shared.Flags.FLAG_NEW_CUSTOMIZATION_PICKER_UI)
     fun sections_verifyNumberOfSections() = runTest {
         val sections = collectLastValue(categoriesViewModel.sections)()
         assertThat(sections?.size).isEqualTo(EXPECTED_NUMBER_OF_SECTIONS)
     }
 
     @Test
+    @DisableFlags(com.android.systemui.shared.Flags.FLAG_NEW_CUSTOMIZATION_PICKER_UI)
     fun sections_verifyTilesInCreativeCategory() = runTest {
         val sections = collectLastValue(categoriesViewModel.sections)()
         val creativeSection = sections?.get(EXPECTED_POSITION_CREATIVE_CATEGORY)
@@ -100,6 +109,7 @@ class CategoriesViewModelTest {
     }
 
     @Test
+    @DisableFlags(com.android.systemui.shared.Flags.FLAG_NEW_CUSTOMIZATION_PICKER_UI)
     fun sections_verifyTilesInMyPhotosCategory() = runTest {
         val sections = collectLastValue(categoriesViewModel.sections)()
         val myPhotosSection = sections?.get(EXPECTED_POSITION_MY_PHOTOS_CATEGORY)
@@ -112,6 +122,7 @@ class CategoriesViewModelTest {
     }
 
     @Test
+    @DisableFlags(com.android.systemui.shared.Flags.FLAG_NEW_CUSTOMIZATION_PICKER_UI)
     fun sections_verifyIndividualCategory() = runTest {
         val sections = collectLastValue(categoriesViewModel.sections)()
         val individualSections =
@@ -129,6 +140,7 @@ class CategoriesViewModelTest {
     }
 
     @Test
+    @DisableFlags(com.android.systemui.shared.Flags.FLAG_NEW_CUSTOMIZATION_PICKER_UI)
     fun navigationEvents_verifyNavigateToWallpaperCollection() = runTest {
         val sections = collectLastValue(categoriesViewModel.sections)()
 
@@ -154,7 +166,7 @@ class CategoriesViewModelTest {
                     .isEqualTo(
                         CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection(
                             CATEGORY_ID_CELESTIAL_DREAMSCAPES,
-                            CategoriesViewModel.CategoryType.DefaultCategories
+                            CategoriesViewModel.CategoryType.DefaultCategories,
                         )
                     )
 
@@ -177,7 +189,7 @@ class CategoriesViewModelTest {
                     .isEqualTo(
                         CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection(
                             CATEGORY_ID_CYBERPUNK_CITYSCAPE,
-                            CategoriesViewModel.CategoryType.DefaultCategories
+                            CategoriesViewModel.CategoryType.DefaultCategories,
                         )
                     )
                 job.cancelAndJoin()
@@ -197,7 +209,7 @@ class CategoriesViewModelTest {
                     .isEqualTo(
                         CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection(
                             CATEGORY_ID_COSMIC_NEBULA,
-                            CategoriesViewModel.CategoryType.DefaultCategories
+                            CategoriesViewModel.CategoryType.DefaultCategories,
                         )
                     )
                 job.cancelAndJoin()
@@ -206,6 +218,7 @@ class CategoriesViewModelTest {
     }
 
     @Test
+    @DisableFlags(com.android.systemui.shared.Flags.FLAG_NEW_CUSTOMIZATION_PICKER_UI)
     fun navigationEvents_verifyNavigateToMyPhotos() = runTest {
         val sections = collectLastValue(categoriesViewModel.sections)()
         val myPhotosSection = sections?.get(EXPECTED_POSITION_MY_PHOTOS_CATEGORY)
@@ -220,10 +233,29 @@ class CategoriesViewModelTest {
 
             onClick()
             testDispatcher.scheduler.advanceUntilIdle()
-            assertThat(collectedValues[0])
-                .isEqualTo(CategoriesViewModel.NavigationEvent.NavigateToPhotosPicker)
+            val navigateToPhotosPicker =
+                CategoriesViewModel.NavigationEvent.NavigateToPhotosPicker(null)
+            assertThat(collectedValues[0]).isEqualTo(navigateToPhotosPicker)
             job.cancelAndJoin()
         }
+    }
+
+    @Test
+    @DisableFlags(com.android.systemui.shared.Flags.FLAG_NEW_CUSTOMIZATION_PICKER_UI)
+    fun networkStatus_verifyStatusOnNetworkChange() = runTest {
+        val collectedValues = mutableListOf<Boolean>()
+        val job =
+            launch(testDispatcher) {
+                categoriesViewModel.isConnectionObtained.collect { collectedValues.add(it) }
+            }
+        networkStatusNotifier.setAndNotifyNetworkStatus(NetworkStatusNotifier.NETWORK_NOT_CONNECTED)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertThat(collectedValues[0]).isFalse()
+
+        networkStatusNotifier.setAndNotifyNetworkStatus(NetworkStatusNotifier.NETWORK_CONNECTED)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertThat(collectedValues[1]).isTrue()
+        job.cancelAndJoin()
     }
 
     /**

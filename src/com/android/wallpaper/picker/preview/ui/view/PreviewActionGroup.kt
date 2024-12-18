@@ -17,13 +17,16 @@ package com.android.wallpaper.picker.preview.ui.view
 
 import android.content.Context
 import android.util.AttributeSet
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ToggleButton
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.view.isVisible
 import com.android.wallpaper.R
+import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.picker.preview.ui.viewmodel.Action
 
 /** Custom layout for a group of wallpaper preview actions. */
@@ -40,7 +43,10 @@ class PreviewActionGroup(context: Context, attrs: AttributeSet?) : FrameLayout(c
     private val shareButton: ToggleButton
 
     init {
-        LayoutInflater.from(context).inflate(R.layout.preview_action_group, this, true)
+        val layout =
+            if (BaseFlags.get().isNewPickerUi()) R.layout.preview_action_group2
+            else R.layout.preview_action_group
+        LayoutInflater.from(context).inflate(layout, this, true)
         informationButton = requireViewById(R.id.information_button)
         downloadButton = requireViewById(R.id.download_button)
         downloadButtonToggle = requireViewById(R.id.download_button_toggle)
@@ -50,6 +56,14 @@ class PreviewActionGroup(context: Context, attrs: AttributeSet?) : FrameLayout(c
         customizeButton = requireViewById(R.id.customize_button)
         effectsButton = requireViewById(R.id.effects_button)
         shareButton = requireViewById(R.id.share_button)
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+
+        if (BaseFlags.get().isNewPickerUi() && (parent as ViewGroup).width > width) {
+            (layoutParams as LayoutParams).gravity = Gravity.CENTER_HORIZONTAL
+        }
     }
 
     fun setIsChecked(action: Action, isChecked: Boolean) {
@@ -119,7 +133,7 @@ class PreviewActionGroup(context: Context, attrs: AttributeSet?) : FrameLayout(c
         downloadButtonProgress.background =
             AppCompatResources.getDrawable(
                 context,
-                R.drawable.wallpaper_control_button_off_background
+                R.drawable.wallpaper_control_button_off_background,
             )
         deleteButton.foreground =
             AppCompatResources.getDrawable(context, R.drawable.wallpaper_control_button_delete)

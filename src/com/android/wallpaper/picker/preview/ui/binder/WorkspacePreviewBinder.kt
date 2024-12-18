@@ -93,7 +93,7 @@ object WorkspacePreviewBinder {
                                         previewUtils = config.previewUtils,
                                         displayId =
                                             viewModel.getDisplayId(config.deviceDisplayType),
-                                        wallpaperColors = it.colors
+                                        wallpaperColors = it.colors,
                                     )
                                 // Dispose the previous preview on the renderer side.
                                 previewDisposableHandle?.dispose()
@@ -163,7 +163,7 @@ object WorkspacePreviewBinder {
                     lifecycleOwner.lifecycleScope.launch {
                         combine(
                                 viewModel.fullWorkspacePreviewConfigViewModel,
-                                viewModel.wallpaperColorsModel
+                                viewModel.wallpaperColorsModel,
                             ) { config, colorsModel ->
                                 config to colorsModel
                             }
@@ -175,7 +175,7 @@ object WorkspacePreviewBinder {
                                             previewUtils = config.previewUtils,
                                             displayId =
                                                 viewModel.getDisplayId(config.deviceDisplayType),
-                                            wallpaperColors = colorsModel.colors
+                                            wallpaperColors = colorsModel.colors,
                                         )
                                     // Dispose the previous preview on the renderer side.
                                     previewDisposableHandle?.dispose()
@@ -204,15 +204,21 @@ object WorkspacePreviewBinder {
     ): Message? {
         var workspaceCallback: Message? = null
         if (previewUtils.supportsPreview()) {
-            val extras = bundleOf(Pair(SurfaceViewUtils.KEY_DISPLAY_ID, displayId))
+            // surfaceView.width and surfaceFrame.width here can be different, one represents the
+            // size of the view and the other represents the size of the surface. When requesting a
+            // preview, make sure to specify the width and height in the bundle so we are using the
+            // surface size and not the view size.
+            val surfacePosition = surface.holder.surfaceFrame
+            val extras =
+                bundleOf(
+                    Pair(SurfaceViewUtils.KEY_DISPLAY_ID, displayId),
+                    Pair(SurfaceViewUtils.KEY_VIEW_WIDTH, surfacePosition.width()),
+                    Pair(SurfaceViewUtils.KEY_VIEW_HEIGHT, surfacePosition.height()),
+                )
             wallpaperColors?.let {
                 extras.putParcelable(SurfaceViewUtils.KEY_WALLPAPER_COLORS, wallpaperColors)
             }
-            val request =
-                SurfaceViewUtils.createSurfaceViewRequest(
-                    surface,
-                    extras,
-                )
+            val request = SurfaceViewUtils.createSurfaceViewRequest(surface, extras)
             workspaceCallback = suspendCancellableCoroutine { continuation ->
                 previewUtils.renderPreview(
                     request,
@@ -226,7 +232,7 @@ object WorkspacePreviewBinder {
                                         Log.w(
                                             TAG,
                                             "Result bundle from rendering preview does not contain " +
-                                                "a child surface package."
+                                                "a child surface package.",
                                         )
                                     }
                                 }
@@ -236,7 +242,7 @@ object WorkspacePreviewBinder {
                                 continuation.resume(null)
                             }
                         }
-                    }
+                    },
                 )
             }
         }

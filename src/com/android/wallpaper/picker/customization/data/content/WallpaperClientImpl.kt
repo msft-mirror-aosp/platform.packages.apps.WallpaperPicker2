@@ -17,11 +17,13 @@
 
 package com.android.wallpaper.picker.customization.data.content
 
+import android.app.Flags.liveWallpaperContentHandling
 import android.app.WallpaperColors
 import android.app.WallpaperManager
 import android.app.WallpaperManager.FLAG_LOCK
 import android.app.WallpaperManager.FLAG_SYSTEM
 import android.app.WallpaperManager.SetWallpaperFlags
+import android.app.wallpaper.WallpaperDescription
 import android.content.ComponentName
 import android.content.ContentResolver
 import android.content.ContentValues
@@ -33,7 +35,6 @@ import android.graphics.Color
 import android.graphics.Point
 import android.graphics.Rect
 import android.net.Uri
-import android.os.Looper
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
 import com.android.app.tracing.TraceUtils.traceAsync
@@ -41,8 +42,6 @@ import com.android.wallpaper.asset.Asset
 import com.android.wallpaper.asset.BitmapUtils
 import com.android.wallpaper.asset.CurrentWallpaperAsset
 import com.android.wallpaper.asset.StreamableAsset
-import com.android.wallpaper.model.CreativeCategory
-import com.android.wallpaper.model.CreativeWallpaperInfo
 import com.android.wallpaper.model.LiveWallpaperPrefMetadata
 import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.StaticWallpaperPrefMetadata
@@ -55,27 +54,28 @@ import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoi
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination.BOTH
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination.Companion.toDestinationInt
+import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination.Companion.toSetWallpaperFlags
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination.HOME
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination.LOCK
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel as RecentWallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
+import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 import com.android.wallpaper.util.WallpaperCropUtils
 import com.android.wallpaper.util.converter.WallpaperModelFactory
-import com.android.wallpaper.util.converter.WallpaperModelFactory.Companion.getCommonWallpaperData
-import com.android.wallpaper.util.converter.WallpaperModelFactory.Companion.getCreativeWallpaperData
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
 import java.io.InputStream
-import java.util.EnumMap
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 
@@ -89,65 +89,44 @@ constructor(
     private val wallpaperPreferences: WallpaperPreferences,
     private val wallpaperModelFactory: WallpaperModelFactory,
     private val logger: UserEventLogger,
+    @BackgroundDispatcher val backgroundScope: CoroutineScope,
 ) : WallpaperClient {
 
     private var recentsContentProviderAvailable: Boolean? = null
-    private val cachedRecents: MutableMap<WallpaperDestination, List<RecentWallpaperModel>> =
-        EnumMap(WallpaperDestination::class.java)
+    private val recentHomeWallpapers = MutableStateFlow<List<RecentWallpaperModel>?>(null)
+    private val recentLockWallpapers = MutableStateFlow<List<RecentWallpaperModel>?>(null)
 
     init {
+        backgroundScope.launch {
+            recentHomeWallpapers.value = queryRecentWallpapers(destination = HOME)
+            recentLockWallpapers.value = queryRecentWallpapers(destination = LOCK)
+        }
+
         if (areRecentsAvailable()) {
             context.contentResolver.registerContentObserver(
                 LIST_RECENTS_URI,
                 /* notifyForDescendants= */ true,
                 object : ContentObserver(null) {
                     override fun onChange(selfChange: Boolean) {
-                        cachedRecents.clear()
+                        backgroundScope.launch {
+                            recentHomeWallpapers.value = queryRecentWallpapers(destination = HOME)
+                            recentLockWallpapers.value = queryRecentWallpapers(destination = LOCK)
+                        }
                     }
                 },
             )
         }
     }
 
-    override fun recentWallpapers(
-        destination: WallpaperDestination,
-        limit: Int,
-    ): Flow<List<RecentWallpaperModel>> {
-        return callbackFlow {
-            // TODO(b/280891780) Remove this check
-            if (Looper.myLooper() == Looper.getMainLooper()) {
-                throw IllegalStateException("Do not call method recentWallpapers() on main thread")
-            }
-            suspend fun queryAndSend(limit: Int) {
-                send(queryRecentWallpapers(destination = destination, limit = limit))
-            }
-
-            val contentObserver =
-                if (areRecentsAvailable()) {
-                        object : ContentObserver(null) {
-                            override fun onChange(selfChange: Boolean) {
-                                launch { queryAndSend(limit = limit) }
-                            }
-                        }
-                    } else {
-                        null
-                    }
-                    ?.also {
-                        context.contentResolver.registerContentObserver(
-                            LIST_RECENTS_URI,
-                            /* notifyForDescendants= */ true,
-                            it,
-                        )
-                    }
-            queryAndSend(limit = limit)
-
-            awaitClose {
-                if (contentObserver != null) {
-                    context.contentResolver.unregisterContentObserver(contentObserver)
-                }
-            }
+    override fun recentWallpapers(destination: WallpaperDestination, limit: Int) =
+        when (destination) {
+            HOME -> recentHomeWallpapers.asStateFlow().filterNotNull().take(limit)
+            LOCK -> recentLockWallpapers.asStateFlow().filterNotNull().take(limit)
+            BOTH ->
+                throw IllegalStateException(
+                    "Destination $destination should not be used for getting recent wallpapers."
+                )
         }
-    }
 
     override suspend fun setStaticWallpaper(
         @SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
@@ -191,9 +170,7 @@ constructor(
                 effects = null,
                 setWallpaperEntryPoint = setWallpaperEntryPoint,
                 destination =
-                    UserEventLogger.toWallpaperDestinationForLogging(
-                        destination.toDestinationInt()
-                    ),
+                    UserEventLogger.toWallpaperDestinationForLogging(destination.toDestinationInt()),
             )
 
             // Save the static wallpaper to recent wallpapers
@@ -233,14 +210,14 @@ constructor(
                 inputStream,
                 cropHints,
                 /* allowBackup= */ true,
-                destination.toFlags(),
+                destination.toSetWallpaperFlags(),
             )
         } else {
             setBitmapWithCrops(
                 bitmap,
                 cropHints,
                 /* allowBackup= */ true,
-                destination.toFlags(),
+                destination.toSetWallpaperFlags(),
             )
         }
     }
@@ -267,7 +244,7 @@ constructor(
      */
     private fun WallpaperPreferences.setStaticWallpaperMetadata(
         metadata: StaticWallpaperPrefMetadata,
-        destination: WallpaperDestination
+        destination: WallpaperDestination,
     ) {
         when (destination) {
             HOME -> {
@@ -301,16 +278,10 @@ constructor(
         }
 
         traceAsync(TAG, "setLiveWallpaper") {
-            val updatedWallpaperModel =
-                wallpaperModel.creativeWallpaperData?.let {
-                    saveCreativeWallpaperAtExternal(wallpaperModel, destination)
-                } ?: wallpaperModel
-
-            val managerId =
-                wallpaperManager.setLiveWallpaperToSystem(updatedWallpaperModel, destination)
+            val managerId = wallpaperManager.setLiveWallpaperToSystem(wallpaperModel, destination)
 
             wallpaperPreferences.setLiveWallpaperMetadata(
-                metadata = updatedWallpaperModel.getMetadata(managerId),
+                metadata = wallpaperModel.getMetadata(managerId),
                 destination = destination,
             )
 
@@ -320,56 +291,61 @@ constructor(
                 effects = wallpaperModel.liveWallpaperData.effectNames,
                 setWallpaperEntryPoint = setWallpaperEntryPoint,
                 destination =
-                    UserEventLogger.toWallpaperDestinationForLogging(
-                        destination.toDestinationInt()
-                    ),
+                    UserEventLogger.toWallpaperDestinationForLogging(destination.toDestinationInt()),
             )
 
-            wallpaperPreferences.addLiveWallpaperToRecentWallpapers(
-                destination,
-                updatedWallpaperModel
-            )
+            wallpaperPreferences.addLiveWallpaperToRecentWallpapers(destination, wallpaperModel)
         }
     }
 
-    /**
-     * Call the external app to save the creative wallpaper, and return an updated model based on
-     * the response.
-     */
-    private fun saveCreativeWallpaperAtExternal(
+    private fun tryAndroidBSetComponent(
         wallpaperModel: LiveWallpaperModel,
         destination: WallpaperDestination,
-    ): LiveWallpaperModel? {
-        wallpaperModel.getSaveWallpaperUriAndAuthority(destination)?.let { (uri, authority) ->
-            try {
-                context.contentResolver.acquireContentProviderClient(authority).use { client ->
-                    val cursor =
-                        client?.query(
-                            /* url= */ uri,
-                            /* projection= */ null,
-                            /* selection= */ null,
-                            /* selectionArgs= */ null,
-                            /* sortOrder= */ null,
-                        )
-                    if (cursor == null || !cursor.moveToFirst()) return null
-                    val info =
-                        CreativeWallpaperInfo.buildFromCursor(
-                            wallpaperModel.liveWallpaperData.systemWallpaperInfo,
-                            cursor
-                        )
-                    // NB: need to regenerate common data to update the thumbnail asset
-                    return LiveWallpaperModel(
-                        info.getCommonWallpaperData(context),
-                        wallpaperModel.liveWallpaperData,
-                        info.getCreativeWallpaperData(),
-                        wallpaperModel.internalLiveWallpaperData
-                    )
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed updating creative live wallpaper at external.")
-            }
+    ): Boolean {
+        try {
+            val method =
+                wallpaperManager.javaClass.getMethod(
+                    "setWallpaperComponentWithDescription",
+                    WallpaperDescription::class.java,
+                    Int::class.javaPrimitiveType,
+                )
+            method.invoke(
+                wallpaperManager,
+                wallpaperModel.liveWallpaperData.description,
+                destination.toSetWallpaperFlags(),
+            )
+            return true
+        } catch (e: NoSuchMethodException) {
+            return false
         }
-        return null
+    }
+
+    private fun tryAndroidUSetComponent(
+        wallpaperModel: LiveWallpaperModel,
+        destination: WallpaperDestination,
+    ): Boolean {
+        try {
+            val method =
+                wallpaperManager.javaClass.getMethod(
+                    "setWallpaperComponentWithFlags",
+                    ComponentName::class.java,
+                    Int::class.javaPrimitiveType,
+                )
+            method.invoke(
+                wallpaperManager,
+                wallpaperModel.commonWallpaperData.id.componentName,
+                destination.toSetWallpaperFlags(),
+            )
+            if (liveWallpaperContentHandling()) {
+                Log.w(
+                    TAG,
+                    "live wallpaper content handling enabled, but Android U setWallpaperComponentWithFlags called",
+                )
+            }
+            return true
+        } catch (e: NoSuchMethodException) {
+            return false
+        }
     }
 
     /**
@@ -379,19 +355,14 @@ constructor(
      */
     private fun WallpaperManager.setLiveWallpaperToSystem(
         wallpaperModel: LiveWallpaperModel,
-        destination: WallpaperDestination
+        destination: WallpaperDestination,
     ): Int {
-        val componentName = wallpaperModel.commonWallpaperData.id.componentName
-        try {
-            // Probe if the function setWallpaperComponentWithFlags exists
-            javaClass.getMethod(
-                "setWallpaperComponentWithFlags",
-                ComponentName::class.java,
-                Int::class.javaPrimitiveType
-            )
-            setWallpaperComponentWithFlags(componentName, destination.toFlags())
-        } catch (e: NoSuchMethodException) {
-            setWallpaperComponent(componentName)
+        if (tryAndroidBSetComponent(wallpaperModel, destination)) {
+            // intentional no-op
+        } else if (tryAndroidUSetComponent(wallpaperModel, destination)) {
+            // intentional no-op
+        } else {
+            setWallpaperComponent(wallpaperModel.commonWallpaperData.id.componentName)
         }
 
         // Be careful that WallpaperManager.getWallpaperId can only accept either
@@ -419,7 +390,7 @@ constructor(
      */
     private fun WallpaperPreferences.setLiveWallpaperMetadata(
         metadata: LiveWallpaperPrefMetadata,
-        destination: WallpaperDestination
+        destination: WallpaperDestination,
     ) {
         when (destination) {
             HOME -> {
@@ -437,23 +408,6 @@ constructor(
                 setLockLiveWallpaperMetadata(metadata)
             }
         }
-    }
-
-    /** Get the URI to call the external app to save the creative wallpaper. */
-    private fun LiveWallpaperModel.getSaveWallpaperUriAndAuthority(
-        destination: WallpaperDestination
-    ): Pair<Uri, String>? {
-        val uriString =
-            liveWallpaperData.systemWallpaperInfo.serviceInfo.metaData.getString(
-                CreativeCategory.KEY_WALLPAPER_SAVE_CREATIVE_CATEGORY_WALLPAPER
-            ) ?: return null
-        val uri =
-            Uri.parse(uriString)
-                ?.buildUpon()
-                ?.appendQueryParameter("destination", destination.toDestinationInt().toString())
-                ?.build() ?: return null
-        val authority = uri.authority ?: return null
-        return Pair(uri, authority)
     }
 
     override suspend fun setRecentWallpaper(
@@ -477,22 +431,15 @@ constructor(
     }
 
     private suspend fun queryRecentWallpapers(
-        destination: WallpaperDestination,
-        limit: Int,
-    ): List<RecentWallpaperModel> {
-        val recentWallpapers =
-            cachedRecents[destination]
-                ?: if (!areRecentsAvailable()) {
-                    listOf(getCurrentWallpaperFromFactory(destination))
-                } else {
-                    queryAllRecentWallpapers(destination)
-                }
+        destination: WallpaperDestination
+    ): List<RecentWallpaperModel> =
+        if (!areRecentsAvailable()) {
+            listOf(getCurrentWallpaperFromFactory(destination))
+        } else {
+            queryAllRecentWallpapers(destination)
+        }
 
-        cachedRecents[destination] = recentWallpapers
-        return recentWallpapers.take(limit)
-    }
-
-    private suspend fun queryAllRecentWallpapers(
+    private fun queryAllRecentWallpapers(
         destination: WallpaperDestination
     ): List<RecentWallpaperModel> {
         context.contentResolver
@@ -542,12 +489,12 @@ constructor(
             } else {
                 currentWallpapers.first
             }
-        val colors = wallpaperManager.getWallpaperColors(destination.toFlags())
+        val colors = wallpaperManager.getWallpaperColors(destination.toSetWallpaperFlags())
 
         return RecentWallpaperModel(
             wallpaperId = wallpaper.wallpaperId,
             placeholderColor = colors?.primaryColor?.toArgb() ?: Color.TRANSPARENT,
-            title = wallpaper.getTitle(context)
+            title = wallpaper.getTitle(context),
         )
     }
 
@@ -555,10 +502,10 @@ constructor(
         suspendCancellableCoroutine { continuation ->
             InjectorProvider.getInjector()
                 .getCurrentWallpaperInfoFactory(context)
-                .createCurrentWallpaperInfos(
-                    context,
-                    /* forceRefresh= */ false,
-                ) { homeWallpaper, lockWallpaper, _ ->
+                .createCurrentWallpaperInfos(context, /* forceRefresh= */ false) {
+                    homeWallpaper,
+                    lockWallpaper,
+                    _ ->
                     continuation.resume(Pair(homeWallpaper, lockWallpaper), null)
                 }
         }
@@ -569,13 +516,13 @@ constructor(
         val lockWallpaper = currentWallpapers.second
         return WallpaperModelsPair(
             wallpaperModelFactory.getWallpaperModel(context, homeWallpaper),
-            lockWallpaper?.let { wallpaperModelFactory.getWallpaperModel(context, it) }
+            lockWallpaper?.let { wallpaperModelFactory.getWallpaperModel(context, it) },
         )
     }
 
     override suspend fun loadThumbnail(
         wallpaperId: String,
-        destination: WallpaperDestination
+        destination: WallpaperDestination,
     ): Bitmap? {
         if (areRecentsAvailable()) {
             try {
@@ -601,7 +548,7 @@ constructor(
                 Log.e(
                     TAG,
                     "Error getting wallpaper preview: $wallpaperId, destination: ${destination.asString()}",
-                    e
+                    e,
                 )
             }
         } else {
@@ -622,15 +569,12 @@ constructor(
         if (recentsContentProviderAvailable == null) {
             recentsContentProviderAvailable =
                 try {
-                    context.packageManager.resolveContentProvider(
-                        AUTHORITY,
-                        0,
-                    ) != null
+                    context.packageManager.resolveContentProvider(AUTHORITY, 0) != null
                 } catch (e: Exception) {
                     Log.w(
                         TAG,
                         "Exception trying to resolve recents content provider, skipping it",
-                        e
+                        e,
                     )
                     false
                 }
@@ -640,7 +584,7 @@ constructor(
 
     override fun getCurrentCropHints(
         displaySizes: List<Point>,
-        @SetWallpaperFlags which: Int
+        @SetWallpaperFlags which: Int,
     ): Map<Point, Rect>? {
         val flags = InjectorProvider.getInjector().getFlags()
         if (!flags.isMultiCropEnabled()) {
@@ -654,7 +598,7 @@ constructor(
 
     override suspend fun getWallpaperColors(
         bitmap: Bitmap,
-        cropHints: Map<Point, Rect>?
+        cropHints: Map<Point, Rect>?,
     ): WallpaperColors? {
         return wallpaperManager.getWallpaperColors(bitmap, cropHints)
     }
@@ -677,14 +621,6 @@ constructor(
         }
     }
 
-    private fun WallpaperDestination.toFlags(): Int {
-        return when (this) {
-            BOTH -> FLAG_LOCK or FLAG_SYSTEM
-            HOME -> FLAG_SYSTEM
-            LOCK -> FLAG_LOCK
-        }
-    }
-
     /**
      * Adjusts cropHints for parallax effect.
      *
@@ -696,9 +632,7 @@ constructor(
      *
      * @param wallpaperSize full wallpaper image size.
      */
-    private fun FullPreviewCropModel.adjustCropForParallax(
-        wallpaperSize: Point,
-    ): Rect {
+    private fun FullPreviewCropModel.adjustCropForParallax(wallpaperSize: Point): Rect {
         return cropSizeModel?.let {
             WallpaperCropUtils.calculateCropRect(
                     context,

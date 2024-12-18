@@ -36,6 +36,7 @@ import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewMod
 import com.android.wallpaper.util.RtlUtils
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DisposableHandle
 import kotlinx.coroutines.launch
 
@@ -46,8 +47,8 @@ object DualPreviewPagerBinder {
         dualPreviewView: DualPreviewViewPager,
         wallpaperPreviewViewModel: WallpaperPreviewViewModel,
         applicationContext: Context,
+        mainScope: CoroutineScope,
         viewLifecycleOwner: LifecycleOwner,
-        currentNavDestId: Int,
         transition: Transition?,
         transitionConfig: FullPreviewConfigViewModel?,
         wallpaperConnectionUtils: WallpaperConnectionUtils,
@@ -101,7 +102,7 @@ object DualPreviewPagerBinder {
             view.tag = positionLTR
 
             PreviewTooltipBinder.bindSmallPreviewTooltip(
-                tooltipStub = view.requireViewById(R.id.tooltip_stub),
+                tooltipStub = view.requireViewById(R.id.small_preview_tooltip_stub),
                 viewModel = wallpaperPreviewViewModel.smallTooltipViewModel,
                 lifecycleOwner = viewLifecycleOwner,
             )
@@ -125,11 +126,12 @@ object DualPreviewPagerBinder {
                         applicationContext = applicationContext,
                         view = dualDisplayAspectRatioLayout.requireViewById(display.getViewId()),
                         viewModel = wallpaperPreviewViewModel,
+                        mainScope = mainScope,
                         viewLifecycleOwner = viewLifecycleOwner,
                         screen = wallpaperPreviewViewModel.smallPreviewTabs[positionLTR],
                         displaySize = it,
                         deviceDisplayType = display,
-                        currentNavDestId = currentNavDestId,
+                        currentNavDestId = R.id.smallPreviewFragment,
                         transition = transition,
                         transitionConfig = transitionConfig,
                         wallpaperConnectionUtils = wallpaperConnectionUtils,
@@ -152,7 +154,7 @@ object DualPreviewPagerBinder {
                 override fun onPageScrolled(
                     position: Int,
                     positionOffset: Float,
-                    positionOffsetPixels: Int
+                    positionOffsetPixels: Int,
                 ) {}
 
                 override fun onPageScrollStateChanged(state: Int) {}

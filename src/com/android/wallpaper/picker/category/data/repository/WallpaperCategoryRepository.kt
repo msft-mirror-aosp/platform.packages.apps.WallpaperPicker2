@@ -16,6 +16,7 @@
 
 package com.android.wallpaper.picker.category.data.repository
 
+import com.android.wallpaper.model.Category
 import com.android.wallpaper.picker.data.category.CategoryModel
 import kotlinx.coroutines.flow.StateFlow
 
@@ -31,5 +32,29 @@ interface WallpaperCategoryRepository {
     val thirdPartyLiveWallpaperCategory: StateFlow<List<CategoryModel>>
     val isDefaultCategoriesFetched: StateFlow<Boolean>
 
+    fun getMyPhotosFetchedCategory(): Category?
+
+    fun getOnDeviceFetchedCategories(): Category?
+
+    fun getThirdPartyFetchedCategories(): List<Category>
+
+    fun getSystemFetchedCategories(): List<Category>
+
+    fun getThirdPartyLiveWallpaperFetchedCategories(): List<Category>
+
     suspend fun fetchMyPhotosCategory()
+
+    suspend fun refreshNetworkCategories()
+
+    /**
+     * ThirdPartyAppCategories represent third-party apps that offer static wallpapers which users
+     * can set as their wallpapers.
+     */
+    suspend fun refreshThirdPartyAppCategories()
+
+    /**
+     * ThirdPartyLiveWallpaperCategories represent third-party apps that offer live wallpapers which
+     * users can set as their wallpapers.
+     */
+    suspend fun refreshThirdPartyLiveWallpaperCategories()
 }

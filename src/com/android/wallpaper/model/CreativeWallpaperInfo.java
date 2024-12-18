@@ -15,10 +15,13 @@
  */
 package com.android.wallpaper.model;
 
+import static android.app.Flags.liveWallpaperContentHandling;
+
 import static com.android.wallpaper.model.CreativeCategory.KEY_WALLPAPER_SAVE_CREATIVE_CATEGORY_WALLPAPER;
 
 import android.annotation.Nullable;
 import android.app.WallpaperInfo;
+import android.app.wallpaper.WallpaperDescription;
 import android.content.ClipData;
 import android.content.ContentProviderClient;
 import android.content.ContentValues;
@@ -37,6 +40,7 @@ import androidx.annotation.NonNull;
 
 import com.android.wallpaper.asset.Asset;
 import com.android.wallpaper.asset.CreativeWallpaperThumbAsset;
+import com.android.wallpaper.module.InjectorProvider;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,6 +73,7 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
     private String mDescription;
     private String mContentDescription;
     private boolean mIsCurrent;
+    private boolean mIsNewCreativeWallpaper;
     private String mGroupName;
 
     private static final String TAG = "CreativeWallpaperInfo";
@@ -83,8 +88,9 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
     public CreativeWallpaperInfo(WallpaperInfo info, String title, @Nullable String author,
             @Nullable String description, String contentDescription, Uri configPreviewUri,
             Uri cleanPreviewUri, Uri deleteUri, Uri thumbnailUri, Uri shareUri, String groupName,
-            boolean isCurrent) {
-        this(info, /* visibleTitle= */ false, /* collectionId= */ null);
+            boolean isCurrent, @NonNull WallpaperDescription wallpaperDescription,
+            boolean isNewCreativeWallpaper) {
+        this(info, /* visibleTitle= */ false, info.getPackageName());
         mTitle = title;
         mAuthor = author;
         mDescription = description;
@@ -96,10 +102,12 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
         mShareUri = shareUri;
         mIsCurrent = isCurrent;
         mGroupName = groupName;
+        mWallpaperDescription = wallpaperDescription;
+        mIsNewCreativeWallpaper = isNewCreativeWallpaper;
     }
 
     public CreativeWallpaperInfo(WallpaperInfo info, boolean isCurrent) {
-        this(info, false, null);
+        this(info, false, info.getPackageName());
         mIsCurrent = isCurrent;
     }
 
@@ -114,6 +122,7 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
         mAuthor = in.readString();
         mDescription = in.readString();
         mContentDescription = in.readString();
+        mIsNewCreativeWallpaper = in.readBoolean();
         mConfigPreviewUri = in.readParcelable(Uri.class.getClassLoader(), Uri.class);
         mCleanPreviewUri = in.readParcelable(Uri.class.getClassLoader(), Uri.class);
         mDeleteUri = in.readParcelable(Uri.class.getClassLoader(), Uri.class);
@@ -137,6 +146,7 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
         parcel.writeString(mAuthor);
         parcel.writeString(mDescription);
         parcel.writeString(mContentDescription);
+        parcel.writeBoolean(mIsNewCreativeWallpaper);
         parcel.writeParcelable(mConfigPreviewUri, flags);
         parcel.writeParcelable(mCleanPreviewUri, flags);
         parcel.writeParcelable(mDeleteUri, flags);
@@ -277,6 +287,10 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
      */
     public boolean canBeDeleted() {
         return mDeleteUri != null && !TextUtils.isEmpty(mDeleteUri.toString());
+    }
+
+    public boolean getIsNewCreativeWallpaper() {
+        return mIsNewCreativeWallpaper;
     }
 
     @Override
@@ -444,11 +458,49 @@ public class CreativeWallpaperInfo extends LiveWallpaperInfo {
                 cursor.getColumnIndex(WallpaperInfoContract.WALLPAPER_GROUP_NAME));
         int isCurrentApplied = cursor.getInt(
                 cursor.getColumnIndex(WallpaperInfoContract.WALLPAPER_IS_APPLIED));
+        WallpaperDescription descriptionContentHandling =
+                new WallpaperDescription.Builder().setComponent(
+                        wallpaperInfo.getComponent()).build();
+        if (liveWallpaperContentHandling()) {
+            int descriptionContentHandlingIndex = cursor.getColumnIndex(
+                    WallpaperInfoContract.WALLPAPER_DESCRIPTION_CONTENT_HANDLING);
+            if (descriptionContentHandlingIndex >= 0) {
+                descriptionContentHandling = descriptionFromBytes(
+                    cursor.getBlob(descriptionContentHandlingIndex));
+                if (descriptionContentHandling.getComponent() == null) {
+                    descriptionContentHandling =
+                        descriptionContentHandling.toBuilder().setComponent(
+                            wallpaperInfo.getComponent()).build();
+                }
+            }
+        }
+        Boolean isNewCreativeWallpaper;
+        if (InjectorProvider.getInjector().getFlags().isNewCreativeWallpaperCategoryEnabled()) {
+            int isNewCreativeWallpaperIndex = cursor.getColumnIndex(
+                    WallpaperInfoContract.WALLPAPER_IS_NEW_CREATIVE_WALLPAPER);
+            if (isNewCreativeWallpaperIndex >= 0) {
+                isNewCreativeWallpaper = cursor.getInt(isNewCreativeWallpaperIndex) > 0;
+            } else {
+                Boolean canDelete = deleteUri != null && !TextUtils.isEmpty(deleteUri.toString());
+                isNewCreativeWallpaper = !canDelete;
+            }
+        } else {
+            isNewCreativeWallpaper = false;
+        }
 
         return new CreativeWallpaperInfo(wallpaperInfo, wallpaperTitle, wallpaperAuthor,
                 wallpaperDescription, wallpaperContentDescription, configPreviewUri,
                 cleanPreviewUri, deleteUri, thumbnailUri, shareUri, groupName, /* isCurrent= */
-                (isCurrentApplied == 1));
+                (isCurrentApplied == 1), descriptionContentHandling, isNewCreativeWallpaper);
+    }
+
+    private static WallpaperDescription descriptionFromBytes(byte[] bytes) {
+        Parcel parcel = Parcel.obtain();
+        parcel.unmarshall(bytes, 0, bytes.length);
+        parcel.setDataPosition(0);
+        WallpaperDescription desc = WallpaperDescription.CREATOR.createFromParcel(parcel);
+        parcel.recycle();
+        return desc;
     }
 
     /**

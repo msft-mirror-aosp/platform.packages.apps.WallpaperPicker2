@@ -26,39 +26,37 @@ import com.android.wallpaper.picker.preview.ui.viewmodel.FullPreviewConfigViewMo
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 
 /** Binds and synchronizes the tab and preview view pagers. */
 object PreviewSelectorBinder {
-
     fun bind(
-        tabs: PreviewTabs,
-        previewsViewPager: ViewPager2,
+        tabs: PreviewTabs?,
+        previewsViewPager: ViewPager2?,
         previewDisplaySize: Point,
         wallpaperPreviewViewModel: WallpaperPreviewViewModel,
         applicationContext: Context,
+        mainScope: CoroutineScope,
         viewLifecycleOwner: LifecycleOwner,
-        currentNavDestId: Int,
         transition: Transition?,
         transitionConfig: FullPreviewConfigViewModel?,
         wallpaperConnectionUtils: WallpaperConnectionUtils,
         isFirstBindingDeferred: CompletableDeferred<Boolean>,
         navigate: (View) -> Unit,
     ) {
-        // set up previews view pager
         PreviewPagerBinder.bind(
             applicationContext,
+            mainScope,
             viewLifecycleOwner,
-            previewsViewPager,
+            checkNotNull(previewsViewPager),
             wallpaperPreviewViewModel,
             previewDisplaySize,
-            currentNavDestId,
             transition,
             transitionConfig,
             wallpaperConnectionUtils,
             isFirstBindingDeferred,
             navigate,
         )
-
-        TabsBinder.bind(tabs, wallpaperPreviewViewModel, viewLifecycleOwner)
+        tabs?.let { TabsBinder.bind(it, wallpaperPreviewViewModel, viewLifecycleOwner) }
     }
 }

@@ -16,6 +16,8 @@
 
 package com.android.wallpaper.picker.category.ui.viewmodel
 
+import com.android.wallpaper.picker.category.ui.viewmodel.CategoriesViewModel.*
+
 /**
  * This class represents the view model for a single section that can contain a number of individual
  * tiles.
@@ -23,5 +25,7 @@ package com.android.wallpaper.picker.category.ui.viewmodel
 class SectionViewModel(
     val tileViewModels: List<TileViewModel>,
     val columnCount: Int,
-    val sectionTitle: String? = null
+    val sectionTitle: String? = null,
+    val displayType: DisplayType = DisplayType.Default,
+    val onSectionClicked: (() -> Unit)? = null,
 )
