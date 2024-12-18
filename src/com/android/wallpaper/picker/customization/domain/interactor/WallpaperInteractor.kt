@@ -18,33 +18,32 @@
 package com.android.wallpaper.picker.customization.domain.interactor
 
 import android.graphics.Bitmap
-import com.android.wallpaper.module.CustomizationSections
+import com.android.wallpaper.model.Screen
 import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 /** Handles business logic for wallpaper-related use-cases. */
-class WallpaperInteractor(
-    private val repository: WallpaperRepository,
-    /** Returns whether wallpaper picker should handle reload */
-    val shouldHandleReload: () -> Boolean = { true },
-) {
+@Singleton
+class WallpaperInteractor @Inject constructor(private val repository: WallpaperRepository) {
     val areRecentsAvailable: Boolean = repository.areRecentsAvailable
     val maxOptions = repository.maxOptions
 
     /** Returns a flow that is updated whenever the wallpaper has been updated */
-    fun wallpaperUpdateEvents(screen: CustomizationSections.Screen): Flow<WallpaperModel?> {
+    fun wallpaperUpdateEvents(screen: Screen): Flow<WallpaperModel?> {
         return when (screen) {
-            CustomizationSections.Screen.LOCK_SCREEN ->
+            Screen.LOCK_SCREEN ->
                 previews(WallpaperDestination.LOCK, 1).map { recentWallpapers ->
                     if (recentWallpapers.isEmpty()) null else recentWallpapers[0]
                 }
-            CustomizationSections.Screen.HOME_SCREEN ->
+            Screen.HOME_SCREEN ->
                 previews(WallpaperDestination.HOME, 1).map { recentWallpapers ->
                     if (recentWallpapers.isEmpty()) null else recentWallpapers[0]
                 }

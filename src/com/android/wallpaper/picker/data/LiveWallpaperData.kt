@@ -24,5 +24,7 @@ data class LiveWallpaperData(
     val systemWallpaperInfo: WallpaperInfo,
     val isTitleVisible: Boolean,
     val isApplied: Boolean,
-    val effectNames: String?
+    val isEffectWallpaper: Boolean,
+    val effectNames: String?,
+    val contextDescription: CharSequence? = null,
 )

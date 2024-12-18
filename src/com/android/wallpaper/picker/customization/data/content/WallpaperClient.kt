@@ -22,13 +22,15 @@ import android.app.WallpaperManager
 import android.graphics.Bitmap
 import android.graphics.Point
 import android.graphics.Rect
+import com.android.wallpaper.asset.Asset
+import com.android.wallpaper.model.Screen
+import com.android.wallpaper.model.WallpaperModelsPair
 import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
-import java.io.InputStream
 import kotlinx.coroutines.flow.Flow
 
 /** Defines interface for classes that can interact with the Wallpaper API. */
@@ -48,16 +50,17 @@ interface WallpaperClient {
      * @param wallpaperModel The wallpaper model of the wallpaper.
      * @param bitmap The bitmap of the static wallpaper. Note that the bitmap should be the
      *   original, full-size bitmap.
-     * @param wallpaperSize raw wallpaper size
-     * @param fullPreviewCropModels full preview crop info for each dimension that user has cropped
+     * @param wallpaperSize raw wallpaper size.
+     * @param asset wallpaper asset.
+     * @param fullPreviewCropModels full preview crop info for each dimension that user has cropped.
      */
     suspend fun setStaticWallpaper(
         @SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
         destination: WallpaperDestination,
         wallpaperModel: StaticWallpaperModel,
-        inputStream: InputStream?,
         bitmap: Bitmap,
         wallpaperSize: Point,
+        asset: Asset,
         fullPreviewCropModels: Map<Point, FullPreviewCropModel>?,
     )
 
@@ -103,4 +106,8 @@ interface WallpaperClient {
 
     /** Returns the wallpaper colors for preview a bitmap with a set of crop hints */
     suspend fun getWallpaperColors(bitmap: Bitmap, cropHints: Map<Point, Rect>?): WallpaperColors?
+
+    suspend fun getCurrentWallpaperModels(): WallpaperModelsPair
+
+    fun getWallpaperColors(screen: Screen): WallpaperColors?
 }

@@ -15,15 +15,25 @@
  */
 package com.android.wallpaper.picker.preview.ui.binder
 
+import android.app.AlertDialog
 import android.content.Intent
-import android.graphics.Point
 import android.net.Uri
 import android.view.View
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
+import androidx.constraintlayout.motion.widget.MotionLayout
+import androidx.core.view.isInvisible
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.android.wallpaper.R
+import com.android.wallpaper.config.BaseFlags
+import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.module.logging.UserEventLogger
+import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
+import com.android.wallpaper.picker.preview.ui.view.ImageEffectDialog
 import com.android.wallpaper.picker.preview.ui.view.PreviewActionFloatingSheet
 import com.android.wallpaper.picker.preview.ui.view.PreviewActionGroup
 import com.android.wallpaper.picker.preview.ui.viewmodel.Action.CUSTOMIZE
@@ -33,37 +43,64 @@ import com.android.wallpaper.picker.preview.ui.viewmodel.Action.EDIT
 import com.android.wallpaper.picker.preview.ui.viewmodel.Action.EFFECTS
 import com.android.wallpaper.picker.preview.ui.viewmodel.Action.INFORMATION
 import com.android.wallpaper.picker.preview.ui.viewmodel.Action.SHARE
-import com.android.wallpaper.picker.preview.ui.viewmodel.DeleteConfirmationDialogViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.PreviewActionsViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
+import com.android.wallpaper.widget.floatingsheetcontent.WallpaperActionsToggleAdapter
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_HIDDEN
 import kotlinx.coroutines.launch
 
 /** Binds the action buttons and bottom sheet to [PreviewActionsViewModel] */
 object PreviewActionsBinder {
+
     fun bind(
         actionGroup: PreviewActionGroup,
         floatingSheet: PreviewActionFloatingSheet,
+        motionLayout: MotionLayout? = null,
         previewViewModel: WallpaperPreviewViewModel,
         actionsViewModel: PreviewActionsViewModel,
-        displaySize: Point,
+        deviceDisplayType: DeviceDisplayType,
+        activity: FragmentActivity,
         lifecycleOwner: LifecycleOwner,
         logger: UserEventLogger,
-        onStartEditActivity: (intent: Intent) -> Unit,
+        imageEffectDialogUtil: ImageEffectDialogUtil,
+        onNavigateToEditScreen: (intent: Intent) -> Unit,
         onStartShareActivity: (intent: Intent) -> Unit,
-        onShowDeleteConfirmationDialog: (videModel: DeleteConfirmationDialogViewModel) -> Unit,
     ) {
+        var deleteDialog: AlertDialog? = null
+        var onDelete: (() -> Unit)?
+        var imageEffectConfirmDownloadDialog: ImageEffectDialog? = null
+        var imageEffectConfirmExitDialog: ImageEffectDialog? = null
+        var onBackPressedCallback: OnBackPressedCallback? = null
+
         val floatingSheetCallback =
             object : BottomSheetBehavior.BottomSheetCallback() {
                 override fun onStateChanged(view: View, newState: Int) {
+                    // We set visibility to invisible, instead of gone because we listen to the
+                    // state change of the BottomSheet and the state change callbacks are only fired
+                    // when the view is not gone.
                     if (newState == STATE_HIDDEN) {
                         actionsViewModel.onFloatingSheetCollapsed()
+                        if (BaseFlags.get().isNewPickerUi()) motionLayout?.transitionToStart()
+                        else floatingSheet.isInvisible = true
+                    } else {
+                        if (BaseFlags.get().isNewPickerUi()) motionLayout?.transitionToEnd()
+                        else floatingSheet.isInvisible = false
                     }
                 }
 
                 override fun onSlide(p0: View, p1: Float) {}
             }
+        val noActionChecked = !actionsViewModel.isAnyActionChecked()
+        if (BaseFlags.get().isNewPickerUi()) {
+            if (noActionChecked) {
+                motionLayout?.transitionToStart()
+            } else {
+                motionLayout?.transitionToEnd()
+            }
+        } else {
+            floatingSheet.isInvisible = noActionChecked
+        }
         floatingSheet.addFloatingSheetCallback(floatingSheetCallback)
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
@@ -93,30 +130,6 @@ object PreviewActionsBinder {
                     }
                 }
 
-                launch {
-                    actionsViewModel.informationFloatingSheetViewModel.collect { viewModel ->
-                        if (viewModel == null) {
-                            floatingSheet.collapse()
-                        } else {
-                            val onExploreButtonClicked =
-                                viewModel.exploreActionUrl?.let { url ->
-                                    {
-                                        logger.logWallpaperExploreButtonClicked()
-                                        val appContext = floatingSheet.context.applicationContext
-                                        appContext.startActivity(
-                                            Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                        )
-                                    }
-                                }
-                            floatingSheet.setInformationContent(
-                                viewModel.attributions,
-                                onExploreButtonClicked
-                            )
-                            floatingSheet.expand()
-                        }
-                    }
-                }
-
                 /** [DOWNLOAD] */
                 launch {
                     actionsViewModel.isDownloadVisible.collect {
@@ -133,11 +146,7 @@ object PreviewActionsBinder {
                         actionGroup.setClickListener(
                             DOWNLOAD,
                             if (it) {
-                                {
-                                    lifecycleOwner.lifecycleScope.launch {
-                                        actionsViewModel.downloadWallpaper()
-                                    }
-                                }
+                                { actionsViewModel.downloadWallpaper() }
                             } else null,
                         )
                     }
@@ -164,8 +173,34 @@ object PreviewActionsBinder {
 
                 launch {
                     actionsViewModel.deleteConfirmationDialogViewModel.collect { viewModel ->
+                        val appContext = activity.applicationContext
                         if (viewModel != null) {
-                            onShowDeleteConfirmationDialog.invoke(viewModel)
+                            onDelete = {
+                                if (viewModel.creativeWallpaperDeleteUri != null) {
+                                    appContext.contentResolver.delete(
+                                        viewModel.creativeWallpaperDeleteUri,
+                                        null,
+                                        null,
+                                    )
+                                } else if (viewModel.liveWallpaperDeleteIntent != null) {
+                                    appContext.startService(viewModel.liveWallpaperDeleteIntent)
+                                }
+                                activity.finish()
+                            }
+                            val dialog =
+                                deleteDialog
+                                    ?: AlertDialog.Builder(activity)
+                                        .setMessage(R.string.delete_wallpaper_confirmation)
+                                        .setOnDismissListener { viewModel.onDismiss.invoke() }
+                                        .setPositiveButton(R.string.delete_live_wallpaper) { _, _ ->
+                                            onDelete?.invoke()
+                                        }
+                                        .setNegativeButton(android.R.string.cancel, null)
+                                        .create()
+                                        .also { deleteDialog = it }
+                            dialog.show()
+                        } else {
+                            deleteDialog?.dismiss()
                         }
                     }
                 }
@@ -187,12 +222,12 @@ object PreviewActionsBinder {
                                 {
                                     // We need to set default wallpaper preview config view model
                                     // before entering full screen with edit activity overlay.
-                                    previewViewModel.setDefaultWallpaperPreviewConfigViewModel(
-                                        displaySize
+                                    previewViewModel.setDefaultFullPreviewConfigViewModel(
+                                        deviceDisplayType
                                     )
-                                    onStartEditActivity.invoke(it)
+                                    onNavigateToEditScreen.invoke(it)
                                 }
-                            } else null
+                            } else null,
                         )
                     }
                 }
@@ -236,23 +271,69 @@ object PreviewActionsBinder {
                 }
 
                 launch {
-                    actionsViewModel.effectFloatingSheetViewModel.collect { viewModel ->
-                        if (viewModel == null) {
-                            floatingSheet.collapse()
+                    actionsViewModel.effectDownloadFailureToastText.collect {
+                        Toast.makeText(floatingSheet.context, it, Toast.LENGTH_LONG).show()
+                    }
+                }
+
+                launch {
+                    actionsViewModel.imageEffectConfirmDownloadDialogViewModel.collect { viewModel
+                        ->
+                        if (viewModel != null) {
+                            val dialog =
+                                imageEffectConfirmDownloadDialog
+                                    ?: imageEffectDialogUtil
+                                        .createConfirmDownloadDialog(activity)
+                                        .also { imageEffectConfirmDownloadDialog = it }
+                            dialog.onDismiss = viewModel.onDismiss
+                            dialog.onContinue = viewModel.onContinue
+                            dialog.show()
                         } else {
-                            floatingSheet.setEffectContent(
-                                viewModel.effectType,
-                                viewModel.myPhotosClickListener,
-                                viewModel.collapseFloatingSheetListener,
-                                viewModel.effectSwitchListener,
-                                viewModel.effectDownloadClickListener,
-                                viewModel.status,
-                                viewModel.resultCode,
-                                viewModel.errorMessage,
-                                viewModel.title,
-                                viewModel.effectTextRes,
-                            )
-                            floatingSheet.expand()
+                            imageEffectConfirmDownloadDialog?.dismiss()
+                        }
+                    }
+                }
+
+                launch {
+                    actionsViewModel.imageEffectConfirmExitDialogViewModel.collect { viewModel ->
+                        if (viewModel != null) {
+                            val dialog =
+                                imageEffectConfirmExitDialog
+                                    ?: imageEffectDialogUtil
+                                        .createConfirmExitDialog(activity)
+                                        .also { imageEffectConfirmExitDialog = it }
+                            dialog.onDismiss = viewModel.onDismiss
+                            dialog.onContinue = {
+                                viewModel.onContinue()
+                                activity.onBackPressedDispatcher.onBackPressed()
+                            }
+                            dialog.show()
+                        } else {
+                            imageEffectConfirmExitDialog?.dismiss()
+                        }
+                    }
+                }
+
+                launch {
+                    actionsViewModel.handleOnBackPressed.collect { handleOnBackPressed ->
+                        // Reset the callback
+                        onBackPressedCallback?.remove()
+                        onBackPressedCallback = null
+                        if (handleOnBackPressed != null) {
+                            // If handleOnBackPressed is not null, set it to the activity
+                            val callback =
+                                object : OnBackPressedCallback(true) {
+                                        override fun handleOnBackPressed() {
+                                            val handled = handleOnBackPressed()
+                                            if (!handled) {
+                                                onBackPressedCallback?.remove()
+                                                onBackPressedCallback = null
+                                                activity.onBackPressedDispatcher.onBackPressed()
+                                            }
+                                        }
+                                    }
+                                    .also { onBackPressedCallback = it }
+                            activity.onBackPressedDispatcher.addCallback(lifecycleOwner, callback)
                         }
                     }
                 }
@@ -268,8 +349,74 @@ object PreviewActionsBinder {
                             SHARE,
                             if (it != null) {
                                 { onStartShareActivity.invoke(it) }
-                            } else null
+                            } else null,
                         )
+                    }
+                }
+
+                /** Floating sheet behavior */
+                launch {
+                    actionsViewModel.previewFloatingSheetViewModel.collect { floatingSheetViewModel
+                        ->
+                        if (floatingSheetViewModel != null) {
+                            val (
+                                informationViewModel,
+                                imageEffectViewModel,
+                                creativeEffectViewModel,
+                                customizeViewModel,
+                            ) = floatingSheetViewModel
+                            when {
+                                informationViewModel != null -> {
+                                    floatingSheet.setInformationContent(
+                                        informationViewModel.attributions,
+                                        informationViewModel.actionUrl?.let { url ->
+                                            {
+                                                logger.logWallpaperExploreButtonClicked()
+                                                floatingSheet.context.startActivity(
+                                                    Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                                )
+                                            }
+                                        },
+                                        informationViewModel.actionButtonTitle,
+                                    )
+                                }
+                                imageEffectViewModel != null ->
+                                    floatingSheet.setImageEffectContent(
+                                        imageEffectViewModel.effectType,
+                                        imageEffectViewModel.myPhotosClickListener,
+                                        imageEffectViewModel.collapseFloatingSheetListener,
+                                        imageEffectViewModel.effectSwitchListener,
+                                        imageEffectViewModel.effectDownloadClickListener,
+                                        imageEffectViewModel.status,
+                                        imageEffectViewModel.resultCode,
+                                        imageEffectViewModel.errorMessage,
+                                        imageEffectViewModel.title,
+                                        imageEffectViewModel.effectTextRes,
+                                    )
+                                creativeEffectViewModel != null ->
+                                    floatingSheet.setCreativeEffectContent(
+                                        creativeEffectViewModel.title,
+                                        creativeEffectViewModel.subtitle,
+                                        creativeEffectViewModel.wallpaperActions,
+                                        object :
+                                            WallpaperActionsToggleAdapter.WallpaperEffectSwitchListener {
+                                            override fun onEffectSwitchChanged(checkedItem: Int) {
+                                                launch {
+                                                    creativeEffectViewModel
+                                                        .wallpaperEffectSwitchListener(checkedItem)
+                                                }
+                                            }
+                                        },
+                                    )
+                                customizeViewModel != null ->
+                                    floatingSheet.setCustomizeContent(
+                                        customizeViewModel.customizeSliceUri
+                                    )
+                            }
+                            floatingSheet.expand()
+                        } else {
+                            floatingSheet.collapse()
+                        }
                     }
                 }
             }

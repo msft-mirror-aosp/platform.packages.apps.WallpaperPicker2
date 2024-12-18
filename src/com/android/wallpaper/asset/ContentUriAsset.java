@@ -214,11 +214,14 @@ public final class ContentUriAsset extends StreamableAsset {
         } catch (FileNotFoundException e) {
             Log.w(TAG, "Image file not found", e);
             return null;
+        } catch (SecurityException e) {
+            Log.w(TAG, "Image file not accessible", e);
+            return null;
         }
     }
 
     @Override
-    protected int getExifOrientation() {
+    public int getExifOrientation() {
         if (mExifOrientation != ExifInterfaceCompat.EXIF_ORIENTATION_UNKNOWN) {
             return mExifOrientation;
         }

@@ -27,6 +27,7 @@ import android.content.res.Configuration;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Window;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -34,8 +35,10 @@ import androidx.core.view.WindowCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.android.wallpaper.R;
+import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.model.Category;
 import com.android.wallpaper.model.CustomizationSectionController.CustomizationSectionNavigationController;
 import com.android.wallpaper.model.PermissionRequester;
@@ -53,7 +56,7 @@ import com.android.wallpaper.module.logging.UserEventLogger;
 import com.android.wallpaper.picker.AppbarFragment.AppbarFragmentHost;
 import com.android.wallpaper.picker.CategorySelectorFragment.CategorySelectorFragmentHost;
 import com.android.wallpaper.picker.MyPhotosStarter.PermissionChangedListener;
-import com.android.wallpaper.picker.individual.IndividualPickerFragment.IndividualPickerFragmentHost;
+import com.android.wallpaper.picker.category.ui.viewmodel.CategoriesViewModel;
 import com.android.wallpaper.util.ActivityUtils;
 import com.android.wallpaper.util.DeepLinkUtils;
 import com.android.wallpaper.util.DisplayUtils;
@@ -61,14 +64,16 @@ import com.android.wallpaper.util.LaunchUtils;
 import com.android.wallpaper.widget.BottomActionBar;
 import com.android.wallpaper.widget.BottomActionBar.BottomActionBarHost;
 
+import dagger.hilt.android.AndroidEntryPoint;
+
 /**
  *  Main Activity allowing containing view sections for the user to switch between the different
  *  Fragments providing customization options.
  */
-public class CustomizationPickerActivity extends FragmentActivity implements AppbarFragmentHost,
-        WallpapersUiContainer, BottomActionBarHost, FragmentTransactionChecker,
-        PermissionRequester, CategorySelectorFragmentHost, IndividualPickerFragmentHost,
-        WallpaperPreviewNavigator {
+@AndroidEntryPoint(FragmentActivity.class)
+public class CustomizationPickerActivity extends Hilt_CustomizationPickerActivity implements
+        AppbarFragmentHost, WallpapersUiContainer, BottomActionBarHost, FragmentTransactionChecker,
+        PermissionRequester, CategorySelectorFragmentHost, WallpaperPreviewNavigator {
 
     private static final String TAG = "CustomizationPickerActivity";
     private static final String EXTRA_DESTINATION = "destination";
@@ -83,6 +88,8 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
     private BottomActionBar mBottomActionBar;
     private boolean mIsSafeToCommitFragmentTransaction;
 
+    private CategoriesViewModel mCategoriesViewModel;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         Injector injector = InjectorProvider.getInjector();
@@ -91,11 +98,16 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
         mNetworkStatusNotifier = injector.getNetworkStatusNotifier(this);
         mNetworkStatus = mNetworkStatusNotifier.getNetworkStatus();
         mDisplayUtils = injector.getDisplayUtils(this);
-
         enforcePortraitForHandheldAndFoldedDisplay();
+
+        BaseFlags flags = injector.getFlags();
+        if (flags.isMultiCropEnabled()) {
+            getWindow().requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS);
+        }
 
         // Restore this Activity's state before restoring contained Fragments state.
         super.onCreate(savedInstanceState);
+
         // Trampoline for the two panes
         final MultiPanesChecker mMultiPanesChecker = new LargeScreenMultiPanesChecker();
         if (mMultiPanesChecker.isMultiPanesEnabled(this)) {
@@ -105,6 +117,7 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
                 startActivityForResultSafely(this,
                         mMultiPanesChecker.getMultiPanesIntent(intent), /* requestCode= */ 0);
                 finish();
+                return;
             }
         }
 
@@ -131,8 +144,14 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
                     ? WallpaperOnlyFragment.newInstance()
                     : CustomizationPickerFragment.newInstance(startFromLockScreen));
 
-            // Cache the categories, but only if we're not restoring state (b/276767415).
-            mDelegate.prefetchCategories();
+
+            if (flags.isWallpaperCategoryRefactoringEnabled()) {
+                // initializing the dependency graph for categories
+                mCategoriesViewModel = new ViewModelProvider(this).get(CategoriesViewModel.class);
+            } else {
+                // Cache the categories, but only if we're not restoring state (b/276767415).
+                mDelegate.prefetchCategories();
+            }
         }
 
         if (savedInstanceState == null) {
@@ -264,31 +283,6 @@ public class CustomizationPickerActivity extends FragmentActivity implements App
         }
         switchFragmentWithBackStack(InjectorProvider.getInjector().getIndividualPickerFragment(
                 this, category.getCollectionId()));
-    }
-
-    @Override
-    public boolean isHostToolbarShown() {
-        return false;
-    }
-
-    @Override
-    public void setToolbarTitle(CharSequence title) {
-
-    }
-
-    @Override
-    public void setToolbarMenu(int menuResId) {
-
-    }
-
-    @Override
-    public void removeToolbarMenu() {
-
-    }
-
-    @Override
-    public void moveToPreviousFragment() {
-        getSupportFragmentManager().popBackStack();
     }
 
     @Override

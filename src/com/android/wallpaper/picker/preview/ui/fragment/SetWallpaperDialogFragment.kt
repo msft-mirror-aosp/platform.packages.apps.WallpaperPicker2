@@ -17,12 +17,16 @@
 package com.android.wallpaper.picker.preview.ui.fragment
 
 import android.app.Activity
+import android.app.ActivityOptions
 import android.app.AlertDialog
 import android.app.Dialog
 import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
+import android.transition.Slide
+import android.view.Gravity
 import android.view.LayoutInflater
+import android.widget.FrameLayout.LayoutParams
 import android.widget.Toast
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
@@ -37,6 +41,7 @@ import com.android.wallpaper.util.DisplayUtils
 import com.android.wallpaper.util.LaunchSourceUtils.LAUNCH_SOURCE_LAUNCHER
 import com.android.wallpaper.util.LaunchSourceUtils.LAUNCH_SOURCE_SETTINGS_HOMEPAGE
 import com.android.wallpaper.util.LaunchSourceUtils.WALLPAPER_LAUNCH_SOURCE
+import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -47,8 +52,20 @@ class SetWallpaperDialogFragment : Hilt_SetWallpaperDialogFragment() {
 
     @Inject lateinit var displayUtils: DisplayUtils
     @Inject @MainDispatcher lateinit var mainScope: CoroutineScope
+    @Inject lateinit var wallpaperConnectionUtils: WallpaperConnectionUtils
 
     private val wallpaperPreviewViewModel by activityViewModels<WallpaperPreviewViewModel>()
+
+    override fun onStart() {
+        super.onStart()
+        // Set dialog size
+        val widthDimenId =
+            if (displayUtils.hasMultiInternalDisplays()) R.dimen.set_wallpaper_dialog_foldable_width
+            else R.dimen.set_wallpaper_dialog_handheld_width
+        requireDialog()
+            .window
+            ?.setLayout(resources.getDimension(widthDimenId).toInt(), LayoutParams.WRAP_CONTENT)
+    }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         super.onCreateDialog(savedInstanceState)
@@ -83,6 +100,7 @@ class SetWallpaperDialogFragment : Hilt_SetWallpaperDialogFragment() {
                     .show()
                 if (activityReference != null) {
                     if (wallpaperPreviewViewModel.isNewTask) {
+                        activityReference.window?.exitTransition = Slide(Gravity.END)
                         val intent = Intent(activityReference, TrampolinePickerActivity::class.java)
                         intent.setFlags(
                             Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
@@ -92,14 +110,20 @@ class SetWallpaperDialogFragment : Hilt_SetWallpaperDialogFragment() {
                             if (wallpaperPreviewViewModel.isViewAsHome) LAUNCH_SOURCE_LAUNCHER
                             else LAUNCH_SOURCE_SETTINGS_HOMEPAGE
                         )
-                        activityReference.startActivity(intent)
+                        activityReference.startActivity(
+                            intent,
+                            ActivityOptions.makeSceneTransitionAnimation(activityReference)
+                                .toBundle()
+                        )
                     } else {
                         activityReference.setResult(Activity.RESULT_OK)
-                        activityReference.finish()
                     }
+                    activityReference.finish()
                 }
             },
             onDismissDialog = { findNavController().popBackStack() },
+            wallpaperConnectionUtils = wallpaperConnectionUtils,
+            isFirstBinding = false,
             navigate = null,
         )
 

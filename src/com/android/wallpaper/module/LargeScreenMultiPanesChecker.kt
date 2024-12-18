@@ -19,8 +19,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.Intent.ACTION_SET_WALLPAPER
 import android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
-import android.provider.Settings.*
-import com.android.wallpaper.util.DisplayUtils
+import android.provider.Settings.ACTION_SETTINGS_EMBED_DEEP_LINK_ACTIVITY
+import android.provider.Settings.EXTRA_SETTINGS_EMBEDDED_DEEP_LINK_HIGHLIGHT_MENU_KEY
+import android.provider.Settings.EXTRA_SETTINGS_EMBEDDED_DEEP_LINK_INTENT_URI
+import com.android.wallpaper.util.DeepLinkUtils
+import com.android.wallpaper.util.DeepLinkUtils.EXTRA_KEY_COLLECTION_ID
 
 /** Utility class to check the support of multi panes integration (trampoline) */
 class LargeScreenMultiPanesChecker : MultiPanesChecker {
@@ -35,12 +38,15 @@ class LargeScreenMultiPanesChecker : MultiPanesChecker {
             getMultiPanesIntent(Intent(ACTION_SET_WALLPAPER).setPackage(context.packageName))
 
         val resolveInfo = pm.resolveActivity(intent, MATCH_DEFAULT_ONLY)?.activityInfo
-        return resolveInfo != null && DisplayUtils(context).isLargeScreenDevice()
+        val displayUtils = InjectorProvider.getInjector().getDisplayUtils(context)
+        return resolveInfo != null && displayUtils.isLargeScreenDevice()
     }
 
     override fun getMultiPanesIntent(intent: Intent): Intent {
         return Intent(ACTION_SETTINGS_EMBED_DEEP_LINK_ACTIVITY).apply {
             intent.extras?.let { putExtras(it) }
+            val deepLinkCollectionId = DeepLinkUtils.getCollectionId(intent)
+            deepLinkCollectionId?.let { putExtra(EXTRA_KEY_COLLECTION_ID, deepLinkCollectionId) }
             putExtra(EXTRA_SETTINGS_EMBEDDED_DEEP_LINK_HIGHLIGHT_MENU_KEY, VALUE_HIGHLIGHT_MENU)
             putExtra(
                 EXTRA_SETTINGS_EMBEDDED_DEEP_LINK_INTENT_URI,

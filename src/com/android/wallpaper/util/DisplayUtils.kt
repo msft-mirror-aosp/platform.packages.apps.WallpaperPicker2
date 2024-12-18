@@ -15,16 +15,17 @@
  */
 package com.android.wallpaper.util
 
-import android.app.Activity
 import android.content.Context
 import android.graphics.Point
-import android.hardware.display.DisplayManager
-import android.util.Log
 import android.view.Display
 import android.view.DisplayInfo
 import android.view.Surface.ROTATION_270
 import android.view.Surface.ROTATION_90
 import com.android.systemui.shared.recents.utilities.Utilities
+import com.android.wallpaper.model.wallpaper.DeviceDisplayType
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.math.min
 
 /**
@@ -34,19 +35,20 @@ import kotlin.math.min
  * Always pass [Context] or [Display] for the current display, instead of using the context in this
  * class, which is fine for stateless info.
  */
-class DisplayUtils(private val context: Context) {
+@Singleton
+class DisplayUtils
+@Inject
+constructor(
+    @ApplicationContext private val appContext: Context,
+    private val displaysProvider: DisplaysProvider
+) {
     companion object {
-        private const val TAG = "DisplayUtils"
         private val ROTATION_HORIZONTAL_HINGE = setOf(ROTATION_90, ROTATION_270)
         private const val TABLET_MIN_DPS = 600f // See Sysui's Utilities.TABLET_MIN_DPS
     }
 
-    private val displayManager: DisplayManager by lazy {
-        context.applicationContext.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-    }
-
     fun hasMultiInternalDisplays(): Boolean {
-        return getInternalDisplays().size > 1
+        return displaysProvider.getInternalDisplays().size > 1
     }
 
     /**
@@ -54,31 +56,37 @@ class DisplayUtils(private val context: Context) {
      * size and cropping.
      */
     fun getWallpaperDisplay(): Display {
-        val internalDisplays = getInternalDisplays()
+        val internalDisplays = displaysProvider.getInternalDisplays()
         return internalDisplays.maxWithOrNull { a, b -> getRealArea(a) - getRealArea(b) }
             ?: internalDisplays[0]
     }
 
     /**
      * Checks if the device only has one display or unfolded screen in horizontal hinge orientation.
+     *
+     * @param context Must be a context that is associated with a display, such as an Activity or a
+     *   context created via createDisplayContext(android.view.Display).
      */
-    fun isSingleDisplayOrUnfoldedHorizontalHinge(activity: Activity): Boolean {
-        return !hasMultiInternalDisplays() || isUnfoldedHorizontalHinge(activity)
+    fun isSingleDisplayOrUnfoldedHorizontalHinge(context: Context): Boolean {
+        return !hasMultiInternalDisplays() || isUnfoldedHorizontalHinge(context)
     }
 
     /**
      * Checks if the device is a foldable and it's unfolded and in horizontal hinge orientation
      * (portrait).
+     *
+     * @param context Must be a context that is associated with a display, such as an Activity or a
+     *   context created via createDisplayContext(android.view.Display).
      */
-    fun isUnfoldedHorizontalHinge(activity: Activity): Boolean {
-        return activity.display?.rotation in ROTATION_HORIZONTAL_HINGE &&
-            isOnWallpaperDisplay(activity) &&
+    fun isUnfoldedHorizontalHinge(context: Context): Boolean {
+        return context.display.rotation in ROTATION_HORIZONTAL_HINGE &&
+            isOnWallpaperDisplay(context) &&
             hasMultiInternalDisplays()
     }
 
     fun getMaxDisplaysDimension(): Point {
         val dimen = Point()
-        getInternalDisplays().let { displays ->
+        displaysProvider.getInternalDisplays().let { displays ->
             dimen.x = displays.maxOf { getRealSize(it).x }
             dimen.y = displays.maxOf { getRealSize(it).y }
         }
@@ -93,8 +101,12 @@ class DisplayUtils(private val context: Context) {
      * This flag returns false the display is:
      * 1. a handheld device display
      * 2. a folded display from a foldable device
+     *
+     * @param context Must be a context that is associated with a display, such as an Activity or a
+     *   context created via createDisplayContext(android.view.Display).
      */
-    fun isLargeScreenOrUnfoldedDisplay(activity: Activity): Boolean {
+    // TODO (b/338247922): This function is not tested due to testing blocker isOnWallpaperDisplay
+    fun isLargeScreenOrUnfoldedDisplay(context: Context): Boolean {
         // Note that a foldable is a large screen device if the largest display is large screen.
         // Ths flag is true if it is a large screen device, e.g. tablet, or a foldable device.
         val isLargeScreenOrFoldable = isLargeScreenDevice()
@@ -102,7 +114,7 @@ class DisplayUtils(private val context: Context) {
         // For a multi-display device, it is only true when the current display is the largest
         // display. For the case of foldable, it is true when the display is the unfolded one, and
         // false when it is folded.
-        val isSingleDisplayOrUnfolded = isOnWallpaperDisplay(activity)
+        val isSingleDisplayOrUnfolded = isOnWallpaperDisplay(context)
         return isLargeScreenOrFoldable && isSingleDisplayOrUnfolded
     }
 
@@ -117,7 +129,7 @@ class DisplayUtils(private val context: Context) {
         val smallestWidth = min(maxDisplaysDimension.x, maxDisplaysDimension.y)
         return Utilities.dpiFromPx(
             smallestWidth.toFloat(),
-            context.resources.configuration.densityDpi
+            appContext.resources.configuration.densityDpi
         ) >= TABLET_MIN_DPS
     }
 
@@ -128,9 +140,13 @@ class DisplayUtils(private val context: Context) {
      * display device the only display is both the wallpaper display and the current display.
      *
      * For single display device, this is always true.
+     *
+     * @param context Must be a context that is associated with a display, such as an Activity or a
+     *   context created via createDisplayContext(android.view.Display).
      */
-    fun isOnWallpaperDisplay(activity: Activity): Boolean {
-        return activity.display?.uniqueId == getWallpaperDisplay().uniqueId
+    // TODO (b/338247922): This function is not tested due to fake Display limitations with uniqueId
+    fun isOnWallpaperDisplay(context: Context): Boolean {
+        return context.display.uniqueId == getWallpaperDisplay().uniqueId
     }
 
     /** Gets the real width and height of the display. */
@@ -147,10 +163,26 @@ class DisplayUtils(private val context: Context) {
      * the device is folded. This is always the smallest display in foldable devices.
      */
     fun getSmallerDisplay(): Display {
-        val internalDisplays = getInternalDisplays()
+        val internalDisplays = displaysProvider.getInternalDisplays()
         val largestDisplay = getWallpaperDisplay()
-        val smallestDisplay = internalDisplays.firstOrNull() { it != largestDisplay }
+        val smallestDisplay = internalDisplays.firstOrNull { it != largestDisplay }
         return smallestDisplay ?: largestDisplay
+    }
+
+    /**
+     * @param context Must be a context that is associated with a display, such as an Activity or a
+     *   context created via createDisplayContext(android.view.Display).
+     */
+    // TODO (b/338247922): This function is not tested due to testing blocker isOnWallpaperDisplay
+    fun getCurrentDisplayType(context: Context): DeviceDisplayType {
+        if (!hasMultiInternalDisplays()) {
+            return DeviceDisplayType.SINGLE
+        }
+        return if (isOnWallpaperDisplay(context)) {
+            DeviceDisplayType.UNFOLDED
+        } else {
+            DeviceDisplayType.FOLDED
+        }
     }
 
     private fun getRealArea(display: Display): Int {
@@ -159,17 +191,18 @@ class DisplayUtils(private val context: Context) {
         return displayInfo.logicalHeight * displayInfo.logicalWidth
     }
 
-    private fun getInternalDisplays(): List<Display> {
-        val allDisplays: Array<out Display> =
-            displayManager.getDisplays(DisplayManager.DISPLAY_CATEGORY_ALL_INCLUDING_DISABLED)
-        if (allDisplays.isEmpty()) {
-            Log.e(TAG, "No displays found on context ${context.applicationContext}")
-            throw RuntimeException("No displays found!")
-        }
-        return allDisplays.filter { it.type == Display.TYPE_INTERNAL }
-    }
-
-    fun getInternalDisplaySizes(): List<Point> {
-        return getInternalDisplays().map { getRealSize(it) }
+    fun getInternalDisplaySizes(
+        allDimensions: Boolean = false,
+    ): List<Point> {
+        return displaysProvider
+            .getInternalDisplays()
+            .map { getRealSize(it) }
+            .let {
+                if (allDimensions) {
+                    it + it.map { size -> Point(size.y, size.x) }
+                } else {
+                    it
+                }
+            }
     }
 }

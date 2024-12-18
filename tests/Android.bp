@@ -40,10 +40,10 @@ android_test {
     defaults: ["WallpaperPicker2_defaults"],
     srcs: [
         ":WallpaperPicker2Tests_srcs",
-        "module/src/com/android/wallpaper/TestModule.kt",
     ],
     static_libs: [
         "WallpaperPicker2TestLib",
+        "WallpaperPicker2TestModule",
         "WallpaperPicker2TestRunner",
         "androidx.test.espresso.core",
         "androidx.test.espresso.contrib",
@@ -61,9 +61,9 @@ android_test {
         "flag-junit",
     ],
     libs: [
-        "android.test.runner",
-        "android.test.base",
-        "android.test.mock",
+        "android.test.runner.stubs.system",
+        "android.test.base.stubs.system",
+        "android.test.mock.stubs.system",
     ],
 
     platform_apis: true,

@@ -1,12 +1,5 @@
 package: "com.android.wallpaper"
-container: "system_ext"
-
-flag {
-    name: "multi_crop_preview_ui_flag"
-    namespace: "customization_picker"
-    description: "Enables new preview UI if both the SysUI multi crop flag and this flag are true."
-    bug: "291761856"
-}
+container: "system"
 
 flag {
     name: "wallpaper_restorer_flag"
@@ -20,4 +13,25 @@ flag {
     namespace: "customization_picker"
     description: "Enables wallpaper category selection according to recommended architecture when flag is turned on."
     bug: "290840060"
+}
+
+flag {
+    name: "magic_portrait_flag"
+    namespace: "customization_picker"
+    description: "Enables magic portrait integration when flag is turned on."
+    bug: "334125919"
+}
+
+flag {
+   name: "clock_reactive_variants"
+   namespace: "systemui"
+   description: "Add reactive variant fonts to some clocks"
+   bug: "343495953"
+}
+
+flag {
+    name: "large_screen_wallpaper_collections"
+    namespace: "customization_picker"
+    description: "Enables wallpaper collections for large screen devices."
+    bug: "350781344"
 }

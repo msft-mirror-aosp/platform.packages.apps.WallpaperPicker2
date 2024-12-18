@@ -16,7 +16,6 @@
 
 package com.android.wallpaper.picker.preview.ui.binder
 
-import android.app.ProgressDialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -28,15 +27,15 @@ import kotlinx.coroutines.launch
 object SetWallpaperProgressDialogBinder {
 
     fun bind(
-        dialog: ProgressDialog,
         viewModel: WallpaperPreviewViewModel,
         lifecycleOwner: LifecycleOwner,
+        onShowDialog: (Boolean) -> Unit,
     ) {
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.isSetWallpaperProgressBarVisible.collect {
-                        if (it) dialog.show() else dialog.hide()
+                    viewModel.isSetWallpaperProgressBarVisible.collect { visible ->
+                        onShowDialog(visible)
                     }
                 }
             }

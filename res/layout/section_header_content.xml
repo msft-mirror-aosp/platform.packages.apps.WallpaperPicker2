@@ -17,10 +17,13 @@
 
 <com.google.android.material.appbar.AppBarLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/app_bar"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@null"
+    app:liftOnScrollColor="@color/system_surface_container_highest"
+    android:background="@color/system_surface_container"
     android:fitsSystemWindows="true"
+    app:liftOnScroll="true"
     app:elevation="0dp">
 
     <Toolbar
@@ -28,6 +31,7 @@
         android:layout_width="match_parent"
         android:layout_height="?android:attr/actionBarSize"
         android:theme="?android:attr/actionBarTheme"
+        android:importantForAccessibility="yes"
         android:layout_gravity="top">
         <TextView
             android:id="@+id/custom_toolbar_title"
