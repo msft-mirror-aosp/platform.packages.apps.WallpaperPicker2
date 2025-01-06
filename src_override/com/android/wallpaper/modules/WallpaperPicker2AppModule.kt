@@ -28,9 +28,13 @@ import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.category.domain.interactor.CategoriesLoadingStatusInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
+import com.android.wallpaper.picker.category.domain.interactor.CuratedPhotosInteractor
+import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.implementations.CategoryInteractorImpl
 import com.android.wallpaper.picker.category.domain.interactor.implementations.CreativeCategoryInteractorImpl
 import com.android.wallpaper.picker.category.domain.interactor.implementations.DefaultCategoriesLoadingStatusInteractor
+import com.android.wallpaper.picker.category.domain.interactor.implementations.DefaultCuratedPhotosInteractorImpl
+import com.android.wallpaper.picker.category.domain.interactor.implementations.ThirdPartyCategoryInteractorImpl
 import com.android.wallpaper.picker.category.ui.view.providers.IndividualPickerFactory
 import com.android.wallpaper.picker.category.ui.view.providers.implementation.DefaultIndividualPickerFactory
 import com.android.wallpaper.picker.category.wrapper.DefaultWallpaperCategoryWrapper
@@ -61,6 +65,12 @@ abstract class WallpaperPicker2AppModule {
     abstract fun bindCreativeCategoryInteractor(
         impl: CreativeCategoryInteractorImpl
     ): CreativeCategoryInteractor
+
+    @Binds
+    @Singleton
+    abstract fun bindCuratedPhotosInteractor(
+        impl: DefaultCuratedPhotosInteractorImpl
+    ): CuratedPhotosInteractor
 
     @Binds
     @Singleton
@@ -99,6 +109,12 @@ abstract class WallpaperPicker2AppModule {
     @Binds
     @Singleton
     abstract fun bindPartnerProvider(impl: DefaultPartnerProvider): PartnerProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindThirdPartyCategoryInteractor(
+        impl: ThirdPartyCategoryInteractorImpl
+    ): ThirdPartyCategoryInteractor
 
     @Binds @Singleton abstract fun bindToolbarBinder(impl: DefaultToolbarBinder): ToolbarBinder
 

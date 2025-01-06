@@ -23,9 +23,11 @@
     <!-- Material 3 colors -->
     <color name="system_primary">@android:color/system_primary_dark</color>
     <color name="system_primary_container">@android:color/system_primary_container_dark</color>
+    <color name="system_primary_fixed_dim">@android:color/system_primary_fixed_dim</color>
     <color name="system_secondary">@android:color/system_secondary_dark</color>
     <color name="system_tertiary">@android:color/system_tertiary_dark</color>
     <color name="system_on_primary">@android:color/system_on_primary_dark</color>
+    <color name="system_on_primary_fixed">@android:color/system_on_primary_fixed</color>
     <color name="system_on_primary_fixed_variant">@android:color/system_on_primary_fixed_variant</color>
     <color name="system_on_secondary">@android:color/system_on_secondary_dark</color>
     <color name="system_on_secondary_container">@android:color/system_on_secondary_container_dark</color>
@@ -45,6 +47,7 @@
     <color name="connected_sections_background">@color/system_surface_container_high</color>
     <color name="picker_section_icon_background">@color/system_surface_container_high</color>
     <color name="picker_fragment_background">@color/system_surface_container_high</color>
+    <color name="floating_toolbar_background">@color/system_surface_container_high</color>
 
     <color name="ripple_material">#33ffffff</color>
 </resources>

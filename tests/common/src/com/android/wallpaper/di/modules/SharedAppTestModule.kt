@@ -16,21 +16,19 @@
 package com.android.wallpaper.di.modules
 
 import android.app.WallpaperManager
+import android.content.ContentResolver
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Resources
 import com.android.wallpaper.module.LargeScreenMultiPanesChecker
 import com.android.wallpaper.module.MultiPanesChecker
 import com.android.wallpaper.module.NetworkStatusNotifier
+import com.android.wallpaper.module.PackageStatusNotifier
 import com.android.wallpaper.picker.category.client.LiveWallpapersClient
 import com.android.wallpaper.picker.category.data.repository.WallpaperCategoryRepository
 import com.android.wallpaper.picker.category.domain.interactor.CategoriesLoadingStatusInteractor
-import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
 import com.android.wallpaper.picker.category.domain.interactor.MyPhotosInteractor
-import com.android.wallpaper.picker.category.domain.interactor.ThirdPartyCategoryInteractor
-import com.android.wallpaper.picker.category.ui.view.providers.IndividualPickerFactory
-import com.android.wallpaper.picker.category.ui.view.providers.implementation.DefaultIndividualPickerFactory
 import com.android.wallpaper.picker.customization.data.content.WallpaperClient
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
@@ -42,18 +40,17 @@ import com.android.wallpaper.picker.network.domain.NetworkStatusInteractor
 import com.android.wallpaper.system.PowerManagerWrapper
 import com.android.wallpaper.system.UiModeManagerWrapper
 import com.android.wallpaper.testing.FakeCategoriesLoadingStatusInteractor
-import com.android.wallpaper.testing.FakeCategoryInteractor
 import com.android.wallpaper.testing.FakeCreativeWallpaperInteractor
 import com.android.wallpaper.testing.FakeDefaultCategoryFactory
 import com.android.wallpaper.testing.FakeDefaultWallpaperCategoryRepository
 import com.android.wallpaper.testing.FakeLiveWallpaperClientImpl
 import com.android.wallpaper.testing.FakeMyPhotosInteractor
 import com.android.wallpaper.testing.FakePowerManager
-import com.android.wallpaper.testing.FakeThirdPartyCategoryInteractor
 import com.android.wallpaper.testing.FakeUiModeManager
 import com.android.wallpaper.testing.FakeWallpaperClient
 import com.android.wallpaper.testing.FakeWallpaperParser
 import com.android.wallpaper.testing.TestNetworkStatusNotifier
+import com.android.wallpaper.testing.TestPackageStatusNotifier
 import com.android.wallpaper.util.WallpaperParser
 import com.android.wallpaper.util.converter.category.CategoryFactory
 import dagger.Binds
@@ -86,13 +83,17 @@ internal abstract class SharedAppTestModule {
 
     @Binds
     @Singleton
-    abstract fun bindCategoryInteractor(impl: FakeCategoryInteractor): CategoryInteractor
+    abstract fun bindPackageNotifier(impl: TestPackageStatusNotifier): PackageStatusNotifier
 
     @Binds
     @Singleton
     abstract fun bindCreativeCategoryInteractor(
         impl: FakeCreativeWallpaperInteractor
     ): CreativeCategoryInteractor
+
+    @Binds
+    @Singleton
+    abstract fun bindMyPhotosInteractor(impl: FakeMyPhotosInteractor): MyPhotosInteractor
 
     @Binds
     @Singleton
@@ -118,12 +119,6 @@ internal abstract class SharedAppTestModule {
 
     @Binds
     @Singleton
-    abstract fun bindIndividualPickerFactoryFragment(
-        impl: DefaultIndividualPickerFactory
-    ): IndividualPickerFactory
-
-    @Binds
-    @Singleton
     abstract fun bindLiveWallpaperClient(impl: FakeLiveWallpaperClientImpl): LiveWallpapersClient
 
     @Binds
@@ -143,17 +138,7 @@ internal abstract class SharedAppTestModule {
 
     @Binds
     @Singleton
-    abstract fun bindMyPhotosInteractor(impl: FakeMyPhotosInteractor): MyPhotosInteractor
-
-    @Binds
-    @Singleton
     abstract fun bindNetworkStatusNotifier(impl: TestNetworkStatusNotifier): NetworkStatusNotifier
-
-    @Binds
-    @Singleton
-    abstract fun bindThirdPartyCategoryInteractor(
-        impl: FakeThirdPartyCategoryInteractor
-    ): ThirdPartyCategoryInteractor
 
     @Binds
     @Singleton
@@ -188,6 +173,12 @@ internal abstract class SharedAppTestModule {
         @Singleton
         fun providePackageManager(@ApplicationContext appContext: Context): PackageManager {
             return appContext.packageManager
+        }
+
+        @Provides
+        @Singleton
+        fun provideContentResolver(@ApplicationContext appContext: Context): ContentResolver {
+            return appContext.contentResolver
         }
 
         @Provides

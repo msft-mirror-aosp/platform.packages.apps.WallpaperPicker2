@@ -30,11 +30,12 @@
     <string name="rotating_wallpaper_presentation_mode_message" msgid="3361676041605733288">"ದಿನನಿತ್ಯದ ವಾಲ್‌ಪೇಪರ್"</string>
     <string name="wallpaper_destination_both" msgid="1124197176741944063">"ಹೋಮ್ ಮತ್ತು ಲಾಕ್‌ ಸ್ಕ್ರೀನ್"</string>
     <string name="choose_a_wallpaper_section_title" msgid="1009823506890453891">"ವಾಲ್‌ಪೇಪರ್‌ ಆಯ್ಕೆಮಾಡಿ"</string>
+    <string name="choose_a_curated_photo_section_title" msgid="7360675459203465887">"ಸೂಚಿಸಿದ ಫೋಟೋಗಳು"</string>
     <string name="creative_wallpaper_title" msgid="3581650238648981372">"ವಾಲ್‌ಪೇಪರ್ ಅನ್ನು ರಚಿಸಿ"</string>
     <string name="home_screen_message" msgid="106444102822522813">"ಹೋಮ್ ಸ್ಕ್ರೀನ್"</string>
     <string name="lock_screen_message" msgid="1534506081955058013">"ಲಾಕ್ ಸ್ಕ್ರೀನ್"</string>
     <string name="home_and_lock_short_label" msgid="2937922943541927983">"ಮುಖಪುಟ ಮತ್ತು ಲಾಕ್‌"</string>
-    <string name="set_wallpaper_dialog_message" msgid="2110475703996853076">"ವಾಲ್‌ಪೇಪರ್ ಅನ್ನು ಆನ್‌ಗೆ ಹೊಂದಿಸಿ"</string>
+    <string name="set_wallpaper_dialog_message" msgid="2110475703996853076">"ವಾಲ್‌ಪೇಪರ್ ಅನ್ನು ಆನ್‌ಗೆ ಸೆಟ್ ಮಾಡಿ"</string>
     <string name="set_wallpaper_home_screen_destination" msgid="7315594722013109354">"ಹೋಮ್ ಸ್ಕ್ರೀನ್"</string>
     <string name="set_wallpaper_lock_screen_destination" msgid="6224685559375417945">"ಲಾಕ್ ಸ್ಕ್ರೀನ್"</string>
     <string name="set_wallpaper_both_destination" msgid="2536004558738350775">"ಹೋಮ್ ಮತ್ತು ಲಾಕ್ ಸ್ಕ್ರೀನ್‌ಗಳು"</string>
@@ -43,6 +44,7 @@
     <string name="permission_needed_explanation_go_to_settings" msgid="3923551582092599609">"ಪ್ರಸ್ತುತ ಅನ್ನು ಇಲ್ಲಿ ಪ್ರದರ್ಶಿಸಲು, ವಾಲ್ಪೇಪರ್‌ಗಳಿಗೆ ನಿಮ್ಮ ಸಾಧನದ ಸಂಗ್ರಹಣೆ ಪ್ರವೇಶದ ಅಗತ್ಯವಿದೆ. \n\nಈ ಸೆಟ್ಟಿಂಗ್‌ ಅನ್ನು ಬದಯಾಯಿಸಲು, ವಾಲ್ಪೇಪರ್‌ಗಳ ಅಪ್ಲಿಕೇಶನ್‌ನ ಮಾಹಿತಿಯ ಅನುಮತಿ ಪ್ರದೇಶಕ್ಕೆ ಹೋಗಿ."</string>
     <string name="permission_needed_allow_access_button_label" msgid="1943133660612924306">"ಪ್ರವೇಶವನ್ನು ಆನುಮತಿಸಿ"</string>
     <string name="no_backup_image_wallpaper_description" msgid="8303268619408738057">"ತಿರುಗುವ ವಾಲ್‌ಪೇಪರ್‌ಗಳಿಗಾಗಿ ಲೈವ್ ವಾಲ್‌ಪೇಪರ್ ಸೇವೆ"</string>
+    <string name="more_photos" msgid="2183343115041498453">"ಇನ್ನಷ್ಟು ಫೋಟೋಗಳು"</string>
     <string name="daily_refresh_tile_title" msgid="3270456074558525091">"ದಿನನಿತ್ಯದ ವಾಲ್‌ಪೇಪರ್"</string>
     <string name="daily_refresh_tile_subtitle" msgid="3976682014885446443">"ಆನ್‌‌‌ ಮಾಡಲು ಟ್ಯಾಪ್‌ ಮಾಡಿ"</string>
     <string name="start_rotation_dialog_body_live_wallpaper_needed" msgid="5132580257563846082">"ವಾಲ್‌ಪೇಪರ್ ಪ್ರತಿ ದಿನ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಬದಲಾಗುತ್ತದೆ. ಸೆಟಪ್ ಮುಗಿಸಲು, ಮುಂದಿನ ಪರದೆಯಲ್ಲಿನ &lt;strong&gt;ವಾಲ್‌ಪೇಪರ್ ಹೊಂದಿಸಿ&lt;/strong&gt; ಅನ್ನು ಟ್ಯಾಪ್‌ ಮಾಡಿ."</string>
@@ -66,7 +68,7 @@
     <string name="explore_lock_screen" msgid="268938342103703665">"ಲಾಕ್ ಪರದೆಯ ವಾಲ್‌ಪೇಪರ್ ಎಕ್ಸ್‌ಪ್ಲೋರ್ ಮಾಡಿ"</string>
     <string name="refresh_daily_wallpaper_home_content_description" msgid="2770445044556164259">"ದೈನಂದಿನ ಮುಖಪುಟ ಪರದೆಯ ವಾಲ್‌ಪೇಪರ್ ರಿಫ್ರೆಶ್ ಮಾಡಿ"</string>
     <string name="refresh_daily_wallpaper_content_description" msgid="4362142658237147583">"ದಿನನಿತ್ಯದ ವಾಲ್‌ಪೇಪರ್ ಅನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಿ"</string>
-    <string name="preview_screen_description" msgid="3386387053327775919">"ವಾಲ್‌ಪೇಪರ್ ಪೂರ್ವವೀಕ್ಷಣೆಯ ಪರದೆ"</string>
+    <string name="preview_screen_description" msgid="3386387053327775919">"ವಾಲ್‌ಪೇಪರ್ ಪೂರ್ವವೀಕ್ಷಣೆಯ ಸ್ಕ್ರೀನ್"</string>
     <string name="preview_screen_description_editable" msgid="506875963019888699">"ವಾಲ್‌ಪೇಪರ್ ಪೂರ್ವವೀಕ್ಷಣೆ ಸ್ಕ್ರೀನ್ %1$s. ಪ್ಯಾನ್ ಮಾಡಲು ಮತ್ತು ಜೂಮ್ ಮಾಡಲು ಎರಡು ಬೆರಳುಗಳನ್ನು ಬಳಸಿ."</string>
     <string name="folded_device_state_description" msgid="4972608448265616264">"ಫೋಲ್ಡ್ ಆಗಿದೆ"</string>
     <string name="unfolded_device_state_description" msgid="3071975681472460627">"ಅನ್‌ಫೋಲ್ಡ್ ಆಗಿದೆ"</string>
@@ -141,5 +143,5 @@
     <string name="recents_wallpaper_label" msgid="8653165542635660222">"%1$s, %2$d"</string>
     <string name="default_wallpaper_title" msgid="2541071182656978180">"ವಾಲ್‌ಪೇಪರ್"</string>
     <string name="small_preview_tooltip" msgid="1920430079013352071">"ನಿಮ್ಮ ಫೋಟೋ ಎಡಿಟ್ ಮಾಡಲು ಟ್ಯಾಪ್ ಮಾಡಿ"</string>
-    <string name="full_preview_tooltip" msgid="4648994028015322759">"ನಿಮ್ಮ ಫೋಟೋಗಳ ಸ್ಥಾನ, ಅಳತೆ ಮತ್ತು ಕೋನವನ್ನು ಹೊಂದಿಸಿ"</string>
+    <string name="full_preview_tooltip" msgid="4648994028015322759">"ನಿಮ್ಮ ಫೋಟೋಗಳ ಸ್ಥಾನ, ಅಳತೆ ಮತ್ತು ಕೋನವನ್ನು ಅಡ್ಜಸ್ಟ್ ಮಾಡಿ"</string>
 </resources>

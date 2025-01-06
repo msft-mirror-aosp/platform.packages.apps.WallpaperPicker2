@@ -25,8 +25,10 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.option.ui.binder.OptionItemBinder2
-import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel
+import com.android.wallpaper.picker.option.ui.viewmodel.OptionItemViewModel2
+import java.lang.ref.WeakReference
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.DisposableHandle
@@ -38,12 +40,14 @@ class OptionItemAdapter2<T>(
     @LayoutRes private val layoutResourceId: Int,
     private val lifecycleOwner: LifecycleOwner,
     private val backgroundDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val bindPayload: (View, T) -> Unit,
+    private val bindPayload: (View, T) -> DisposableHandle?,
+    private val colorUpdateViewModel: WeakReference<ColorUpdateViewModel>,
+    private val shouldAnimateColor: () -> Boolean,
 ) : RecyclerView.Adapter<OptionItemAdapter2.ViewHolder>() {
 
-    private val items = mutableListOf<OptionItemViewModel<T>>()
+    private val items = mutableListOf<OptionItemViewModel2<T>>()
 
-    fun setItems(items: List<OptionItemViewModel<T>>, callback: (() -> Unit)? = null) {
+    fun setItems(items: List<OptionItemViewModel2<T>>, callback: (() -> Unit)? = null) {
         lifecycleOwner.lifecycleScope.launch {
             val oldItems = this@OptionItemAdapter2.items
             val newItems = items
@@ -92,6 +96,7 @@ class OptionItemAdapter2<T>(
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         var disposableHandle: DisposableHandle? = null
+        var payloadDisposableHandle: DisposableHandle? = null
     }
 
     override fun getItemCount(): Int {
@@ -106,13 +111,17 @@ class OptionItemAdapter2<T>(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         holder.disposableHandle?.dispose()
+        holder.payloadDisposableHandle?.dispose()
         val item = items[position]
-        item.payload?.let { bindPayload(holder.itemView, item.payload) }
+        holder.payloadDisposableHandle =
+            item.payload?.let { bindPayload(holder.itemView, item.payload) }
         holder.disposableHandle =
             OptionItemBinder2.bind(
                 view = holder.itemView,
                 viewModel = item,
                 lifecycleOwner = lifecycleOwner,
+                colorUpdateViewModel = colorUpdateViewModel,
+                shouldAnimateColor = shouldAnimateColor,
             )
     }
 }

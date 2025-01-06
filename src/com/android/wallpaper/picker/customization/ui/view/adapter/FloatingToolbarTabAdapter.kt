@@ -16,6 +16,7 @@
 
 package com.android.wallpaper.picker.customization.ui.view.adapter
 
+import android.content.res.ColorStateList
 import android.graphics.BlendMode
 import android.graphics.BlendModeColorFilter
 import android.view.LayoutInflater
@@ -52,11 +53,7 @@ class FloatingToolbarTabAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TabViewHolder {
         val view =
             LayoutInflater.from(parent.context)
-                .inflate(
-                    R.layout.floating_toolbar_tab,
-                    parent,
-                    false,
-                )
+                .inflate(R.layout.floating_toolbar_tab, parent, false)
         val tabViewHolder = TabViewHolder(view)
         return tabViewHolder
     }
@@ -90,10 +87,19 @@ class FloatingToolbarTabAdapter(
         colorUpdateViewModel.get()?.let {
             ColorUpdateBinder.bind(
                 setColor = { color ->
-                    holder.itemView.background.colorFilter =
+                    holder.container.background.colorFilter =
                         BlendModeColorFilter(color, BlendMode.SRC_ATOP)
                 },
                 color = it.colorSecondaryContainer,
+                shouldAnimate = shouldAnimateColor,
+                lifecycleOwner = holder,
+            )
+            ColorUpdateBinder.bind(
+                setColor = { color ->
+                    holder.icon.imageTintList = ColorStateList.valueOf(color)
+                    holder.label.setTextColor(color)
+                },
+                color = it.colorOnSecondaryContainer,
                 shouldAnimate = shouldAnimateColor,
                 lifecycleOwner = holder,
             )
@@ -181,14 +187,14 @@ class FloatingToolbarTabAdapter(
 
         override fun areItemsTheSame(
             oldItem: FloatingToolbarTabViewModel,
-            newItem: FloatingToolbarTabViewModel
+            newItem: FloatingToolbarTabViewModel,
         ): Boolean {
             return oldItem.text == newItem.text
         }
 
         override fun areContentsTheSame(
             oldItem: FloatingToolbarTabViewModel,
-            newItem: FloatingToolbarTabViewModel
+            newItem: FloatingToolbarTabViewModel,
         ): Boolean {
             return oldItem.text == newItem.text &&
                 oldItem.isSelected == newItem.isSelected &&
@@ -197,7 +203,7 @@ class FloatingToolbarTabAdapter(
 
         override fun getChangePayload(
             oldItem: FloatingToolbarTabViewModel,
-            newItem: FloatingToolbarTabViewModel
+            newItem: FloatingToolbarTabViewModel,
         ): Any? {
             return when {
                 !oldItem.isSelected && newItem.isSelected -> SELECT_ITEM

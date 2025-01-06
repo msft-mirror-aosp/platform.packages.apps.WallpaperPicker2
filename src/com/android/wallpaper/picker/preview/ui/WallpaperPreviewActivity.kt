@@ -98,19 +98,27 @@ class WallpaperPreviewActivity :
             refreshCreativeCategories = intent.getBooleanExtra(SHOULD_CATEGORY_REFRESH, false)
         }
 
-        val wallpaper: WallpaperModel? =
+        val wallpaper: WallpaperModel =
             if (isNewPickerUi || isCategoriesRefactorEnabled) {
-                persistentWallpaperModelRepository.wallpaperModel.value
-                    ?: intent
-                        .getParcelableExtra(EXTRA_WALLPAPER_INFO, WallpaperInfo::class.java)
-                        ?.convertToWallpaperModel()
+                val model =
+                    if (savedInstanceState != null) {
+                        wallpaperPreviewViewModel.wallpaper.value
+                    } else {
+                        persistentWallpaperModelRepository.wallpaperModel.value
+                            ?: intent
+                                .getParcelableExtra(EXTRA_WALLPAPER_INFO, WallpaperInfo::class.java)
+                                ?.convertToWallpaperModel()
+                    }
+                persistentWallpaperModelRepository.cleanup()
+                model
             } else {
                 intent
                     .getParcelableExtra(EXTRA_WALLPAPER_INFO, WallpaperInfo::class.java)
                     ?.convertToWallpaperModel()
-            }
-
-        wallpaper ?: throw UnsupportedOperationException()
+            } ?: throw IllegalStateException("No wallpaper for previewing")
+        if (savedInstanceState == null) {
+            wallpaperPreviewRepository.setWallpaperModel(wallpaper)
+        }
 
         val navController =
             (supportFragmentManager.findFragmentById(R.id.wallpaper_preview_nav_host)
@@ -132,9 +140,6 @@ class WallpaperPreviewActivity :
         WindowCompat.setDecorFitsSystemWindows(window, ActivityUtils.isSUWMode(this))
         val isAssetIdPresent = intent.getBooleanExtra(IS_ASSET_ID_PRESENT, false)
         wallpaperPreviewViewModel.isNewTask = intent.getBooleanExtra(IS_NEW_TASK, false)
-        if (savedInstanceState == null) {
-            wallpaperPreviewRepository.setWallpaperModel(wallpaper)
-        }
         val whichPreview =
             if (isAssetIdPresent) WallpaperConnection.WhichPreview.EDIT_NON_CURRENT
             else WallpaperConnection.WhichPreview.EDIT_CURRENT
@@ -197,9 +202,18 @@ class WallpaperPreviewActivity :
         }
     }
 
-    override fun onDestroy() {
+    override fun onPause() {
+        super.onPause()
+
+        // When back to main screen user could launch preview again before it's fully destroyed and
+        // it could clean up the repo set by the new launching call, move it earlier to on pause.
         if (isFinishing) {
             persistentWallpaperModelRepository.cleanup()
+        }
+    }
+
+    override fun onDestroy() {
+        if (isFinishing) {
             // ImageEffectsRepositoryImpl is Activity-Retained Scoped, and its injected
             // EffectsController is Singleton scoped. Therefore, persist state on config change
             // restart, and only destroy when activity is finishing.
