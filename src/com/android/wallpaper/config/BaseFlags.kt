@@ -18,12 +18,14 @@ package com.android.wallpaper.config
 import android.app.WallpaperManager
 import android.content.Context
 import com.android.settings.accessibility.Flags.enableColorContrastControl
-import com.android.systemui.Flags.clockReactiveVariants
+import com.android.systemui.shared.Flags.clockReactiveVariants
+import com.android.systemui.shared.Flags.extendedWallpaperEffects
+import com.android.systemui.shared.Flags.lockscreenCustomClocks
 import com.android.systemui.shared.Flags.newCustomizationPickerUi
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClient
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClientImpl
 import com.android.systemui.shared.customization.data.content.CustomizationProviderContract as Contract
-import com.android.wallpaper.Flags.magicPortraitFlag
+import com.android.wallpaper.Flags.composeRefactorFlag
 import com.android.wallpaper.Flags.newCreativeWallpaperCategory
 import com.android.wallpaper.Flags.refactorWallpaperCategoryFlag
 import com.android.wallpaper.Flags.wallpaperRestorerFlag
@@ -51,13 +53,15 @@ abstract class BaseFlags {
 
     open fun isColorContrastControlEnabled() = enableColorContrastControl()
 
-    open fun isMagicPortraitEnabled() = magicPortraitFlag()
+    open fun isExtendedWallpaperEnabled() = extendedWallpaperEffects()
 
     open fun isNewPickerUi() = newCustomizationPickerUi()
 
     open fun isClockReactiveVariantsEnabled() = clockReactiveVariants()
 
     open fun isMultiCropEnabled() = WallpaperManager.isMultiCropEnabled()
+
+    open fun isComposeRefactorEnabled() = composeRefactorFlag()
 
     open fun isKeyguardQuickAffordanceEnabled(context: Context): Boolean {
         return getCachedFlags(context)
@@ -69,11 +73,12 @@ abstract class BaseFlags {
     }
 
     open fun isCustomClocksEnabled(context: Context): Boolean {
-        return getCachedFlags(context)
-            .firstOrNull { flag ->
-                flag.name == Contract.FlagsTable.FLAG_NAME_CUSTOM_CLOCKS_ENABLED
-            }
-            ?.value == true
+        return lockscreenCustomClocks() ||
+            getCachedFlags(context)
+                .firstOrNull { flag ->
+                    flag.name == Contract.FlagsTable.FLAG_NAME_CUSTOM_CLOCKS_ENABLED
+                }
+                ?.value == true
     }
 
     open fun isMonochromaticThemeEnabled(context: Context): Boolean {

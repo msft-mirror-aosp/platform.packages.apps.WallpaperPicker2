@@ -69,7 +69,10 @@
     <string name="refresh_daily_wallpaper_home_content_description" msgid="2770445044556164259">"Uppdatera dagens bakgrund för startskärmen"</string>
     <string name="refresh_daily_wallpaper_content_description" msgid="4362142658237147583">"Uppdatera dagens bakgrund"</string>
     <string name="preview_screen_description" msgid="3386387053327775919">"Förhandsgranskning av skärmens bakgrund"</string>
-    <string name="preview_screen_description_editable" msgid="506875963019888699">"Skärm för förhandsgranskning av bakgrund %1$s. Panorera och zooma med två fingrar."</string>
+    <!-- no translation found for preview_screen_description_editable (5558037286562127705) -->
+    <skip />
+    <!-- no translation found for preview_screen_description_non_editable (5861996326502454566) -->
+    <skip />
     <string name="folded_device_state_description" msgid="4972608448265616264">"Hopvikt"</string>
     <string name="unfolded_device_state_description" msgid="3071975681472460627">"Utfälld"</string>
     <string name="full_preview_check_button_description" msgid="700484353763952975">"Bakgrunden har redigerats klart"</string>
@@ -107,7 +110,9 @@
     <string name="previous_page_content_description" msgid="1138597031571078429">"Föregående"</string>
     <string name="wallpaper_title" msgid="6754214682228331092">"Bakgrund"</string>
     <string name="wallpaper_preview_card_content_description" msgid="6049261033541034584">"Förhandsgranska bakgrunden"</string>
-    <string name="wallpaper_preview_card_content_description_editable" msgid="3111763100515242340">"Förhandsgranska %1$s, tryck för att redigera"</string>
+    <string name="wallpaper_preview_card_content_description_editable" msgid="8147628993184862003">"Förhandsgranska bakgrunden på %1$s i %2$s. Tryck snabbt två gånger för att redigera fotot"</string>
+    <!-- no translation found for wallpaper_preview_card_content_description_non_editable (2201116657175733260) -->
+    <skip />
     <string name="lock_wallpaper_preview_card_content_description" msgid="5236839857695985498">"Förhandsgranskning av låsskärmens bakgrund"</string>
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Förhandsgranskning av startskärmens bakgrund"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Samlingen finns inte"</string>
@@ -144,4 +149,7 @@
     <string name="default_wallpaper_title" msgid="2541071182656978180">"Bakgrund"</string>
     <string name="small_preview_tooltip" msgid="1920430079013352071">"Tryck för att redigera fotot"</string>
     <string name="full_preview_tooltip" msgid="4648994028015322759">"Justera positionen, skalan och vinkeln på dina foton"</string>
+    <string name="discard_changes_dialog_message" msgid="8462485277292103457">"Vill du ignorera ändringarna?"</string>
+    <string name="discard_changes_dialog_button_keep_editing" msgid="9118931326834547216">"Fortsätt redigera"</string>
+    <string name="discard_changes_dialog_button_discard" msgid="6585071548322908206">"Släng"</string>
 </resources>

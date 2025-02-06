@@ -26,8 +26,6 @@ import android.content.res.Configuration
 import android.content.res.Resources
 import android.content.res.Resources.ID_NULL
 import android.graphics.Point
-import android.os.Build
-import android.os.Build.VERSION_CODES
 import android.os.Bundle
 import android.service.wallpaper.WallpaperService
 import android.text.TextUtils
@@ -198,6 +196,10 @@ class IndividualPickerFragment2 :
         register: Boolean,
         forceRefreshLiveWallpaperCategory: Boolean,
     ) {
+        // TODO (b/385059403): Remove these log lines once the bug is fixed
+        if (wallpaperCategoryWrapper == null) {
+            Log.w(TAG, "WallpaperCategoryWrapper is null")
+        }
         val categories =
             wallpaperCategoryWrapper?.getCategories(forceRefreshLiveWallpaperCategory) ?: return
         val fetchedCategory =
@@ -209,6 +211,12 @@ class IndividualPickerFragment2 :
                 )
             }
                 ?: run {
+                    // TODO (b/385059403): Remove these log lines once the bug is fixed
+                    if (arguments == null) {
+                        Log.w(TAG, "Arguments are null!")
+                    } else if (arguments.getString(ARG_CATEGORY_COLLECTION_ID) == null) {
+                        Log.w(TAG, "Category Collection ID is null or missing in arguments.")
+                    }
                     parentFragmentManager.popBackStack()
                     Toast.makeText(context, R.string.collection_not_exist_msg, Toast.LENGTH_SHORT)
                         .show()
@@ -670,13 +678,7 @@ class IndividualPickerFragment2 :
             return
         }
 
-        val themeResId =
-            if (Build.VERSION.SDK_INT < VERSION_CODES.LOLLIPOP) {
-                R.style.ProgressDialogThemePreL
-            } else {
-                R.style.LightDialogTheme
-            }
-        val progressDialog = ProgressDialog(activity, themeResId)
+        val progressDialog = ProgressDialog(activity, R.style.LightDialogTheme)
         progressDialog.setTitle(PROGRESS_DIALOG_NO_TITLE)
         progressDialog.setMessage(resources.getString(R.string.start_rotation_progress_message))
         progressDialog.isIndeterminate = PROGRESS_DIALOG_INDETERMINATE
@@ -1003,6 +1005,7 @@ class IndividualPickerFragment2 :
             } else {
                 badge.visibility = View.GONE
             }
+            holder.itemView.isSelected = show
         }
     }
 

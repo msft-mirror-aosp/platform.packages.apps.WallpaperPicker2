@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.Flow
 interface CategoryInteractor {
     val categories: Flow<List<CategoryModel>>
 
+    val isNetworkCategoriesNotEmpty: Flow<Boolean>
+
     fun refreshNetworkCategories()
 
     fun refreshThirdPartyLiveWallpaperCategories()

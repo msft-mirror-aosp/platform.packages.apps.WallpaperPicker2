@@ -3,6 +3,7 @@ package com.android.wallpaper.util.wallpaperconnection
 import android.app.WallpaperInfo
 import android.app.WallpaperManager
 import android.app.wallpaper.WallpaperDescription
+import android.content.ComponentName
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -20,11 +21,13 @@ import android.view.MotionEvent
 import android.view.SurfaceControl
 import android.view.SurfaceView
 import com.android.app.tracing.TraceUtils.traceAsync
+import com.android.wallpaper.R
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination.Companion.toSetWallpaperFlags
 import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.util.WallpaperConnection.WhichPreview
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityRetainedScoped
 import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
@@ -39,7 +42,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 @ActivityRetainedScoped
-class WallpaperConnectionUtils @Inject constructor() {
+class WallpaperConnectionUtils
+@Inject
+constructor(@ApplicationContext private val context: Context) {
 
     // The engineMap and the surfaceControlMap are used for disconnecting wallpaper services.
     private val wallpaperConnectionMap = ConcurrentHashMap<String, Deferred<WallpaperConnection>>()
@@ -68,7 +73,12 @@ class WallpaperConnectionUtils @Inject constructor() {
         val wallpaperInfo = wallpaperModel.liveWallpaperData.systemWallpaperInfo
         val engineDisplaySize = engineRenderingConfig.getEngineDisplaySize()
         val engineKey =
-            wallpaperInfo.getKey(engineDisplaySize, wallpaperModel.liveWallpaperData.description)
+            wallpaperInfo.engineKey(
+                engineDisplaySize,
+                wallpaperModel.liveWallpaperData.description,
+                wallpaperModel.liveWallpaperData.systemWallpaperInfo.component,
+                destinationFlag,
+            )
 
         traceAsync(TAG, "connect") {
             // Update the creative wallpaper uri before starting the service.
@@ -76,7 +86,11 @@ class WallpaperConnectionUtils @Inject constructor() {
             // the flag is true here but false in the code we're calling.
             wallpaperModel.creativeWallpaperData?.configPreviewUri?.let {
                 val uriKey =
-                    wallpaperInfo.getKey(description = wallpaperModel.liveWallpaperData.description)
+                    wallpaperInfo.engineKey(
+                        description = wallpaperModel.liveWallpaperData.description,
+                        component = wallpaperModel.liveWallpaperData.systemWallpaperInfo.component,
+                        destinationFlag = destinationFlag,
+                    )
                 if (!creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
                     mutex.withLock {
                         if (!creativeWallpaperConfigPreviewUriMap.containsKey(uriKey)) {
@@ -111,9 +125,12 @@ class WallpaperConnectionUtils @Inject constructor() {
                 }
             }
 
-            val engineKeyNoSize =
-                wallpaperInfo.getKey(null, wallpaperModel.liveWallpaperData.description)
-            latestConnectionMap[engineKeyNoSize] =
+            val serviceKey =
+                wallpaperInfo.serviceKey(
+                    wallpaperModel.liveWallpaperData.description,
+                    wallpaperModel.liveWallpaperData.systemWallpaperInfo.component,
+                )
+            latestConnectionMap[serviceKey] =
                 wallpaperConnectionMap[engineKey] as Deferred<WallpaperConnection>
 
             wallpaperConnectionMap[engineKey]?.await()?.let { (engineConnection, _, _, _) ->
@@ -163,13 +180,16 @@ class WallpaperConnectionUtils @Inject constructor() {
     suspend fun dispatchTouchEvent(
         wallpaperModel: LiveWallpaperModel,
         engineRenderingConfig: EngineRenderingConfig,
+        destinationFlag: Int,
         event: MotionEvent,
     ) {
         val engine =
             wallpaperModel.liveWallpaperData.systemWallpaperInfo
-                .getKey(
+                .engineKey(
                     engineRenderingConfig.getEngineDisplaySize(),
                     wallpaperModel.liveWallpaperData.description,
+                    wallpaperModel.liveWallpaperData.systemWallpaperInfo.component,
+                    destinationFlag,
                 )
                 .let { engineKey ->
                     wallpaperConnectionMap[engineKey]?.await()?.engineConnection?.get()?.engine
@@ -212,8 +232,12 @@ class WallpaperConnectionUtils @Inject constructor() {
         wallpaperModel: LiveWallpaperModel,
     ): WallpaperDescription? {
         val wallpaperInfo = wallpaperModel.liveWallpaperData.systemWallpaperInfo
-        val engineKey = wallpaperInfo.getKey(null, wallpaperModel.liveWallpaperData.description)
-        latestConnectionMap[engineKey]?.await()?.engineConnection?.get()?.engine?.let {
+        val serviceKey =
+            wallpaperInfo.serviceKey(
+                wallpaperModel.liveWallpaperData.description,
+                wallpaperModel.liveWallpaperData.systemWallpaperInfo.component,
+            )
+        latestConnectionMap[serviceKey]?.await()?.engineConnection?.get()?.engine?.let {
             return it.javaClass
                 .getMethod("onApplyWallpaper", Int::class.javaPrimitiveType)
                 .invoke(it, destination.toSetWallpaperFlags()) as WallpaperDescription?
@@ -252,17 +276,35 @@ class WallpaperConnectionUtils @Inject constructor() {
     }
 
     // Calculates a unique key for the wallpaper engine instance
-    private fun WallpaperInfo.getKey(
+    // TODO(b/390731022) Remove the MP-specific logic
+    private fun WallpaperInfo.engineKey(
         displaySize: Point? = null,
         description: WallpaperDescription,
+        component: ComponentName,
+        destinationFlag: Int,
     ): String {
+        // This is NOT the right way to do this long term. See b/390731022.
+        val multiEngineExt =
+            if (isExtendedEffectWallpaper(context, component)) ":$destinationFlag" else ""
         val keyWithoutSizeInformation =
-            this.packageName.plus(":").plus(this.serviceName).plus(description.let { ":$it.id" })
+            this.packageName
+                .plus(":")
+                .plus(this.serviceName)
+                .plus(description.let { ":${it.id}" }.plus(multiEngineExt))
         return if (displaySize != null) {
             keyWithoutSizeInformation.plus(":").plus("${displaySize.x}x${displaySize.y}")
         } else {
             keyWithoutSizeInformation
         }
+    }
+
+    // Calculates a key unique to a service, but not a particular engine associated with that
+    // service. Used as a key for latestConnectionMap.
+    private fun WallpaperInfo.serviceKey(
+        description: WallpaperDescription,
+        component: ComponentName,
+    ): String {
+        return engineKey(null, description, component, 0)
     }
 
     private suspend fun bindWallpaperService(
@@ -383,7 +425,7 @@ class WallpaperConnectionUtils @Inject constructor() {
     }
 
     companion object {
-        const val TAG = "WallpaperConnectionUtils"
+        private const val TAG = "WallpaperConnectionUtils"
 
         data class EngineRenderingConfig(
             val enforceSingleEngine: Boolean,
@@ -416,5 +458,8 @@ class WallpaperConnectionUtils @Inject constructor() {
                 else -> true // Only fallback to single engine rendering for legacy live wallpapers
             }
         }
+
+        fun isExtendedEffectWallpaper(context: Context, component: ComponentName) =
+            component.packageName == context.getString(R.string.extended_wallpaper_effects_package)
     }
 }

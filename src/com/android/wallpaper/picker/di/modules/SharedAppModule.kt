@@ -27,10 +27,12 @@ import android.os.Looper
 import android.os.Process
 import com.android.wallpaper.module.DefaultNetworkStatusNotifier
 import com.android.wallpaper.module.DefaultPackageStatusNotifier
+import com.android.wallpaper.module.DefaultWallpaperRefresher
 import com.android.wallpaper.module.LargeScreenMultiPanesChecker
 import com.android.wallpaper.module.MultiPanesChecker
 import com.android.wallpaper.module.NetworkStatusNotifier
 import com.android.wallpaper.module.PackageStatusNotifier
+import com.android.wallpaper.module.WallpaperRefresher
 import com.android.wallpaper.network.Requester
 import com.android.wallpaper.network.WallpaperRequester
 import com.android.wallpaper.picker.MyPhotosStarter
@@ -151,8 +153,8 @@ abstract class SharedAppModule {
         @Retention(AnnotationRetention.RUNTIME)
         annotation class BroadcastRunning
 
-        private const val BROADCAST_SLOW_DISPATCH_THRESHOLD = 1000L
-        private const val BROADCAST_SLOW_DELIVERY_THRESHOLD = 1000L
+        const val BROADCAST_SLOW_DISPATCH_THRESHOLD = 1000L
+        const val BROADCAST_SLOW_DELIVERY_THRESHOLD = 1000L
 
         @Provides
         @BackgroundDispatcher
@@ -222,6 +224,12 @@ abstract class SharedAppModule {
         @Singleton
         fun provideWallpaperManager(@ApplicationContext appContext: Context): WallpaperManager {
             return WallpaperManager.getInstance(appContext)
+        }
+
+        @Provides
+        @Singleton
+        fun provideWallpaperRefresher(@ApplicationContext context: Context): WallpaperRefresher {
+            return DefaultWallpaperRefresher(context)
         }
     }
 }

@@ -20,10 +20,15 @@ import android.content.ContentResolver
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Resources
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.Looper
+import android.os.Process
 import com.android.wallpaper.module.LargeScreenMultiPanesChecker
 import com.android.wallpaper.module.MultiPanesChecker
 import com.android.wallpaper.module.NetworkStatusNotifier
 import com.android.wallpaper.module.PackageStatusNotifier
+import com.android.wallpaper.module.WallpaperRefresher
 import com.android.wallpaper.picker.category.client.LiveWallpapersClient
 import com.android.wallpaper.picker.category.data.repository.WallpaperCategoryRepository
 import com.android.wallpaper.picker.category.domain.interactor.CategoriesLoadingStatusInteractor
@@ -33,6 +38,9 @@ import com.android.wallpaper.picker.customization.data.content.WallpaperClient
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.di.modules.SharedAppModule
+import com.android.wallpaper.picker.di.modules.SharedAppModule.Companion.BROADCAST_SLOW_DELIVERY_THRESHOLD
+import com.android.wallpaper.picker.di.modules.SharedAppModule.Companion.BROADCAST_SLOW_DISPATCH_THRESHOLD
+import com.android.wallpaper.picker.di.modules.SharedAppModule.Companion.BroadcastRunning
 import com.android.wallpaper.picker.network.data.DefaultNetworkStatusRepository
 import com.android.wallpaper.picker.network.data.NetworkStatusRepository
 import com.android.wallpaper.picker.network.domain.DefaultNetworkStatusInteractor
@@ -49,8 +57,10 @@ import com.android.wallpaper.testing.FakePowerManager
 import com.android.wallpaper.testing.FakeUiModeManager
 import com.android.wallpaper.testing.FakeWallpaperClient
 import com.android.wallpaper.testing.FakeWallpaperParser
+import com.android.wallpaper.testing.FakeWallpaperRefresher
 import com.android.wallpaper.testing.TestNetworkStatusNotifier
 import com.android.wallpaper.testing.TestPackageStatusNotifier
+import com.android.wallpaper.testing.TestWallpaperPreferences
 import com.android.wallpaper.util.WallpaperParser
 import com.android.wallpaper.util.converter.category.CategoryFactory
 import dagger.Binds
@@ -59,6 +69,7 @@ import dagger.Provides
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.testing.TestInstallIn
+import java.util.concurrent.Executor
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -154,6 +165,30 @@ internal abstract class SharedAppTestModule {
 
     companion object {
 
+        /** Provide a BroadcastRunning Executor (for sending and receiving broadcasts). */
+        @Provides
+        @Singleton
+        @BroadcastRunning
+        fun provideBroadcastRunningExecutor(@BroadcastRunning looper: Looper?): Executor {
+            val handler = Handler(looper ?: Looper.getMainLooper())
+            return Executor { command -> handler.post(command) }
+        }
+
+        @Provides
+        @Singleton
+        @BroadcastRunning
+        fun provideBroadcastRunningLooper(): Looper {
+            return HandlerThread("BroadcastRunning", Process.THREAD_PRIORITY_BACKGROUND)
+                .apply {
+                    start()
+                    looper.setSlowLogThresholdMs(
+                        BROADCAST_SLOW_DISPATCH_THRESHOLD,
+                        BROADCAST_SLOW_DELIVERY_THRESHOLD,
+                    )
+                }
+                .looper
+        }
+
         // Scope for background work that does not need to finish before a test completes, like
         // continuously reading values from a flow.
         @Provides
@@ -209,6 +244,12 @@ internal abstract class SharedAppTestModule {
         @Singleton
         fun provideWallpaperManager(@ApplicationContext appContext: Context): WallpaperManager {
             return WallpaperManager.getInstance(appContext)
+        }
+
+        @Provides
+        @Singleton
+        fun provideWallpaperRefresher(prefs: TestWallpaperPreferences): WallpaperRefresher {
+            return FakeWallpaperRefresher(prefs)
         }
     }
 }

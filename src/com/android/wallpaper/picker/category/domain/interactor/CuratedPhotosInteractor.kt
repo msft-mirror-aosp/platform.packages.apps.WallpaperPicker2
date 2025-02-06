@@ -16,7 +16,7 @@
 
 package com.android.wallpaper.picker.category.domain.interactor
 
-import com.android.wallpaper.picker.data.category.CategoryModel
+import com.android.wallpaper.picker.data.category.PhotoCategoryModel
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -24,5 +24,5 @@ import kotlinx.coroutines.flow.Flow
  * category model
  */
 interface CuratedPhotosInteractor {
-    val category: Flow<CategoryModel>
+    val category: Flow<PhotoCategoryModel>
 }

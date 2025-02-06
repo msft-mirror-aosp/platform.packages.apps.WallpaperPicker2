@@ -69,7 +69,8 @@
     <string name="refresh_daily_wallpaper_home_content_description" msgid="2770445044556164259">"പ്രതിദിന ഹോം സ്ക്രീൻ വാൾപേപ്പർ പുതുക്കുക"</string>
     <string name="refresh_daily_wallpaper_content_description" msgid="4362142658237147583">"പ്രതിദിന വാൾപേപ്പർ പുതുക്കുക"</string>
     <string name="preview_screen_description" msgid="3386387053327775919">"വാൾപേപ്പർ പ്രിവ്യൂ സ്‌ക്രീൻ"</string>
-    <string name="preview_screen_description_editable" msgid="506875963019888699">"വാൾപേപ്പർ പ്രിവ്യൂ സ്ക്രീൻ %1$s. പാൻ ചെയ്യാനും സൂം ചെയ്യാനും രണ്ട് വിരലുകൾ ഉപയോഗിക്കുക."</string>
+    <string name="preview_screen_description_editable" msgid="5558037286562127705">"വാൾപേപ്പർ പ്രിവ്യൂ സ്ക്രീൻ %1$s. പാൻ ചെയ്യാനും സൂം ചെയ്യാനും രണ്ട് വിരലുകൾ ഉപയോഗിക്കുക"</string>
+    <string name="preview_screen_description_non_editable" msgid="5861996326502454566">"വാൾപേപ്പർ പ്രിവ്യൂ സ്ക്രീൻ %1$s"</string>
     <string name="folded_device_state_description" msgid="4972608448265616264">"ഫോൾഡ് ചെയ്തിരിക്കുന്നു"</string>
     <string name="unfolded_device_state_description" msgid="3071975681472460627">"അൺഫോൾഡ് ചെയ്തിരിക്കുന്നു"</string>
     <string name="full_preview_check_button_description" msgid="700484353763952975">"വാൾപേപ്പർ എഡിറ്റിംഗ് പൂർത്തിയായി"</string>
@@ -107,7 +108,8 @@
     <string name="previous_page_content_description" msgid="1138597031571078429">"മുമ്പത്തെ"</string>
     <string name="wallpaper_title" msgid="6754214682228331092">"വാൾപേപ്പർ"</string>
     <string name="wallpaper_preview_card_content_description" msgid="6049261033541034584">"വാൾപേപ്പർ പ്രിവ്യൂ"</string>
-    <string name="wallpaper_preview_card_content_description_editable" msgid="3111763100515242340">"വാൾപേപ്പർ പ്രിവ്യൂ %1$s, ഫോട്ടോ എഡിറ്റുചെയ്യാൻ ടാപ്പുചെയ്യൂ"</string>
+    <string name="wallpaper_preview_card_content_description_editable" msgid="8147628993184862003">"%1$s വാൾപേപ്പർ പ്രിവ്യൂ %2$s, നിങ്ങളുടെ ഫോട്ടോ എഡിറ്റ് ചെയ്യാൻ ഡബിൾ ടാപ്പ് ചെയ്യുക"</string>
+    <string name="wallpaper_preview_card_content_description_non_editable" msgid="2201116657175733260">"%1$s വാൾപേപ്പർ പ്രിവ്യൂ %2$s"</string>
     <string name="lock_wallpaper_preview_card_content_description" msgid="5236839857695985498">"ലോക്ക് സ്‌ക്രീൻ വാൾപേപ്പർ പ്രിവ്യൂ"</string>
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"ഹോം സ്‌ക്രീൻ വാൾപേപ്പർ പ്രിവ്യൂ"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"ശേഖരം നിലവിലില്ല"</string>
@@ -144,4 +146,7 @@
     <string name="default_wallpaper_title" msgid="2541071182656978180">"വാൾപേപ്പർ"</string>
     <string name="small_preview_tooltip" msgid="1920430079013352071">"നിങ്ങളുടെ ഫോട്ടോ എഡിറ്റ് ചെയ്യാൻ ടാപ്പ് ചെയ്യുക"</string>
     <string name="full_preview_tooltip" msgid="4648994028015322759">"നിങ്ങളുടെ ഫോട്ടോകളുടെ സ്ഥാനം, സ്‌കെയിൽ, ആംഗിൾ എന്നിവ ക്രമീകരിക്കുക"</string>
+    <string name="discard_changes_dialog_message" msgid="8462485277292103457">"മാറ്റങ്ങൾ ഉപേക്ഷിക്കണോ?"</string>
+    <string name="discard_changes_dialog_button_keep_editing" msgid="9118931326834547216">"എഡിറ്റ് ചെയ്യുന്നത് തുടരുക"</string>
+    <string name="discard_changes_dialog_button_discard" msgid="6585071548322908206">"ഉപേക്ഷിക്കുക"</string>
 </resources>

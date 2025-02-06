@@ -270,8 +270,8 @@ constructor(
                 curatedPhotosInteractor.category.distinctUntilChanged().map { category ->
                     SectionViewModel(
                         tileViewModels =
-                            category.collectionCategoryData?.wallpaperModels?.map { wallpaperModel
-                                ->
+                            category.categoryModel.collectionCategoryData?.wallpaperModels?.map {
+                                wallpaperModel ->
                                 val staticWallpaperModel =
                                     wallpaperModel as? WallpaperModel.StaticWallpaperModel
                                 TileViewModel(
@@ -281,7 +281,7 @@ constructor(
                                             context,
                                             staticWallpaperModel?.imageWallpaperData?.uri,
                                         ),
-                                    text = category.commonCategoryData.title,
+                                    text = category.categoryModel.commonCategoryData.title,
                                     maxCategoriesInRow = SectionCardinality.Single,
                                 ) {
                                     navigateToPreviewScreen(
@@ -294,6 +294,7 @@ constructor(
                         sectionTitle =
                             context.getString(R.string.choose_a_curated_photo_section_title),
                         displayType = DisplayType.Carousel,
+                        status = category.status,
                     ) {
                         navigateToPhotosPicker(null)
                     }
@@ -337,9 +338,7 @@ constructor(
             myPhotosViewModel ->
             buildList {
                 if (BaseFlags.get().isNewPickerUi()) {
-                    if (myPhotosViewModel.tileViewModels.isNotEmpty()) {
-                        add(myPhotosViewModel)
-                    }
+                    add(myPhotosViewModel)
                     add(creativeViewModel)
                 } else {
                     add(creativeViewModel)
@@ -352,7 +351,46 @@ constructor(
     val isLoading: Flow<Boolean> = loadindStatusInteractor.isLoading
 
     /** A [Flow] to indicate when the network status has been made enabled */
-    val isConnectionObtained: Flow<Boolean> = networkStatusInteractor.isConnectionObtained
+    val isConnectionObtained: Flow<Boolean> =
+        networkStatusInteractor.isConnectionObtained.map { status ->
+            return@map status
+        }
+
+    /**
+     * A [Flow] whether the categories should be updated
+     * 1. when network gets connected and network categories are cached, there should be no refresh
+     *    when first entering the categories page
+     * 2. when network gets connected and network categories are not cached, there should be a
+     *    refresh when entering the categories page
+     * 3. when network gets disconnected and network categories are cached, there should be a
+     *    refresh (purge)
+     * 4. when network gets disconnected and network categories are not cached, then no-op when
+     *    entering the categories page
+     */
+    val shouldRefreshCategories: Flow<Boolean> =
+        combine(
+            networkStatusInteractor.isConnectionObtained,
+            singleCategoryInteractor.isNetworkCategoriesNotEmpty,
+        ) { isConnected, isCategoriesCached ->
+            // if there is connection and empty cache, then refetch
+            if (isConnected) {
+                if (!isCategoriesCached) {
+                    // if categories are not cached then we load them
+                    return@combine true
+                } else {
+                    // if categories are already cached, then no need to refresh
+                    return@combine false
+                }
+            } else { // not connected
+                if (isCategoriesCached) {
+                    // if no connection and categories are cached we need to purge them
+                    return@combine true
+                } else {
+                    // if no connection and no categories in cache, then no-op
+                    return@combine false
+                }
+            }
+        }
 
     /** This method updates network categories */
     fun refreshNetworkCategories() {

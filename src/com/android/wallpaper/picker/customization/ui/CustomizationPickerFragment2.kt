@@ -53,6 +53,8 @@ import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.Screen.HOME_SCREEN
 import com.android.wallpaper.model.Screen.LOCK_SCREEN
 import com.android.wallpaper.module.LargeScreenMultiPanesChecker
+import com.android.wallpaper.module.MultiPanesChecker
+import com.android.wallpaper.picker.WallpaperPickerDelegate.VIEW_ONLY_PREVIEW_WALLPAPER_REQUEST_CODE
 import com.android.wallpaper.picker.category.ui.view.CategoriesFragment
 import com.android.wallpaper.picker.common.preview.data.repository.PersistentWallpaperModelRepository
 import com.android.wallpaper.picker.common.preview.ui.binder.BasePreviewBinder
@@ -64,10 +66,12 @@ import com.android.wallpaper.picker.customization.ui.binder.PagerTouchIntercepto
 import com.android.wallpaper.picker.customization.ui.binder.ToolbarBinder
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil.CustomizationOption
+import com.android.wallpaper.picker.customization.ui.view.WallpaperPickerEntry
 import com.android.wallpaper.picker.customization.ui.view.adapter.PreviewPagerAdapter
 import com.android.wallpaper.picker.customization.ui.view.transformer.PreviewPagerPageTransformer
 import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
+import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity
 import com.android.wallpaper.util.ActivityUtils
@@ -93,6 +97,7 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
     @Inject lateinit var wallpaperConnectionUtils: WallpaperConnectionUtils
     @Inject lateinit var persistentWallpaperModelRepository: PersistentWallpaperModelRepository
     @Inject @MainDispatcher lateinit var mainScope: CoroutineScope
+    @Inject lateinit var multiPanesChecker: MultiPanesChecker
 
     private val customizationPickerViewModel: CustomizationPickerViewModel2 by viewModels()
 
@@ -153,25 +158,6 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
                 layoutInflater,
             )
 
-        pickerMotionContainer.setTransitionListener(
-            object : EmptyTransitionListener {
-                override fun onTransitionCompleted(motionLayout: MotionLayout?, currentId: Int) {
-                    if (
-                        currentId == R.id.expanded_header_primary ||
-                            currentId == R.id.collapsed_header_primary
-                    ) {
-                        // This is when we complete the transition back to the primary screen
-                        pickerMotionContainer.setTransition(R.id.transition_primary)
-                        // Reset the preview only after the transition is completed, because the
-                        // reset will trigger the animation of the UI components in the floating
-                        // sheet content, which can possibly be interrupted by the floating sheet
-                        // translating down.
-                        customizationPickerViewModel.customizationOptionsViewModel.resetPreview()
-                    }
-                }
-            }
-        )
-
         val previewViewModel = customizationPickerViewModel.basePreviewViewModel
         previewViewModel.setWhichPreview(WallpaperConnection.WhichPreview.EDIT_CURRENT)
         // TODO (b/348462236): adjust flow so this is always false when previewing current wallpaper
@@ -183,13 +169,20 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
             initialScreen = if (isFromLauncher) HOME_SCREEN else LOCK_SCREEN,
         )
 
-        val optionContainer =
-            view.requireViewById<MotionLayout>(R.id.customization_option_container)
-        // The collapsed header height should be updated when option container's height is known
-        optionContainer.doOnPreDraw {
-            // The bottom navigation bar height
+        val optionContainer: ConstraintLayout =
+            view.requireViewById(R.id.customization_option_container)
+        val wallpaperPickerEntry: WallpaperPickerEntry =
+            view.requireViewById(R.id.wallpaper_picker_entry)
+        view.post {
+            val wallpaperPickerEntryHeight = wallpaperPickerEntry.height
+            val collapsedButtonHeight = wallpaperPickerEntry.collapsedButton.height
+
+            // The collapsed header height should be updated when optionContainer height is known
             val collapsedHeaderHeight =
-                pickerMotionContainer.height - optionContainer.height - navBarHeight
+                pickerMotionContainer.height -
+                    (optionContainer.height -
+                        (wallpaperPickerEntryHeight - collapsedButtonHeight)) -
+                    navBarHeight
             if (
                 collapsedHeaderHeight >
                     resources.getDimensionPixelSize(
@@ -201,6 +194,52 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
                     ?.constrainHeight(R.id.preview_header, collapsedHeaderHeight)
                 pickerMotionContainer.setTransition(R.id.transition_primary)
             }
+
+            // Transition listener handle 2 things
+            // 1. Expand and collapse the wallpaper entry
+            // 2. Reset the transition and preview when transition back to the primary screen
+            pickerMotionContainer.setTransitionListener(
+                object : EmptyTransitionListener {
+
+                    override fun onTransitionChange(
+                        motionLayout: MotionLayout?,
+                        startId: Int,
+                        endId: Int,
+                        progress: Float,
+                    ) {
+                        if (
+                            startId == R.id.expanded_header_primary &&
+                                endId == R.id.collapsed_header_primary
+                        ) {
+                            wallpaperPickerEntry.setProgress(progress)
+                        }
+                    }
+
+                    override fun onTransitionCompleted(
+                        motionLayout: MotionLayout?,
+                        currentId: Int,
+                    ) {
+                        if (currentId == R.id.expanded_header_primary) {
+                            wallpaperPickerEntry.setProgress(0f)
+                        } else if (currentId == R.id.collapsed_header_primary) {
+                            wallpaperPickerEntry.setProgress(1f)
+                        }
+                        if (
+                            currentId == R.id.expanded_header_primary ||
+                                currentId == R.id.collapsed_header_primary
+                        ) {
+                            // This is when we complete the transition back to the primary screen
+                            pickerMotionContainer.setTransition(R.id.transition_primary)
+                            // Reset the preview only after the transition is completed, because the
+                            // reset will trigger the animation of the UI components in the floating
+                            // sheet content, which can possibly be interrupted by the floating
+                            // sheet translating down.
+                            customizationPickerViewModel.customizationOptionsViewModel
+                                .resetPreview()
+                        }
+                    }
+                }
+            )
         }
 
         CustomizationPickerBinder2.bind(
@@ -260,6 +299,10 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
             navigateToLockScreenNotificationsSettingsActivity = {
                 activity?.startActivity(Intent(Settings.ACTION_LOCKSCREEN_NOTIFICATIONS_SETTINGS))
             },
+            navigateToPreviewScreen = { wallpaperModel ->
+                // navigate to standard preview screen
+                startWallpaperPreviewActivity(wallpaperModel, false)
+            },
         )
 
         customizationOptionsBinder.bindDiscardChangesDialog(
@@ -308,7 +351,7 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
             applyButton,
             customizationPickerViewModel.customizationOptionsViewModel,
             colorUpdateViewModel,
-            this,
+            viewLifecycleOwner,
         ) {
             activity?.onBackPressedDispatcher?.onBackPressed()
         }
@@ -514,6 +557,29 @@ class CustomizationPickerFragment2 : Hilt_CustomizationPickerFragment2() {
             }
             onComplete()
         }
+    }
+
+    private fun startWallpaperPreviewActivity(
+        wallpaperModel: WallpaperModel,
+        isCreativeCategories: Boolean,
+    ) {
+        val appContext = requireContext()
+        val activity = requireActivity()
+        persistentWallpaperModelRepository.setWallpaperModel(wallpaperModel)
+        val isMultiPanel = multiPanesChecker.isMultiPanesEnabled(appContext)
+        val previewIntent =
+            WallpaperPreviewActivity.newIntent(
+                context = appContext,
+                isAssetIdPresent = true,
+                isViewAsHome = true,
+                isNewTask = isMultiPanel,
+                shouldCategoryRefresh = isCreativeCategories,
+            )
+        ActivityUtils.startActivityForResultSafely(
+            activity,
+            previewIntent,
+            VIEW_ONLY_PREVIEW_WALLPAPER_REQUEST_CODE,
+        )
     }
 
     interface EmptyTransitionListener : TransitionListener {
